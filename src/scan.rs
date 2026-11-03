@@ -1,5 +1,6 @@
 //! The checks. Pure logic: reads files, never writes, never uses the network.
 
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -370,6 +371,18 @@ fn plural(n: usize, word: &str) -> String {
 }
 
 fn check_launcher_data(dir: &Path) -> Vec<Finding> {
+    let Some(real) = linked_dir(dir) else {
+        let shown = fs::read_link(dir).map_or_else(|_| "an unknown target".into(), |t| t.display().to_string());
+        return vec![
+            Finding::new(
+                Severity::Info,
+                "Launcher data folder is a link and was not read",
+                format!("This folder links to {shown}, which is missing, a drive root or a folder above the link, so its files were not checked. Scan the real launcher data folder with \"Scan a folder...\" or nikke-check --cli <folder>."),
+            )
+            .at(dir),
+        ];
+    };
+    let dir = real.as_path();
     let (mut agent, mut cache, mut network, mut other) =
         (Hits::default(), Hits::default(), Hits::default(), Hits::default());
     let mut checked = 0usize;
@@ -379,8 +392,13 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         };
         checked += 1;
         let rel = path.strip_prefix(dir).unwrap_or(&path).display().to_string();
-        if contains(&bytes, b"k2f_chan") {
-            agent.add(&path, &rel, snippets(&bytes, &[b"k2f_chan"], 1).pop());
+        // k2f.agent.state is the agent's saved ID in Local Storage. It outlives the debug.log rewrite.
+        if contains(&bytes, b"k2f_chan") || contains(&bytes, b"k2f.agent") {
+            // The key name only: the saved state that follows holds the agent's password.
+            let snippet = snippets(&bytes, &[b"k2f_chan", b"k2f.agent"], 1)
+                .pop()
+                .map(|s| s.split("agent_pass").next().unwrap_or_default().to_string());
+            agent.add(&path, &rel, snippet);
         }
         if contains(&bytes, b"insightjs") {
             let snippet = snippets(&bytes, &[b"insightjs"], 1).pop();
@@ -405,7 +423,7 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
     out.extend(agent.finding(
         Severity::Critical,
         "The malware agent left traces in the launcher data",
-        format!("k2f_chan, the agent's bridge channel name, appears in {} in the launcher data.", plural(a, "file")),
+        format!("k2f_chan (the agent's bridge channel name) or k2f.agent.state (the ID the agent saves) appears in {} in the launcher data. This shows that the agent ran.", plural(a, "file")),
     ));
     out.extend(cache.finding(
         Severity::Warning,
@@ -431,6 +449,18 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
     out
 }
 
+/// The folder to read for a launcher data folder that may be a symlink or a
+/// junction. None for a link to a drive root or to a folder above itself, which
+/// is not followed.
+fn linked_dir(dir: &Path) -> Option<PathBuf> {
+    if !dir.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
+        return Some(dir.to_path_buf());
+    }
+    let target = fs::canonicalize(dir).ok()?;
+    let parent = dir.parent().and_then(|p| fs::canonicalize(p).ok());
+    (target.parent().is_some() && !parent.is_some_and(|p| p.starts_with(&target))).then_some(target)
+}
+
 // ---------------------------------------------------------- C: user profile
 
 fn check_profile(profile: &Path, host: bool) -> Vec<Finding> {
@@ -443,31 +473,38 @@ fn check_profile(profile: &Path, host: bool) -> Vec<Finding> {
         .and_then(|l| find_ci(l, &["Google", "Chrome", "User Data", "PlatformExperienceHelper"]))
         .filter(|p| p.is_dir())
     {
-        let contents: Vec<String> = WalkDir::new(&helper)
-            .follow_links(false)
-            .min_depth(1)
-            .max_depth(3)
-            .into_iter()
-            .flatten()
+        let entries: Vec<walkdir::DirEntry> = WalkDir::new(&helper).follow_links(false).min_depth(1).into_iter().flatten().collect();
+        // Chrome's own helper (platform_experience_helper.exe, LoadFeatures) lives in this
+        // folder too. The malware adds <sha256>/platform_experience_helper.dll.
+        let dll = entries
+            .iter()
+            .any(|e| e.file_name().to_string_lossy().eq_ignore_ascii_case("platform_experience_helper.dll"));
+        let hash_dir = entries
+            .iter()
+            .any(|e| e.depth() == 1 && e.file_type().is_dir() && is_sha256(&e.file_name().to_string_lossy()));
+        let mut contents: Vec<String> = entries
+            .iter()
             .map(|e| e.path().strip_prefix(&helper).unwrap_or(e.path()).display().to_string())
             .collect();
-        let mut evidence = contents.clone();
+        contents.sort();
         if contents.is_empty() {
-            evidence.push("(empty folder)".into());
-        } else if contents.len() > MAX_EVIDENCE {
-            evidence.truncate(MAX_EVIDENCE - 1);
-            evidence.push(format!("... {} entries in total", contents.len()));
+            contents.push("(empty folder)".into());
         }
-        out.push(
+        let finding = if dll || hash_dir {
+            let detail = if dll {
+                "The malware's folder exists in Chrome's user data and holds platform_experience_helper.dll, which a hijacked HKCU COM registration makes Google Chrome load."
+            } else {
+                "The malware's folder exists in Chrome's user data: a subfolder named with 64 hex characters (a SHA-256), where the malware puts platform_experience_helper.dll. The DLL itself was not found, so it may already have been removed."
+            };
+            Finding::new(Severity::Critical, "Chrome persistence is installed", detail)
+        } else {
             Finding::new(
-                Severity::Critical,
-                "Chrome persistence is installed",
-                "The malware's folder exists in Chrome's user data. It holds platform_experience_helper.dll, which a hijacked HKCU COM registration makes Google Chrome load.",
+                Severity::Info,
+                "Chrome's Platform Experience Helper folder",
+                "This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters. That matches Chrome's own Platform Experience Helper (platform_experience_helper.exe, LoadFeatures), which per-user Chrome installs keep here. It is not a sign of infection.",
             )
-            .at(&helper)
-            .evidence(evidence)
-            .time(mtime(&helper)),
-        );
+        };
+        out.push(finding.at(&helper).evidence(capped(contents)).time(mtime(&helper)));
     }
 
     // C2, C3
@@ -514,11 +551,7 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
     k2f.sort();
     markers.sort();
     if let Some(first) = k2f.first() {
-        let mut evidence: Vec<String> = k2f.iter().map(|p| file_name(p)).collect();
-        if k2f.len() > MAX_EVIDENCE {
-            evidence.truncate(MAX_EVIDENCE - 1);
-            evidence.push(format!("... {} in total", plural(k2f.len(), "file")));
-        }
+        let evidence = capped(k2f.iter().map(|p| file_name(p)).collect());
         out.push(
             Finding::new(
                 Severity::Critical,
@@ -540,9 +573,9 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
             .collect();
         out.push(
             Finding::new(
-                Severity::Warning,
-                "Possible infection marker",
-                "A 22-byte .tmp file in Temp holds a 22-character hex ID. The malware writes a file like this one second before it downloads the agent. On its own this is a weak sign: other programs can write similar files.",
+                Severity::Info,
+                "Hex ID file in Temp",
+                "A 22-byte .tmp file in Temp holds a 22-character hex ID. On the infected computer studied, a file like this was written one second before the agent download. Other Tencent software writes a file with the same name (seen in a Delta Force prefix dated 2026-09-20, before the CDN files were changed), so on its own it is not a sign of infection.",
             )
             .at(first)
             .evidence(evidence)
@@ -682,14 +715,9 @@ fn check_processes() -> Vec<Finding> {
         .filter(|(pid, _)| Some(**pid) != me)
         .filter_map(|(pid, p)| {
             let name = p.name().to_string_lossy();
-            // Linux truncates names to 15 bytes ("nikke_launcher."); Wine shows the .exe in the command line.
-            let hit = name.to_ascii_lowercase().starts_with("nikke_launcher")
-                || p.cmd().iter().any(|arg| {
-                    let arg = arg.to_string_lossy();
-                    arg.rsplit(['/', '\\']).next().is_some_and(|b| b.eq_ignore_ascii_case("nikke_launcher.exe"))
-                });
             let cmd: Vec<String> = p.cmd().iter().map(|a| a.to_string_lossy().into_owned()).collect();
-            hit.then(|| format!("PID {pid}: {}", if cmd.is_empty() { name.into_owned() } else { cmd.join(" ") }))
+            is_launcher_process(&name, p.cmd())
+                .then(|| format!("PID {pid}: {}", if cmd.is_empty() { name.into_owned() } else { cmd.join(" ") }))
         })
         .collect();
     if evidence.is_empty() {
@@ -706,6 +734,20 @@ fn check_processes() -> Vec<Finding> {
     ]
 }
 
+/// The launcher itself, not a program that only names its file (sha256sum, an
+/// editor, a disassembler). Linux truncates process names to 15 bytes
+/// ("nikke_launcher."), and Wine sets argv[0] to the Windows path of the .exe.
+fn is_launcher_process(name: &str, cmd: &[OsString]) -> bool {
+    let base = |arg: &OsString| arg.to_string_lossy().rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
+    let first = cmd.first().map(base);
+    let wine = first
+        .as_deref()
+        .is_some_and(|b| matches!(b, "wine" | "wine64" | "wine-preloader" | "wine64-preloader"));
+    name.to_ascii_lowercase().starts_with("nikke_launcher")
+        || first.as_deref() == Some("nikke_launcher.exe")
+        || (wine && cmd[1..].iter().any(|arg| base(arg) == "nikke_launcher.exe"))
+}
+
 // ------------------------------------------------------------- helpers
 
 /// At most MAX_EVIDENCE lines, the last one giving the total when some are left out.
@@ -716,6 +758,10 @@ fn capped(mut lines: Vec<String>) -> Vec<String> {
         lines.push(format!("... {total} in total"));
     }
     lines
+}
+
+fn is_sha256(name: &str) -> bool {
+    name.len() == 64 && name.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 fn read_small(path: &Path) -> Option<Vec<u8>> {
@@ -764,7 +810,10 @@ fn snippets(bytes: &[u8], needles: &[&[u8]], max: usize) -> Vec<String> {
         // Keep the line start (and its timestamp) unless the match is far into it.
         let start = if pos < 200 { 0 } else { pos - 80 };
         let end = segment.len().min(start + 300);
-        let mut text = String::from_utf8_lossy(&segment[start..end]).trim().to_string();
+        // Binary files can leave a broken UTF-8 byte at either end of a run.
+        let mut text = String::from_utf8_lossy(&segment[start..end])
+            .trim_matches(|c: char| c.is_whitespace() || c == char::REPLACEMENT_CHARACTER)
+            .to_string();
         if start > 0 {
             text.insert_str(0, "...");
         }
@@ -784,7 +833,8 @@ fn clip(line: &str) -> String {
     cut
 }
 
-/// "[2026-11-03 01:47:35.556]..." (tinyget logs) to "2026-11-03 01:47:35".
+/// "[2026-11-03 01:47:35.556]..." (tinyget logs) to "2026-11-03 01:47:35 (local time)".
+/// Log lines carry the clock of the computer that ran the launcher, not UTC.
 fn log_time(line: &str) -> Option<String> {
     let start = line.find('[')? + 1;
     let s = line.get(start..start + 19)?;
@@ -794,16 +844,16 @@ fn log_time(line: &str) -> Option<String> {
         13 | 16 => c == b':',
         _ => c.is_ascii_digit(),
     });
-    ok.then(|| s.to_string())
+    ok.then(|| format!("{s} (local time)"))
 }
 
-/// "[1103/014736.593:INFO..." (CEF debug.log, no year) to "11-03 01:47:36".
+/// "[1103/014736.593:INFO..." (CEF debug.log, no year) to "11-03 01:47:36 (local time, ...)".
 fn cef_time(line: &str) -> Option<String> {
     let start = line.find('[')? + 1;
     let s = line.get(start..start + 11)?;
     let b = s.as_bytes();
     let ok = b.iter().enumerate().all(|(i, c)| if i == 4 { *c == b'/' } else { c.is_ascii_digit() });
-    ok.then(|| format!("{}-{} {}:{}:{}", &s[0..2], &s[2..4], &s[5..7], &s[7..9], &s[9..11]))
+    ok.then(|| format!("{}-{} {}:{}:{} (local time, year not logged)", &s[0..2], &s[2..4], &s[5..7], &s[7..9], &s[9..11]))
 }
 
 fn mtime(path: &Path) -> Option<String> {
@@ -905,12 +955,12 @@ mod tests {
         assert_eq!(ran.severity, Severity::Critical);
         assert_eq!(ran.evidence.len(), 4);
         assert!(ran.evidence.iter().any(|l| l.contains("agent started as TESTHOST")));
-        assert_eq!(ran.time.as_deref(), Some("11-03 01:47:36"));
+        assert_eq!(ran.time.as_deref(), Some("11-03 01:47:36 (local time, year not logged)"));
         let dl = findings(&r)
             .into_iter()
             .find(|f| f.title == "The launcher downloaded the malware")
             .expect("A2");
-        assert_eq!(dl.time.as_deref(), Some("2026-11-03 01:47:35"));
+        assert_eq!(dl.time.as_deref(), Some("2026-11-03 01:47:35 (local time)"));
         assert!(dl.detail.contains("tinyget.20261103-014725-874.log"));
         assert!(has(&r, Severity::Critical, "The malware file is still on disk"));
         assert!(findings(&r).iter().all(|f| f.evidence.len() <= 5 && f.evidence.iter().all(|e| e.chars().count() <= 240)));
@@ -1015,17 +1065,111 @@ mod tests {
     }
 
     #[test]
-    fn hex_marker_is_warning() {
+    fn hex_marker_is_info() {
+        // Other Tencent games write the same onominan.tmp, so it never sets the verdict.
         let fx = Fixture::new("marker");
-        fx.file("pfx/drive_c/users/steamuser/AppData/Local/Temp/onominan.tmp", b"b8fd3eedb60ef8e517b3c6");
+        fx.file("pfx/drive_c/users/steamuser/AppData/Local/Temp/onominan.tmp", b"c8f9eef3c60a28fb67b716");
         fx.file("pfx/drive_c/users/steamuser/AppData/Local/Temp/other.tmp", b"NOT-HEX-0123456789abcd");
         fx.file("pfx/drive_c/users/steamuser/AppData/Local/Temp/short.tmp", b"b8fd3eed");
         let r = fx.scan();
-        let f = findings(&r).into_iter().find(|f| f.title == "Possible infection marker").expect("C3");
-        assert_eq!(f.severity, Severity::Warning);
+        let f = findings(&r).into_iter().find(|f| f.title == "Hex ID file in Temp").expect("C3");
+        assert_eq!(f.severity, Severity::Info);
         assert_eq!(f.evidence.len(), 1);
-        assert!(f.evidence[0].starts_with("onominan.tmp: b8fd3eedb60ef8e517b3c6"));
-        assert_eq!(r.verdict, Verdict::Exposed);
+        assert!(f.evidence[0].starts_with("onominan.tmp: c8f9eef3c60a28fb67b716"));
+        assert_eq!(r.verdict, Verdict::NotFound);
+    }
+
+    #[test]
+    fn agent_state_in_local_storage_is_critical() {
+        // debug.log was rewritten and the install is gone; the agent's saved state remains.
+        let fx = Fixture::new("agentstate");
+        let data = "pfx/drive_c/users/steamuser/AppData/Roaming/nikke_launcher";
+        fx.file(
+            &format!("{data}/tbs_cache/Local Storage/leveldb/000003.log"),
+            b"\x01\x00\x00_https://www.nikkelauncher.com\x00\x01k2f.agent.state\xf3\x01\x01{\"agent_id\":\"3c4c9b75-09e5-4619-99ee-97c1dc3c0373\",\"agent_pass\":\"s3cret-pass\",\"c2s_counter\":4,\"s2c_counter\":17936}",
+        );
+        fx.file(&format!("{data}/tbs_cache/Code Cache/js/aa_0"), b"\x00https://insightjs.com/l.js?f=aegis\x00");
+        let r = fx.scan();
+        let f = findings(&r)
+            .into_iter()
+            .find(|f| f.title == "The malware agent left traces in the launcher data")
+            .expect("B agent");
+        assert_eq!(f.severity, Severity::Critical);
+        assert!(f.evidence.iter().any(|e| e.ends_with(": k2f.agent.state")), "{:?}", f.evidence);
+        let all = findings(&r);
+        assert!(all.iter().flat_map(|f| &f.evidence).all(|e| !e.contains("agent_pass") && !e.contains("s3cret")));
+        assert_eq!(r.verdict, Verdict::Infected);
+        // The report says the install, with debug.log, was not checked.
+        assert!(has(&r, Severity::Info, "The NIKKE install folder was not found"));
+    }
+
+    #[test]
+    fn chrome_own_helper_is_not_critical() {
+        let fx = Fixture::new("pehlegit");
+        let peh = "pfx/drive_c/users/steamuser/AppData/Local/Google/Chrome/User Data/PlatformExperienceHelper";
+        fx.file(&format!("{peh}/platform_experience_helper.exe"), b"MZ");
+        fx.file(&format!("{peh}/LoadFeatures"), b"");
+        let r = fx.scan();
+        let f = findings(&r)
+            .into_iter()
+            .find(|f| f.title == "Chrome's Platform Experience Helper folder")
+            .expect("C1 info");
+        assert_eq!(f.severity, Severity::Info);
+        assert!(!has(&r, Severity::Critical, "Chrome persistence is installed"));
+        assert_eq!(r.verdict, Verdict::NotFound);
+
+        // A 64-hex subfolder is the malware's layout even when the DLL is gone.
+        fx.dir(&format!("{peh}/{}", "ab".repeat(32)));
+        let r = fx.scan();
+        let f = findings(&r).into_iter().find(|f| f.title == "Chrome persistence is installed").expect("C1");
+        assert!(f.detail.contains("was not found"), "{}", f.detail);
+        assert_eq!(r.verdict, Verdict::Infected);
+    }
+
+    #[test]
+    fn windows_profile_in_a_folder_scan() {
+        let fx = Fixture::new("winprofile");
+        let local = "win/Users/Bob/AppData/Local";
+        fx.file(
+            &format!("{local}/Google/Chrome/User Data/PlatformExperienceHelper/{}/platform_experience_helper.dll", "0f".repeat(32)),
+            b"MZ",
+        );
+        fx.file(&format!("{local}/Temp/k2f-bcreds-1"), b"x");
+        fx.dir("win/Users/Bob/AppData/Roaming/nikke_launcher");
+        fx.dir("win/Users/Public/AppData/Local");
+        for root in [fx.0.join("win"), fx.0.join("win/Users/Bob")] {
+            let r = run("test".into(), locate::discover_folders(std::slice::from_ref(&root)), false, Instant::now());
+            assert_eq!(r.verdict, Verdict::Infected, "{root:?}");
+            assert!(has(&r, Severity::Critical, "Chrome persistence is installed"));
+            assert!(has(&r, Severity::Critical, "Files left by the malware in Temp"));
+            let profiles: Vec<_> = r.targets.iter().filter(|t| t.kind == TargetKind::UserProfile).collect();
+            assert_eq!(profiles.len(), 1, "{profiles:?}");
+            assert!(profiles[0].path.ends_with("Users/Bob"));
+        }
+    }
+
+    #[test]
+    fn deep_install_inside_drive_c() {
+        let fx = Fixture::new("deepdrivec");
+        let launcher = "a/b/c/d/pfx/drive_c/Games/Launchers/Level Infinite/NIKKE/Launcher";
+        fx.file(&format!("{launcher}/nikke_launcher.exe"), b"MZ");
+        fx.file(&format!("{launcher}/intl_service/debug.log"), DEBUG_LOG);
+        for root in [fx.0.clone(), fx.0.join("a/b/c/d/pfx/drive_c")] {
+            let r = run("test".into(), locate::discover_folders(std::slice::from_ref(&root)), false, Instant::now());
+            assert_eq!(r.verdict, Verdict::Infected, "{root:?}");
+            assert!(has(&r, Severity::Critical, "The malware agent ran"));
+        }
+    }
+
+    #[test]
+    fn launcher_process_is_matched_on_argv0() {
+        let args = |a: &[&str]| a.iter().map(OsString::from).collect::<Vec<_>>();
+        assert!(is_launcher_process("nikke_launcher.", &args(&[])));
+        assert!(is_launcher_process("nikke_launcher.", &args(&["S:\\NIKKE\\Launcher\\nikke_launcher.exe"])));
+        assert!(is_launcher_process("x", &args(&["C:\\Games\\NIKKE\\Launcher\\NIKKE_LAUNCHER.EXE"])));
+        assert!(is_launcher_process("wine64-preloader", &args(&["/usr/bin/wine64", "/g/NIKKE/Launcher/nikke_launcher.exe"])));
+        assert!(!is_launcher_process("python3", &args(&["python3", "-c", "pass", "/tmp/x/Launcher/nikke_launcher.exe"])));
+        assert!(!is_launcher_process("sha256sum", &args(&["sha256sum", "nikke_launcher.exe"])));
     }
 
     #[test]
@@ -1046,9 +1190,54 @@ mod tests {
             utc(UNIX_EPOCH + Duration::from_secs(1_793_666_855)).as_deref(),
             Some("2026-11-03 00:47:35 UTC")
         );
-        assert_eq!(log_time("[2026-11-03 01:47:35.556][316]").as_deref(), Some("2026-11-03 01:47:35"));
+        assert_eq!(log_time("[2026-11-03 01:47:35.556][316]").as_deref(), Some("2026-11-03 01:47:35 (local time)"));
         assert_eq!(log_time("[not a time]"), None);
-        assert_eq!(cef_time("[1103/014736.593:INFO").as_deref(), Some("11-03 01:47:36"));
+        assert_eq!(
+            cef_time("[1103/014736.593:INFO").as_deref(),
+            Some("11-03 01:47:36 (local time, year not logged)")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_launcher_data_is_read() {
+        use std::os::unix::fs::symlink;
+        let fx = Fixture::new("datalink");
+        fx.file("real/tbs_cache/Code Cache/js/aa_0", b"\x00https://insightjs.com/l.js?f=aegis\x00");
+        let roaming = fx.dir("scan/pfx/drive_c/users/steamuser/AppData/Roaming");
+        symlink(fx.0.join("real"), roaming.join("nikke_launcher")).unwrap();
+        let r = run("test".into(), locate::discover_folders(&[fx.0.join("scan")]), false, Instant::now());
+        assert!(has(&r, Severity::Warning, "The launcher loaded the malicious script"));
+        assert_eq!(r.verdict, Verdict::Exposed);
+
+        // A link to a folder above itself is reported, not walked.
+        let up = fx.dir("up/drive_c/users/u/AppData/Roaming");
+        symlink(&fx.0, up.join("nikke_launcher")).unwrap();
+        let r = run("test".into(), locate::discover_folders(&[fx.0.join("up")]), false, Instant::now());
+        assert!(has(&r, Severity::Info, "Launcher data folder is a link and was not read"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_is_found_from_the_registry() {
+        use std::os::unix::fs::symlink;
+        // The install sits outside the scanned folder; user.reg names it through drive S:.
+        let fx = Fixture::new("reghint");
+        fx.file("elsewhere/Games/NIKKE/Launcher/nikke_launcher.exe", b"MZ");
+        fx.file("elsewhere/Games/NIKKE/Launcher/intl_service/debug.log", DEBUG_LOG);
+        fx.dir("scan/pfx/drive_c/users/steamuser");
+        let dosdevices = fx.dir("scan/pfx/dosdevices");
+        symlink(fx.0.join("elsewhere"), dosdevices.join("s:")).unwrap();
+        // The App Paths value uses other letter cases than the disk.
+        fx.file(
+            "scan/pfx/user.reg",
+            b"WINE REGISTRY Version 2\n\n[Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\App Paths\\\\nikke_launcher.exe] 1793276426\n\"InstallPath\"=\"S:\\\\games\\\\nikke\\\\launcher\\\\nikke_launcher.exe\"\n",
+        );
+        let r = run("test".into(), locate::discover_folders(&[fx.0.join("scan")]), false, Instant::now());
+        assert_eq!(r.verdict, Verdict::Infected);
+        let installs: Vec<_> = r.targets.iter().filter(|t| t.kind == TargetKind::InstallDir).collect();
+        assert_eq!(installs.len(), 1);
+        assert_eq!(installs[0].path, fs::canonicalize(fx.0.join("elsewhere/Games/NIKKE")).unwrap());
     }
 
     #[cfg(unix)]

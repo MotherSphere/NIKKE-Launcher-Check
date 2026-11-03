@@ -30,8 +30,8 @@ pub fn headline(verdict: Verdict) -> &'static str {
 pub fn summary(verdict: Verdict) -> &'static str {
     match verdict {
         Verdict::Infected => "Critical traces were found: the agent was downloaded or ran, it left persistence, or the launcher is running now. Treat this computer as compromised.",
-        Verdict::Exposed => "The launcher loaded the malicious script or a possible marker file exists, but no sign that the agent ran was found.",
-        Verdict::NoTraces => "A NIKKE install or launcher data was found and checked. No trace of the malicious script or the agent was found.",
+        Verdict::Exposed => "The launcher loaded the malicious script or contacted insightjs.com, but no sign that the agent ran was found.",
+        Verdict::NoTraces => "No trace of the malicious script or the agent was found in the NIKKE files this scan located.",
         Verdict::NotFound => "No NIKKE install or launcher data was found in the places this scan checked.",
     }
 }
@@ -39,24 +39,28 @@ pub fn summary(verdict: Verdict) -> &'static str {
 const BLOCK: &str = "Block insightjs.com, analytics.insightjs.com and insightjs.org in your hosts file (see Protection), and block the IP 89.127.233.127 in your firewall or router.";
 const DO_NOT_OPEN: &str = "Do not open the NIKKE launcher until Level Infinite confirms a fix.";
 
+/// Steps for any computer where the agent may have run.
+const ACCOUNT_STEPS: [&str; 5] = [
+    "From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers.",
+    "Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.",
+    "Revoke API tokens and SSH keys that were stored on this computer.",
+    "If you hold cryptocurrency, move it to a wallet with a new seed phrase created on a clean device.",
+    "Linux and macOS (Proton, umu, Wine, CrossOver, Whisky): the Wine Z: drive maps to /, so the remote commands could read your whole home folder and the environment variables of the launcher process, not only the Wine prefix.",
+];
+
 pub fn advice(verdict: Verdict) -> Vec<&'static str> {
-    match verdict {
+    let mut steps = match verdict {
         Verdict::Infected => vec![
             "Close the launcher now (end the process if it does not close) and disconnect this computer from the network.",
             DO_NOT_OPEN,
             BLOCK,
-            "On Windows, delete the folder %LOCALAPPDATA%\\Google\\Chrome\\User Data\\PlatformExperienceHelper and the registry key HKCU\\Software\\Classes\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04}. Leave the HKLM copy of that CLSID alone: it points to wpc.dll and is part of Windows.",
+            "On Windows, in %LOCALAPPDATA%\\Google\\Chrome\\User Data\\PlatformExperienceHelper, delete the subfolder named with 64 hex characters that holds platform_experience_helper.dll, then delete the registry key HKCU\\Software\\Classes\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04} (and the WOW6432Node copy if the report lists one). Leave the rest alone: Chrome keeps its own platform_experience_helper.exe in that folder, and the HKLM copy of the CLSID points to wpc.dll, which is part of Windows.",
             "Reinstalling Windows is the safest way to be sure the computer is clean, because the agent could run any command.",
-            "From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers.",
-            "Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.",
-            "Revoke API tokens and SSH keys that were stored on this computer.",
-            "If you hold cryptocurrency, move it to a wallet with a new seed phrase created on a clean device.",
-            "Linux and macOS (Proton, umu, Wine, CrossOver, Whisky): the Wine Z: drive maps to /, so the remote commands could read your whole home folder and the environment variables of the launcher process, not only the Wine prefix.",
         ],
         Verdict::Exposed => vec![
             DO_NOT_OPEN,
             BLOCK,
-            "The agent was served from about November 2, 2026. If the launcher was open on or after that date, follow the steps for an infected computer: change your passwords from a clean device and log out of all sessions.",
+            "The agent was served from about November 2, 2026. If the launcher was open on or after that date, treat this computer as infected and follow these steps:",
         ],
         Verdict::NoTraces => vec![
             DO_NOT_OPEN,
@@ -68,7 +72,11 @@ pub fn advice(verdict: Verdict) -> Vec<&'static str> {
             DO_NOT_OPEN,
             BLOCK,
         ],
+    };
+    if matches!(verdict, Verdict::Infected | Verdict::Exposed) {
+        steps.extend(ACCOUNT_STEPS);
     }
+    steps
 }
 
 /// Lines to paste into the hosts file.
