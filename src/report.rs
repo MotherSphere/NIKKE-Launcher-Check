@@ -38,7 +38,7 @@ pub fn summary(verdict: Verdict) -> &'static str {
 
 const BLOCK: &str = "Block insightjs.com, analytics.insightjs.com and insightjs.org in your hosts file (see Protection), and block the IP 89.127.233.127 in your firewall or router.";
 const DO_NOT_OPEN: &str = "Do not open the NIKKE launcher until Level Infinite confirms a fix.";
-const CLEAR_CACHE: &str = "Before you open the launcher again, delete its cache folder, tbs_cache, in the launcher data folder: %APPDATA%\\nikke_launcher\\tbs_cache on Windows, or drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache inside the Proton or Wine prefix. It can still hold the malicious script from before the fix.";
+const CLEAR_CACHE: &str = "Before you open the launcher again, delete its cache folder, tbs_cache, in the launcher data folder: %APPDATA%\\nikke_launcher\\tbs_cache on Windows (nikke_launcher_hmt for the HMT launcher), or drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache inside the Proton or Wine prefix. It can still hold the malicious script from before the fix.";
 
 /// Steps for any computer where the agent may have run.
 const ACCOUNT_STEPS: [&str; 5] = [

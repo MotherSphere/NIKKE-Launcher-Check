@@ -126,8 +126,9 @@ impl App {
             notice: None,
             theme: Theme::custom(report::APP_NAME, palette),
         };
+        // Same path as a drop on the window, so a file gets the "only folders" notice.
         let task = match folder {
-            Some(folder) => app.start(Request::Folder(folder)),
+            Some(path) => app.update(Message::Dropped(path)),
             None => Task::none(),
         };
         (app, task)

@@ -35,19 +35,25 @@ fn main() -> ExitCode {
     let Some(first) = args.first() else {
         return window(None);
     };
-    attach_console();
     match first.to_str() {
         Some("--help" | "-h") => {
+            attach_console();
             print!("{USAGE}");
             ExitCode::SUCCESS
         }
-        Some("--cli") => cli(&args[1..]),
-        // One folder: dropping a folder on the .exe in Explorer starts it this way.
-        arg if args.len() == 1 && !arg.is_some_and(|a| a.starts_with('-')) => match folder(first) {
-            Ok(folder) => window(Some(folder)),
-            Err(code) => code,
-        },
+        Some("--cli") => {
+            attach_console();
+            cli(&args[1..])
+        }
+        // Items dropped on the .exe in Explorer arrive here with no console to print to,
+        // so the window opens and says what is wrong with a path that is not a folder.
+        // shortcut: only the first dropped item is scanned, take a list if users drop several.
+        arg if !arg.is_some_and(|a| a.starts_with('-')) => {
+            let path = PathBuf::from(first);
+            window(Some(std::path::absolute(&path).unwrap_or(path)))
+        }
         _ => {
+            attach_console();
             eprintln!("Unknown argument: {}\n\n{USAGE}", first.to_string_lossy());
             ExitCode::from(4)
         }
