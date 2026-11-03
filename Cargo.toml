@@ -1,0 +1,33 @@
+[package]
+name = "nikke-launcher-check"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "Read-only check for traces of the November 2026 NIKKE PC launcher compromise"
+publish = false
+
+[[bin]]
+name = "nikke-check"
+path = "src/main.rs"
+
+[dependencies]
+iced = "0.14"
+rfd = "0.17"
+walkdir = "2"
+# Process list only, for the "launcher is running now" check.
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
+
+[profile.release]
+lto = "thin"
+strip = true
+codegen-units = 1
+
+# Dev builds: cargo build --profile fast
+[profile.fast]
+inherits = "release"
+lto = false
+codegen-units = 16
+incremental = true
