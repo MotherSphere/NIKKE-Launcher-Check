@@ -86,7 +86,7 @@ Times taken from log lines are the local time of the computer that ran the launc
 
 The most severe finding sets the verdict, so a critical finding gives Infected even when no NIKKE install was found, for example Chrome persistence in a profile or `k2f` files in Temp. Info findings never change the verdict. Exit code 4 means invalid arguments: an unknown option, or with `--cli` a path that is not a folder or a folder that cannot be read.
 
-The window and the report list the steps for each verdict. An Exposed result also lists the account steps of an infected computer, for the case where the launcher was open on or after November 1, 2026. [What to do](what-to-do.md) has all the steps.
+The window and the report list the steps for each verdict. An Exposed result also lists the account steps of an infected computer, for the case where the launcher was open on or after October 24, 2026. [What to do](what-to-do.md) has all the steps.
 
 ## Limits
 

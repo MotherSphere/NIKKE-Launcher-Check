@@ -73,7 +73,7 @@ If the result is Infected, start with these steps:
 
 Then follow [What to do](docs/what-to-do.md#infected). It covers the launcher cache, blocking the domains, removing what the agent added for Chrome on Windows, and changing your passwords from a clean device (a phone or another computer that never ran the NIKKE launcher).
 
-Whatever the result, do not open the NIKKE launcher until Level Infinite confirms a fix. If the result is Exposed and the launcher was open on or after November 1, 2026, also change your passwords from a clean device. [What to do](docs/what-to-do.md#exposed) has the steps.
+Whatever the result, do not open the NIKKE launcher until Level Infinite confirms a fix. If the result is Exposed and the launcher was open on or after October 24, 2026, also change your passwords from a clean device. [What to do](docs/what-to-do.md#exposed) has the steps.
 
 ## Documentation
 
@@ -86,7 +86,7 @@ Whatever the result, do not open the NIKKE launcher until Level Infinite confirm
 
 ## The incident
 
-On 2026-09-27, three files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From November 1, 2026 at the latest, on some launches, that script downloaded a remote-access agent that can run commands, read files, take screenshots and collect browser data. [What happened](docs/incident.md) has the details. The full analysis is in this write-up: https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5
+On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 24, 2026 at the latest, on some launches, that script downloaded a remote-access agent that can run commands, read files, take screenshots and collect browser data. [What happened](docs/incident.md) has the details. The full analysis is in this write-up: https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5
 
 ## License
 

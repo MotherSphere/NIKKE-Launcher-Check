@@ -31,7 +31,7 @@ The launcher loaded the malicious script or contacted insightjs.com, but no sign
 2. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. It can still hold the malicious script from before the fix. See [Delete the launcher cache](#delete-the-launcher-cache).
 3. Block the three domains in your hosts file and the IP 89.127.233.127 in your firewall or router. See [Block the domains and the IP](#block-the-domains-and-the-ip).
 
-The agent was served from November 1, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, treat this computer as infected and follow these steps:
+The agent was served from October 24, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, treat this computer as infected and follow these steps:
 
 1. From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers.
 2. Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.
@@ -46,7 +46,7 @@ No trace of the malicious script or the agent was found in the NIKKE files this 
 1. Do not open the NIKKE launcher until Level Infinite confirms a fix.
 2. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. See [Delete the launcher cache](#delete-the-launcher-cache).
 3. Block the three domains in your hosts file and the IP 89.127.233.127 in your firewall or router. See [Block the domains and the IP](#block-the-domains-and-the-ip).
-4. If the launcher was open on or after November 1, 2026, change your NIKKE / Level Infinite password from a clean device anyway.
+4. If the launcher was open on or after October 24, 2026, change your NIKKE / Level Infinite password from a clean device anyway.
 
 ## NIKKE not found
 
@@ -99,9 +99,9 @@ On Linux with ufw, the command is `sudo ufw deny out to 89.127.233.127`. On macO
 
 Do this when the report lists "Chrome persistence is installed" or "Registry persistence found (HKCU CLSID hijack)". Save the report first.
 
-1. Quit Google Chrome completely, so that it does not hold the DLL open.
-2. Open `%LOCALAPPDATA%\Google\Chrome\User Data\PlatformExperienceHelper` in Explorer. Delete the subfolder named with 64 hex characters (digits and the letters a to f) that holds `platform_experience_helper.dll`. Leave the rest alone: Chrome keeps its own `platform_experience_helper.exe` in that folder.
-3. Delete the registry key `HKCU\Software\Classes\CLSID\{E77CC89B-7401-4C04-8CED-149DB35ADD04}`. In Command Prompt:
+The DLL stays locked while Windows has it loaded, even with every Chrome window closed, so remove the registry key first and restart before you delete the file.
+
+1. Delete the registry key `HKCU\Software\Classes\CLSID\{E77CC89B-7401-4C04-8CED-149DB35ADD04}`. In Command Prompt:
 
    ```
    reg delete "HKCU\Software\Classes\CLSID\{E77CC89B-7401-4C04-8CED-149DB35ADD04}" /f
@@ -113,7 +113,11 @@ Do this when the report lists "Chrome persistence is installed" or "Registry per
    reg delete "HKCU\Software\Classes\WOW6432Node\CLSID\{E77CC89B-7401-4C04-8CED-149DB35ADD04}" /f
    ```
 
+2. Restart Windows.
+3. Open `%LOCALAPPDATA%\Google\Chrome\User Data\PlatformExperienceHelper` in Explorer. Delete the subfolder named with 64 hex characters (digits and the letters a to f) that holds `platform_experience_helper.dll`. Leave the rest alone: Chrome keeps its own `platform_experience_helper.exe` and an empty `LoadFeatures` file there.
 4. Scan again. Both findings should be gone.
+
+Microsoft Defender did not detect this DLL on one infected machine (Defender Offline, signatures 1.463.110.0), so a clean antivirus scan does not mean it is gone.
 
 Leave the HKLM copy of the CLSID alone. It points to `wpc.dll`, which is part of Windows.
 
