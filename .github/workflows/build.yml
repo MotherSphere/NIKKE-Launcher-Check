@@ -1,14 +1,26 @@
 name: build
 
+# Builds and tests on the three platforms for every push and pull request.
+# release.yml calls it with the release tag to build the binaries it publishes.
 on:
   push:
     branches: ["**"]
-    tags: ["v*"]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Tag or commit to build"
+        required: true
+        type: string
 
 permissions:
   contents: read
+
+env:
+  # The binaries users download are built by a known compiler.
+  RUST_VERSION: "1.99.1"
+  CARGO_TERM_COLOR: always
 
 jobs:
   build:
@@ -28,10 +40,13 @@ jobs:
             artifact: nikke-check-macos-arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || '' }}
+          persist-credentials: false
 
-      - name: Update Rust
-        run: rustup update stable && rustup default stable
+      - name: Install the pinned toolchain
+        run: rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal && rustup default ${{ env.RUST_VERSION }}
 
       # rfd uses the XDG desktop portal by default, so no GTK is needed.
       - name: Install Linux packages
@@ -42,34 +57,23 @@ jobs:
         run: cargo build --release --locked
 
       - name: Test
-        run: cargo test --locked
+        run: cargo test --release --locked
 
-      - uses: actions/upload-artifact@v7
+      # The binary must start and give the "NIKKE not found" exit code on an empty folder.
+      - name: Smoke-test the binary
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/empty"
+          ./target/release/nikke-check --help
+          set +e
+          ./target/release/nikke-check --cli "$RUNNER_TEMP/empty"
+          code=$?
+          set -e
+          test "$code" -eq 3
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact }}
           path: target/release/${{ matrix.bin }}
           if-no-files-found: error
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: dist
-
-      - name: Name the binaries per platform
-        run: |
-          mkdir out
-          cp dist/nikke-check-linux-x86_64/nikke-check out/nikke-check-linux-x86_64
-          cp dist/nikke-check-macos-arm64/nikke-check out/nikke-check-macos-arm64
-          cp dist/nikke-check-windows-x86_64/nikke-check.exe out/nikke-check-windows-x86_64.exe
-          chmod +x out/nikke-check-linux-x86_64 out/nikke-check-macos-arm64
-          cd out && sha256sum nikke-check-* > SHA256SUMS.txt
-
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: out/*
