@@ -259,7 +259,7 @@ fn check_install(dir: &Path) -> Vec<Finding> {
 
     // A1
     let debug_note = match debug.as_deref() {
-        None => "No Launcher/intl_service/debug.log was found. The launcher rewrites this file at each start, so it may also have been deleted.".to_string(),
+        None => "No Launcher/intl_service/debug.log was found. It may have been deleted, or the launcher was never started from this folder.".to_string(),
         Some(path) => match read_small(path) {
             None => "Launcher/intl_service/debug.log exists but could not be read (too large or no permission).".to_string(),
             Some(bytes) => {
@@ -295,7 +295,7 @@ fn check_install(dir: &Path) -> Vec<Finding> {
                         .time(time),
                     );
                 }
-                "Launcher/intl_service/debug.log was checked. It only covers the last launch.".to_string()
+                "Launcher/intl_service/debug.log was checked. It holds the launches since the file was created.".to_string()
             }
         },
     };
@@ -417,7 +417,7 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         };
         checked += 1;
         let rel = path.strip_prefix(dir).unwrap_or(&path).display().to_string();
-        // k2f.agent.state is the agent's saved ID in Local Storage. It outlives the debug.log rewrite.
+        // k2f.agent.state is the agent's saved ID in Local Storage. It outlives the install folder and its debug.log.
         if contains(&bytes, b"k2f_chan") || contains(&bytes, b"k2f.agent") {
             // The key name only: the saved state that follows holds the agent's password.
             let snippet = snippets(&bytes, &[b"k2f_chan", b"k2f.agent"], 1)
@@ -1119,7 +1119,7 @@ mod tests {
 
     #[test]
     fn agent_state_in_local_storage_is_critical() {
-        // debug.log was rewritten and the install is gone; the agent's saved state remains.
+        // The install, with its debug.log, is gone; the agent's saved state remains.
         let fx = Fixture::new("agentstate");
         let data = "pfx/drive_c/users/steamuser/AppData/Roaming/nikke_launcher";
         fx.file(
