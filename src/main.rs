@@ -61,6 +61,7 @@ fn main() -> ExitCode {
 }
 
 fn window(folder: Option<PathBuf>) -> ExitCode {
+    skip_opengl();
     match ui::run(folder) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
@@ -135,3 +136,17 @@ fn quiet_drive_errors() {
 
 #[cfg(not(windows))]
 fn quiet_drive_errors() {}
+
+/// AMD's OpenGL driver (atio6axx.dll) can crash the process while wgpu probes its
+/// backends, so on Windows the window uses DirectX 12 or Vulkan unless WGPU_BACKEND is set.
+/// With neither, iced falls back to its software renderer.
+#[cfg(windows)]
+fn skip_opengl() {
+    if std::env::var_os("WGPU_BACKEND").is_none() {
+        // SAFETY: runs before the window starts any thread, so nothing reads the environment concurrently.
+        unsafe { std::env::set_var("WGPU_BACKEND", "dx12,vulkan") };
+    }
+}
+
+#[cfg(not(windows))]
+fn skip_opengl() {}

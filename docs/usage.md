@@ -47,6 +47,8 @@ Open `SHA256SUMS.txt` in Notepad and compare the `Hash` value with the line for 
 
 Double-click `nikke-check-windows-x86_64.exe`. The program is not signed, so SmartScreen can warn that it comes from an unknown publisher. Click "More info", then "Run anyway".
 
+The window draws with DirectX 12 or Vulkan, and with a software renderer when neither works. It does not use OpenGL, because AMD's OpenGL driver (`atio6axx.dll`) crashed versions 0.2.1 and earlier at start. To pick the backend yourself, set `WGPU_BACKEND` before starting it, for example `$env:WGPU_BACKEND="vulkan"; .\nikke-check-windows-x86_64.exe` in PowerShell. If the window still does not open, `--cli` runs the same scan without it (see [Windows console](#windows-console)).
+
 ### Linux and Steam Deck
 
 On a Steam Deck, switch to Desktop Mode and open Konsole. A browser download loses the executable bit, the permission that lets a file run. Open a terminal and run these commands. The first one goes to the Downloads folder; if you saved the file somewhere else, use that folder.
