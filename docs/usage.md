@@ -83,7 +83,7 @@ Start `nikke-check` with no arguments to open the window. The bar at the top sho
 The start screen describes the incident in a few lines and has two parts, "Full scan" and "Folder scan", each with its button.
 
 - "Scan this computer" searches the places listed in [Where it looks](locations.md). A full scan can take a few minutes.
-- "Scan a folder..." opens a folder dialog, then scans that folder and everything under it, 12 levels deep, including any Wine prefix inside. Use it when NIKKE is installed somewhere unusual, or on a network drive, which "Scan this computer" skips.
+- "Scan a folder..." opens a folder dialog, then scans that folder and everything under it, including any Wine prefix inside. Use it when NIKKE is installed somewhere unusual, or on a network drive, which "Scan this computer" skips.
 
 There are three other ways to start a folder scan:
 

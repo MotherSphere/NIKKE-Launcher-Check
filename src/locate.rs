@@ -11,8 +11,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering::Relaxed};
 use std::time::{Duration, Instant};
 
-/// Upper bound on directory entries visited in one scan.
-pub const ENTRY_CAP: u64 = 3_000_000;
+/// Safety stop for one scan. Walks have no depth limit; a full disk stays far below this.
+pub const ENTRY_CAP: u64 = 50_000_000;
 
 /// What a running scan does now, in the order the stages run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -78,13 +78,16 @@ impl Progress {
 pub const LAUNCHER_DATA_NAMES: [&str; 2] = ["nikke_launcher", "nikke_launcher_hmt"];
 
 /// Folder names never entered by a discovery walk.
-const SKIP_NAMES: [&str; 6] = [
+const SKIP_NAMES: [&str; 8] = [
     "node_modules",
     ".git",
     ".cache",
     "$Recycle.Bin",
     "System Volume Information",
     "dosdevices",
+    // macOS Time Machine copies of the whole disk.
+    ".timemachine",
+    "Backups.backupdb",
 ];
 
 /// Profile folders under `Users` that belong to no real user.
@@ -138,7 +141,7 @@ pub struct Discovery {
 
 /// Searches the usual places on this computer.
 pub fn discover_computer(progress: &Progress) -> Discovery {
-    let mut finder = Finder::new(ENTRY_CAP, 5, progress);
+    let mut finder = Finder::new(ENTRY_CAP, progress);
     plan_computer(&mut finder);
     finder.finish()
 }
@@ -149,7 +152,7 @@ pub fn discover_folders(paths: &[PathBuf], progress: &Progress) -> Discovery {
 }
 
 pub fn discover_folders_with_cap(paths: &[PathBuf], cap: u64, progress: &Progress) -> Discovery {
-    let mut finder = Finder::new(cap, 12, progress);
+    let mut finder = Finder::new(cap, progress);
     // A scan of the user's own profile, or of a folder above it, also gets the host-only checks.
     #[cfg(windows)]
     if let Some(profile) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
@@ -160,7 +163,7 @@ pub fn discover_folders_with_cap(paths: &[PathBuf], cap: u64, progress: &Progres
         }
     }
     for path in paths {
-        finder.root(path, 12);
+        finder.root(path);
     }
     finder.finish()
 }
@@ -175,8 +178,6 @@ enum Mode {
 
 struct Finder<'p> {
     cap: u64,
-    /// How deep each prefix's drive_c is walked.
-    prefix_depth: usize,
     /// Mount points a walk never opens (network and remote filesystems).
     skip_mounts: HashSet<PathBuf>,
     stats: WalkStats,
@@ -189,10 +190,9 @@ struct Finder<'p> {
 }
 
 impl<'p> Finder<'p> {
-    fn new(cap: u64, prefix_depth: usize, progress: &'p Progress) -> Self {
+    fn new(cap: u64, progress: &'p Progress) -> Self {
         Self {
             cap,
-            prefix_depth,
             skip_mounts: HashSet::new(),
             stats: WalkStats::default(),
             seen: HashSet::new(),
@@ -216,10 +216,10 @@ impl<'p> Finder<'p> {
     }
 
     /// Walks a top-level search root if it exists.
-    fn root(&mut self, path: &Path, max_depth: usize) {
+    fn root(&mut self, path: &Path) {
         if path.is_dir() {
             self.stats.roots.push(path.to_path_buf());
-            self.walk(path, max_depth, Mode::Generic);
+            self.walk(path, Mode::Generic);
         }
     }
 
@@ -283,7 +283,7 @@ impl<'p> Finder<'p> {
 
     /// A plain stack walk rather than walkdir: walkdir opens a folder before the
     /// caller can skip it, and opening a dead network mount can block forever.
-    fn walk(&mut self, root: &Path, max_depth: usize, mode: Mode) {
+    fn walk(&mut self, root: &Path, mode: Mode) {
         if !self.count(true) {
             return;
         }
@@ -322,7 +322,7 @@ impl<'p> Finder<'p> {
                     return;
                 }
                 if file_type.is_dir() {
-                    if self.visit_dir(&path, depth + 1, mode, drive_root) && depth + 1 < max_depth {
+                    if self.visit_dir(&path, depth + 1, mode, drive_root) {
                         stack.push((path, depth + 1));
                     }
                 } else if file_type.is_file()
@@ -393,7 +393,7 @@ impl<'p> Finder<'p> {
                 }
             }
         }
-        self.walk(&drive_c, self.prefix_depth, Mode::DriveC);
+        self.walk(&drive_c, Mode::DriveC);
         // Installs often hold their own prefix (NIKKE/prefix next to NIKKE/Launcher).
         if let Some(parent) = prefix.parent()
             && is_install_dir(parent)
@@ -460,6 +460,10 @@ fn skip_dir(path: &Path, name: &OsStr) -> bool {
         return true;
     }
     if path.parent() == Some(Path::new("/")) && matches!(&*name, "proc" | "sys" | "dev") {
+        return true;
+    }
+    // The sealed system volume; its Volumes/Data firmlinks would walk the whole disk twice.
+    if cfg!(target_os = "macos") && path == Path::new("/System") {
         return true;
     }
     // FUSE mounts (gvfs, document portal) live here and can hang a walk.
@@ -647,7 +651,7 @@ fn plan_computer(f: &mut Finder<'_>) {
             }
         }
     }
-    // The launcher records where it is installed; deep installs are missed by the drive walk.
+    // The launcher records where it is installed, which also covers network drives the walk leaves out.
     let icon = reg_string(HKEY_CURRENT_USER, "Software\\Classes\\nikkelauncher\\DefaultIcon", None, 0);
     if let Some(dir) = icon.flatten().as_deref().and_then(install_dir_in_value) {
         f.add_install(Path::new(&dir));
@@ -664,8 +668,7 @@ fn plan_computer(f: &mut Finder<'_>) {
         // SAFETY: NUL-terminated root path. GetDriveTypeW does not contact network servers.
         let kind = unsafe { GetDriveTypeW(wide.as_ptr()) };
         match kind {
-            // Depth 5 reaches C:\Program Files\Level Infinite\NIKKE\Launcher\nikke_launcher.exe.
-            DRIVE_FIXED | DRIVE_REMOVABLE => f.root(Path::new(&drive), 5),
+            DRIVE_FIXED | DRIVE_REMOVABLE => f.root(Path::new(&drive)),
             DRIVE_REMOTE => f.stats.skipped_mounts.push(PathBuf::from(&drive)),
             _ => {}
         }
@@ -704,23 +707,9 @@ fn plan_computer(f: &mut Finder<'_>) {
         .into_iter()
         .filter(|m| !home.as_ref().is_some_and(|h| h.starts_with(m)))
         .collect();
-    if let Some(home) = &home {
-        f.root(home, 6);
-    }
-    f.root(Path::new("/Applications"), 4);
-    if let Ok(volumes) = fs::read_dir("/Volumes") {
-        for entry in volumes.flatten() {
-            let path = entry.path();
-            if f.skip_mounts.contains(&path) {
-                f.stats.skipped_mounts.push(path);
-                continue;
-            }
-            // "Macintosh HD" is a symlink to /: skip links, walk real volumes.
-            if entry.file_type().is_ok_and(|t| t.is_dir()) {
-                f.root(&path, 5);
-            }
-        }
-    }
+    // The whole disk, local volumes in /Volumes included. "Macintosh HD" there is a
+    // symlink to /, and walks never follow links.
+    f.root(Path::new("/"));
     let mut candidates = Vec::new();
     let mut folders = vec![PathBuf::from("/Applications")];
     if let Some(home) = &home {
@@ -858,7 +847,7 @@ fn real_user() -> (Option<PathBuf>, Option<std::ffi::OsString>) {
 
 #[cfg(all(unix, not(target_os = "macos")))]
 fn plan_computer(f: &mut Finder<'_>) {
-    let (home, user) = real_user();
+    let (home, _) = real_user();
     if let Ok(mountinfo) = fs::read_to_string("/proc/self/mountinfo") {
         let fstab = fs::read_to_string("/etc/fstab").unwrap_or_default();
         // A network home folder is still scanned.
@@ -867,23 +856,8 @@ fn plan_computer(f: &mut Finder<'_>) {
             .filter(|m| !home.as_ref().is_some_and(|h| h.starts_with(m)))
             .collect();
     }
-    if let Some(home) = &home {
-        f.root(home, 7);
-    }
-    let run_media = user.as_ref().map(|u| Path::new("/run/media").join(u));
-    for root in ["/mnt", "/media", "/opt", "/games"] {
-        // ostree systems (Silverblue, Bazzite) link /media to /run/media, walked below.
-        if root == "/media"
-            && run_media.is_some()
-            && fs::canonicalize(root).is_ok_and(|c| c.starts_with("/run/media"))
-        {
-            continue;
-        }
-        f.root(Path::new(root), 6);
-    }
-    if let Some(run_media) = &run_media {
-        f.root(run_media, 6);
-    }
+    // The whole system: home, /mnt, /media and /run/media included.
+    f.root(Path::new("/"));
     let Some(home) = home else {
         return;
     };

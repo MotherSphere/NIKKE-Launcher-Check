@@ -312,7 +312,7 @@ impl App {
 
         let mut folder = column![
             text("Folder scan").size(20).font(bold()),
-            text("Scans one folder and everything under it, 12 levels deep, including any Wine prefix inside."),
+            text("Scans one folder and everything under it, including any Wine prefix inside."),
             action("Scan a folder...", idle.then_some(Message::PickFolder), false),
         ]
         .spacing(10);
@@ -489,11 +489,11 @@ impl App {
 
 /// One sentence on where "Scan this computer" looks (see `locate::plan_computer`).
 const FULL_SCAN: &str = if cfg!(windows) {
-    "Searches every local drive 5 folders deep, your user profile and the install paths the launcher records in the registry."
+    "Searches every local drive in full, except the Windows folder, plus your user profile and the install paths the launcher records in the registry."
 } else if cfg!(target_os = "macos") {
-    "Searches your home folder, /Applications and the local volumes, plus the Wine, CrossOver, Whisky, Wineskin and Heroic prefixes."
+    "Searches the whole disk and the local volumes, except /System, plus the Wine, CrossOver, Whisky, Wineskin and Heroic prefixes. Network volumes are skipped."
 } else {
-    "Searches your home folder, /mnt, /media, /opt and /games, plus ~/.wine and the Wine prefixes of Steam, Lutris, Heroic, Bottles and Faugus. Network mounts are skipped."
+    "Searches the whole system from /, your home folder, /mnt and /media included, and every Wine prefix of Steam, Lutris, Heroic, Bottles and Faugus. Network mounts are skipped."
 };
 
 fn top_bar<'a>() -> Element<'a, Message> {
