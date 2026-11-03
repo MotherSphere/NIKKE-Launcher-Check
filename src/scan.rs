@@ -161,6 +161,10 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
             });
         }
     }
+    let coverage = check_coverage(&discovery);
+    if !coverage.is_empty() {
+        groups.push(Group { label: "Scan coverage".into(), path: None, findings: coverage });
+    }
     let worst = groups.iter().flat_map(|g| &g.findings).map(|f| f.severity).max();
     let found = discovery
         .targets
@@ -182,6 +186,42 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         stats: discovery.stats,
         seconds: start.elapsed().as_secs_f64(),
     }
+}
+
+/// What the scan could not check: the install, unreadable folders, network drives.
+fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
+    let mut out = Vec::new();
+    let has = |kind| discovery.targets.iter().any(|t| t.kind == kind);
+    if has(TargetKind::LauncherData) && !has(TargetKind::InstallDir) {
+        out.push(Finding::new(
+            Severity::Info,
+            "The NIKKE install folder was not found",
+            "Launcher data was found, but not the install folder, so debug.log and the download logs were not checked. If you know where NIKKE is installed, scan that folder: \"Scan a folder...\" in the window, or nikke-check --cli <folder>.",
+        ));
+    }
+    let shown = |paths: &[PathBuf]| capped(paths.iter().map(|p| p.display().to_string()).collect());
+    let stats = &discovery.stats;
+    if !stats.unreadable.is_empty() {
+        out.push(
+            Finding::new(
+                Severity::Info,
+                "Some folders could not be read",
+                "The scan was not allowed to open these folders, so nothing in them was checked. On macOS, give Terminal (or the app you started this tool from) Full Disk Access in System Settings > Privacy & Security, then scan again. Elsewhere, scan again as a user who can read them.",
+            )
+            .evidence(shown(&stats.unreadable)),
+        );
+    }
+    if !stats.skipped_mounts.is_empty() {
+        out.push(
+            Finding::new(
+                Severity::Info,
+                "Network drives were not scanned",
+                "\"Scan this computer\" skips network drives and remote mounts, because reading them is slow and a disconnected one can stop the scan. If NIKKE is installed on one, scan it with \"Scan a folder...\" or nikke-check --cli <folder>.",
+            )
+            .evidence(shown(&stats.skipped_mounts)),
+        );
+    }
+    out
 }
 
 // ---------------------------------------------------------------- A: install
@@ -513,32 +553,28 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
 
 #[cfg(windows)]
 fn check_host_registry() -> Option<Finding> {
-    use std::os::windows::process::CommandExt;
-    use std::process::Command;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let root = std::env::var_os("SystemRoot").unwrap_or_else(|| "C:\\Windows".into());
-    // Full path so a reg.exe in the working folder is never picked up.
-    let reg = Path::new(&root).join("System32").join("reg.exe");
-    let key = format!("HKCU\\Software\\Classes\\CLSID\\{CLSID}\\InprocServer32");
-    let output = Command::new(reg)
-        .args(["query", &key, "/ve"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output()
-        .ok()?;
-    if !output.status.success() {
+    use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, KEY_WOW64_32KEY, KEY_WOW64_64KEY};
+    let key = format!("Software\\Classes\\CLSID\\{CLSID}\\InprocServer32");
+    // The 32-bit launcher could also have written the key into the WOW6432Node view.
+    let views = [
+        (KEY_WOW64_64KEY, "HKCU\\Software\\Classes\\CLSID"),
+        (KEY_WOW64_32KEY, "HKCU\\Software\\Classes\\WOW6432Node\\CLSID"),
+    ];
+    let lines: Vec<String> = views
+        .into_iter()
+        .filter_map(|(view, label)| {
+            let value = locate::reg_string(HKEY_CURRENT_USER, &key, None, view)?;
+            Some(format!("{label}\\{CLSID}\\InprocServer32 (Default) = {}", value.as_deref().unwrap_or("(value not set)")))
+        })
+        .collect();
+    if lines.is_empty() {
         return None;
     }
-    let lines: Vec<String> = String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .map(String::from)
-        .collect();
     Some(
         Finding::new(
             Severity::Critical,
             "Registry persistence found (HKCU CLSID hijack)",
-            format!("HKCU\\Software\\Classes\\CLSID\\{CLSID}\\InprocServer32 exists. The malware registers it so Google Chrome loads its DLL. The HKLM copy that points to wpc.dll is part of Windows and is normal."),
+            format!("The key {CLSID}\\InprocServer32 exists under HKCU (see below). The malware registers it so Google Chrome loads its DLL. The HKLM copy that points to wpc.dll is part of Windows and is normal."),
         )
         .evidence(lines),
     )
@@ -671,6 +707,16 @@ fn check_processes() -> Vec<Finding> {
 }
 
 // ------------------------------------------------------------- helpers
+
+/// At most MAX_EVIDENCE lines, the last one giving the total when some are left out.
+fn capped(mut lines: Vec<String>) -> Vec<String> {
+    if lines.len() > MAX_EVIDENCE {
+        let total = lines.len();
+        lines.truncate(MAX_EVIDENCE - 1);
+        lines.push(format!("... {total} in total"));
+    }
+    lines
+}
 
 fn read_small(path: &Path) -> Option<Vec<u8>> {
     let meta = fs::metadata(path).ok()?;

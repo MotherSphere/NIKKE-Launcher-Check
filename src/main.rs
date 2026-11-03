@@ -25,10 +25,11 @@ Exit codes (--cli):
   1  exposed (warnings only)
   2  infected (critical traces)
   3  no NIKKE install or launcher data found
-  4  invalid arguments
+  4  invalid arguments, or a folder that cannot be read
 ";
 
 fn main() -> ExitCode {
+    quiet_drive_errors();
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let Some(first) = args.first() else {
         return match ui::run() {
@@ -57,7 +58,14 @@ fn cli(paths: &[OsString]) -> ExitCode {
     let mut folders = Vec::new();
     for path in paths.iter().map(PathBuf::from) {
         match std::path::absolute(&path) {
-            Ok(full) if full.is_dir() => folders.push(full),
+            Ok(full) if full.is_dir() => {
+                // A folder that cannot be listed would otherwise read as "NIKKE not found".
+                if let Err(err) = std::fs::read_dir(&full) {
+                    eprintln!("Cannot read folder {}: {err}", path.display());
+                    return ExitCode::from(4);
+                }
+                folders.push(full);
+            }
             _ => {
                 eprintln!("Not a folder: {}", path.display());
                 return ExitCode::from(4);
@@ -87,3 +95,17 @@ fn attach_console() {
 
 #[cfg(not(windows))]
 fn attach_console() {}
+
+/// Stops Windows from showing "There is no disk in the drive" boxes when the
+/// scan probes empty card readers and optical drives.
+#[cfg(windows)]
+fn quiet_drive_errors() {
+    use windows_sys::Win32::System::Diagnostics::Debug::{SEM_FAILCRITICALERRORS, SEM_NOOPENFILEERRORBOX, SetErrorMode};
+    // SAFETY: plain Win32 call with constant flags.
+    unsafe {
+        SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
+    }
+}
+
+#[cfg(not(windows))]
+fn quiet_drive_errors() {}

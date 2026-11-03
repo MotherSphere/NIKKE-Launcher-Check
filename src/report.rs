@@ -111,8 +111,13 @@ pub fn stats_line(r: &ScanResult) -> String {
     } else {
         ""
     };
+    let skipped = match s.skipped_mounts.len() {
+        0 => String::new(),
+        1 => ", 1 network drive skipped".into(),
+        n => format!(", {n} network drives skipped"),
+    };
     format!(
-        "{} entries visited ({} folders), {} permission errors, {:.1} s.{cap}",
+        "{} entries visited ({} folders), {} permission errors{skipped}, {:.1} s.{cap}",
         s.entries, s.folders, s.permission_errors, r.seconds
     )
 }

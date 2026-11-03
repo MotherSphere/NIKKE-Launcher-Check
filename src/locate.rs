@@ -8,8 +8,6 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use walkdir::WalkDir;
-
 /// Upper bound on directory entries visited in one scan.
 pub const ENTRY_CAP: u64 = 3_000_000;
 
@@ -25,6 +23,9 @@ const SKIP_NAMES: [&str; 6] = [
     "System Volume Information",
     "dosdevices",
 ];
+
+/// Profile folders under `Users` that belong to no real user.
+const NOT_USERS: [&str; 4] = ["Public", "Default", "Default User", "All Users"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TargetKind {
@@ -60,6 +61,10 @@ pub struct WalkStats {
     pub folders: u64,
     pub permission_errors: u64,
     pub cap_hit: bool,
+    /// Search roots and known locations (prefix folders, bottles) that could not be listed.
+    pub unreadable: Vec<PathBuf>,
+    /// Network drives and remote mounts left out of a computer scan.
+    pub skipped_mounts: Vec<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -70,7 +75,7 @@ pub struct Discovery {
 
 /// Searches the usual places on this computer.
 pub fn discover_computer() -> Discovery {
-    let mut finder = Finder::new(ENTRY_CAP);
+    let mut finder = Finder::new(ENTRY_CAP, 5);
     plan_computer(&mut finder);
     finder.finish()
 }
@@ -81,7 +86,16 @@ pub fn discover_folders(paths: &[PathBuf]) -> Discovery {
 }
 
 pub fn discover_folders_with_cap(paths: &[PathBuf], cap: u64) -> Discovery {
-    let mut finder = Finder::new(cap);
+    let mut finder = Finder::new(cap, 12);
+    // A scan of the user's own profile, or of a folder above it, also gets the host-only checks.
+    #[cfg(windows)]
+    if let Some(profile) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
+        let canon = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+        let own = canon(&profile);
+        if paths.iter().any(|p| own.starts_with(canon(p))) {
+            finder.add(TargetKind::UserProfile, &profile, true);
+        }
+    }
     for path in paths {
         finder.root(path, 12);
     }
@@ -98,6 +112,10 @@ enum Mode {
 
 struct Finder {
     cap: u64,
+    /// How deep each prefix's drive_c is walked.
+    prefix_depth: usize,
+    /// Mount points a walk never opens (network and remote filesystems).
+    skip_mounts: HashSet<PathBuf>,
     stats: WalkStats,
     seen: HashSet<(TargetKind, PathBuf)>,
     targets: Vec<Target>,
@@ -105,9 +123,11 @@ struct Finder {
 }
 
 impl Finder {
-    fn new(cap: u64) -> Self {
+    fn new(cap: u64, prefix_depth: usize) -> Self {
         Self {
             cap,
+            prefix_depth,
+            skip_mounts: HashSet::new(),
             stats: WalkStats::default(),
             seen: HashSet::new(),
             targets: Vec::new(),
@@ -134,75 +154,134 @@ impl Finder {
         }
     }
 
-    #[cfg(unix)]
-    fn prefix_candidate(&mut self, path: &Path) {
-        if path.join("drive_c").is_dir() {
-            self.add(TargetKind::WinePrefix, path, false);
+    fn note_denied(&mut self, path: &Path, err: &io::Error) {
+        if err.kind() == io::ErrorKind::PermissionDenied && !self.stats.unreadable.iter().any(|p| p == path) {
+            self.stats.unreadable.push(path.to_path_buf());
         }
     }
 
+    #[cfg(unix)]
+    fn prefix_candidate(&mut self, path: &Path) {
+        match fs::metadata(path.join("drive_c")) {
+            Ok(meta) if meta.is_dir() => self.add(TargetKind::WinePrefix, path, false),
+            Ok(_) => {}
+            Err(err) => self.note_denied(path, &err),
+        }
+    }
+
+    /// Subfolders of `dir` (symlinks to folders included).
+    #[cfg(unix)]
+    fn children(&mut self, dir: &Path) -> Vec<PathBuf> {
+        match fs::read_dir(dir) {
+            Ok(entries) => entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect(),
+            Err(err) => {
+                self.note_denied(dir, &err);
+                Vec::new()
+            }
+        }
+    }
+
+    /// Counts one entry. False once the entry cap is reached.
+    fn count(&mut self, is_dir: bool) -> bool {
+        if self.stats.entries >= self.cap {
+            self.stats.cap_hit = true;
+            return false;
+        }
+        self.stats.entries += 1;
+        self.stats.folders += u64::from(is_dir);
+        true
+    }
+
+    /// A plain stack walk rather than walkdir: walkdir opens a folder before the
+    /// caller can skip it, and opening a dead network mount can block forever.
     fn walk(&mut self, root: &Path, max_depth: usize, mode: Mode) {
-        if self.stats.cap_hit {
+        if !self.count(true) {
             return;
         }
         let drive_root = root.parent().is_none();
-        let mut it = WalkDir::new(root)
-            .follow_links(false)
-            .max_depth(max_depth)
-            .into_iter();
-        while let Some(next) = it.next() {
-            let entry = match next {
-                Ok(entry) => entry,
+        if !self.visit_dir(root, 0, mode, drive_root) {
+            return;
+        }
+        let mut stack = vec![(root.to_path_buf(), 0)];
+        while let Some((dir, depth)) = stack.pop() {
+            let entries = match fs::read_dir(&dir) {
+                Ok(entries) => entries,
                 Err(err) => {
-                    if err.io_error().map(io::Error::kind) == Some(io::ErrorKind::PermissionDenied) {
+                    if err.kind() == io::ErrorKind::PermissionDenied {
                         self.stats.permission_errors += 1;
+                        if depth == 0 {
+                            self.note_denied(&dir, &err);
+                        }
                     }
                     continue;
                 }
             };
-            if self.stats.entries >= self.cap {
-                self.stats.cap_hit = true;
-                return;
-            }
-            self.stats.entries += 1;
-            let path = entry.path();
-            let name = entry.file_name();
-            let depth = entry.depth();
-            let file_type = entry.file_type();
-
-            if file_type.is_dir() {
-                self.stats.folders += 1;
-                let windows_dir = depth == 1 && eq(name, "windows");
-                if depth > 0
-                    && (skip_dir(path, name) || (windows_dir && (mode == Mode::DriveC || drive_root)))
-                {
-                    it.skip_current_dir();
-                    continue;
-                }
-                if eq(name, "drive_c") && !(mode == Mode::DriveC && depth == 0) {
-                    // The prefix logic walks drive_c itself.
-                    if let Some(prefix) = path.parent() {
-                        self.add(TargetKind::WinePrefix, prefix, false);
+            for entry in entries.flatten() {
+                let path = entry.path();
+                // Checked before anything touches the mount itself.
+                if self.skip_mounts.contains(&path) {
+                    if !self.stats.skipped_mounts.contains(&path) {
+                        self.stats.skipped_mounts.push(path);
                     }
-                    it.skip_current_dir();
                     continue;
                 }
-                if is_launcher_data(path) {
-                    self.add(TargetKind::LauncherData, path, false);
-                    it.skip_current_dir();
+                let Ok(file_type) = entry.file_type() else {
+                    continue;
+                };
+                if !self.count(file_type.is_dir()) {
+                    return;
                 }
-            } else if file_type.is_file()
-                && let Some(install) = install_dir_for_file(path)
-            {
-                self.add(TargetKind::InstallDir, &install, false);
+                if file_type.is_dir() {
+                    if self.visit_dir(&path, depth + 1, mode, drive_root) && depth + 1 < max_depth {
+                        stack.push((path, depth + 1));
+                    }
+                } else if file_type.is_file()
+                    && let Some(install) = install_dir_for_file(&path)
+                {
+                    self.add(TargetKind::InstallDir, &install, false);
+                }
             }
         }
+    }
+
+    /// Registers what `dir` is. False when the walk must not enter it.
+    fn visit_dir(&mut self, dir: &Path, depth: usize, mode: Mode, drive_root: bool) -> bool {
+        let Some(name) = dir.file_name() else {
+            return true;
+        };
+        let windows_dir = depth == 1 && eq(name, "windows");
+        if depth > 0 && (skip_dir(dir, name) || (windows_dir && (mode == Mode::DriveC || drive_root))) {
+            return false;
+        }
+        if eq(name, "drive_c") && !(mode == Mode::DriveC && depth == 0) {
+            // The prefix logic walks drive_c itself.
+            if let Some(prefix) = dir.parent() {
+                self.add(TargetKind::WinePrefix, prefix, false);
+            }
+            return false;
+        }
+        if is_launcher_data(dir) {
+            self.add(TargetKind::LauncherData, dir, false);
+            self.add_installs_from_reg(&dir.join("url_protocol.reg"), None);
+            return false;
+        }
+        // A Windows profile (Users/<name>, or a Wine user) is the folder that holds AppData.
+        if eq(name, "AppData")
+            && let Some(profile) = dir.parent()
+            && profile.file_name().is_some_and(|n| !NOT_USERS.iter().any(|u| eq(n, u)))
+            && (find_ci(dir, &["Local"]).is_some() || find_ci(dir, &["Roaming"]).is_some())
+        {
+            self.add(TargetKind::UserProfile, profile, false);
+        }
+        true
     }
 
     fn scan_prefix(&mut self, prefix: &Path) {
         let Some(drive_c) = find_ci(prefix, &["drive_c"]) else {
             return;
         };
+        // user.reg is HKCU, where the launcher records its install path.
+        let mut reg_files: Vec<PathBuf> = find_ci(prefix, &["user.reg"]).into_iter().collect();
         if let Some(users) = find_ci(&drive_c, &["users"])
             && let Ok(entries) = fs::read_dir(&users)
         {
@@ -219,16 +298,49 @@ impl Finder {
                         && data.is_dir()
                     {
                         self.add(TargetKind::LauncherData, &data, false);
+                        reg_files.extend(find_ci(&data, &["url_protocol.reg"]));
                     }
                 }
             }
         }
-        self.walk(&drive_c, 5, Mode::DriveC);
+        self.walk(&drive_c, self.prefix_depth, Mode::DriveC);
         // Installs often hold their own prefix (NIKKE/prefix next to NIKKE/Launcher).
         if let Some(parent) = prefix.parent()
             && is_install_dir(parent)
         {
             self.add(TargetKind::InstallDir, parent, false);
+        }
+        // The registry names the install even when no walk reaches it.
+        for file in reg_files {
+            self.add_installs_from_reg(&file, Some(prefix));
+        }
+    }
+
+    /// Adds the installs named in a .reg file. Inside a Wine prefix the drive
+    /// letters go through its dosdevices links; otherwise the paths are only
+    /// usable on a Windows host.
+    fn add_installs_from_reg(&mut self, file: &Path, prefix: Option<&Path>) {
+        if prefix.is_none() && !cfg!(windows) {
+            return;
+        }
+        let Ok(bytes) = fs::read(file) else {
+            return;
+        };
+        for dir in install_dirs_in_reg(&reg_text(&bytes)) {
+            let path = match prefix {
+                Some(prefix) => wine_path(prefix, &dir),
+                None => Some(PathBuf::from(&dir)),
+            };
+            if let Some(path) = path {
+                self.add_install(&path);
+            }
+        }
+    }
+
+    /// Adds `path` as an install if it is one. Registry paths can be stale.
+    fn add_install(&mut self, path: &Path) {
+        if is_install_dir(path) {
+            self.add(TargetKind::InstallDir, path, false);
         }
     }
 
@@ -310,13 +422,60 @@ pub fn find_ci(base: &Path, parts: &[&str]) -> Option<PathBuf> {
     Some(current)
 }
 
-/// Subfolders of `dir` (symlinks to folders included).
-#[cfg(unix)]
-fn children(dir: &Path) -> Vec<PathBuf> {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return Vec::new();
-    };
-    entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect()
+/// Text of a .reg file: regedit writes UTF-16LE with a BOM, Wine writes UTF-8.
+fn reg_text(bytes: &[u8]) -> String {
+    match bytes.strip_prefix(&[0xFF, 0xFE]) {
+        Some(rest) => {
+            let units: Vec<u16> = rest.as_chunks::<2>().0.iter().map(|c| u16::from_le_bytes(*c)).collect();
+            String::from_utf16_lossy(&units)
+        }
+        None => String::from_utf8_lossy(bytes).into_owned(),
+    }
+}
+
+/// Install folders (Windows paths) named in .reg text: the launcher writes
+/// `X:\...\Launcher\nikke_launcher.exe` into App Paths, its Uninstall key and
+/// the nikkelauncher URL protocol.
+fn install_dirs_in_reg(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    // regedit exports can end lines with CR only.
+    for line in text.split(['\r', '\n']) {
+        // .reg values escape backslashes and quotes.
+        let mut value = String::with_capacity(line.len());
+        let mut chars = line.chars();
+        while let Some(c) = chars.next() {
+            value.push(if c == '\\' { chars.next().unwrap_or(c) } else { c });
+        }
+        if let Some(dir) = install_dir_in_value(&value)
+            && !out.contains(&dir)
+        {
+            out.push(dir);
+        }
+    }
+    out
+}
+
+/// `"C:\Games\NIKKE\Launcher\nikke_launcher.exe" "%1"` to `C:\Games\NIKKE`.
+fn install_dir_in_value(value: &str) -> Option<String> {
+    // ASCII lowercasing keeps byte offsets, so they index `value` too.
+    let lower = value.to_ascii_lowercase();
+    let end = lower.find("\\launcher\\nikke_launcher.exe")?;
+    let start = lower[..end].rfind(":\\")?.checked_sub(1)?;
+    lower.as_bytes()[start]
+        .is_ascii_alphabetic()
+        .then(|| value[start..end].to_string())
+}
+
+/// Host path of a Windows path inside a Wine prefix, through `dosdevices/<letter>:`.
+fn wine_path(prefix: &Path, win: &str) -> Option<PathBuf> {
+    let (drive, rest) = win.split_once(":\\")?;
+    if drive.len() != 1 || !drive.as_bytes()[0].is_ascii_alphabetic() {
+        return None;
+    }
+    let device = prefix.join("dosdevices").join(format!("{}:", drive.to_ascii_lowercase()));
+    let parts: Vec<&str> = rest.split('\\').filter(|p| !p.is_empty()).collect();
+    // The OS resolves the drive link; canonical form keeps dosdevices out of the report.
+    find_ci(&device, &parts).map(|p| fs::canonicalize(&p).unwrap_or(p))
 }
 
 /// Library paths from Steam's libraryfolders.vdf (`"path"  "/x/y"` lines).
@@ -336,9 +495,53 @@ fn home() -> Option<PathBuf> {
     std::env::var_os("HOME").filter(|h| !h.is_empty()).map(PathBuf::from)
 }
 
+/// A string value of a registry key (`None` name: the default value). The outer
+/// `None` means the key does not exist. `view` is 0, KEY_WOW64_64KEY or KEY_WOW64_32KEY.
+#[cfg(windows)]
+pub(crate) fn reg_string(
+    root: windows_sys::Win32::System::Registry::HKEY,
+    subkey: &str,
+    name: Option<&str>,
+    view: u32,
+) -> Option<Option<String>> {
+    use std::ptr::{null, null_mut};
+    use windows_sys::Win32::Foundation::ERROR_SUCCESS;
+    use windows_sys::Win32::System::Registry::{
+        HKEY, KEY_QUERY_VALUE, RRF_NOEXPAND, RRF_RT_REG_EXPAND_SZ, RRF_RT_REG_SZ, RegCloseKey, RegGetValueW,
+        RegOpenKeyExW,
+    };
+    let wide = |s: &str| s.encode_utf16().chain([0]).collect::<Vec<u16>>();
+    let subkey = wide(subkey);
+    let name = name.map(wide);
+    let name_ptr = name.as_ref().map_or(null(), |n| n.as_ptr());
+    let flags = RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_NOEXPAND;
+    let mut key: HKEY = null_mut();
+    // SAFETY: NUL-terminated UTF-16 strings and out pointers to live locals. The
+    // buffer is `size` bytes long, and the key is closed before returning.
+    unsafe {
+        if RegOpenKeyExW(root, subkey.as_ptr(), 0, KEY_QUERY_VALUE | view, &mut key) != ERROR_SUCCESS {
+            return None;
+        }
+        let mut value = None;
+        let mut size = 0u32;
+        if RegGetValueW(key, null(), name_ptr, flags, null_mut(), null_mut(), &mut size) == ERROR_SUCCESS {
+            let mut buf = vec![0u16; (size as usize).div_ceil(2)];
+            if RegGetValueW(key, null(), name_ptr, flags, null_mut(), buf.as_mut_ptr().cast(), &mut size) == ERROR_SUCCESS {
+                let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+                value = Some(String::from_utf16_lossy(&buf[..len]));
+            }
+        }
+        RegCloseKey(key);
+        Some(value)
+    }
+}
+
 #[cfg(windows)]
 fn plan_computer(f: &mut Finder) {
     use std::env;
+    use windows_sys::Win32::Storage::FileSystem::GetDriveTypeW;
+    use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_WOW64_32KEY, KEY_WOW64_64KEY};
+    use windows_sys::Win32::System::WindowsProgramming::{DRIVE_FIXED, DRIVE_REMOTE, DRIVE_REMOVABLE};
     if let Some(profile) = env::var_os("USERPROFILE") {
         f.add(TargetKind::UserProfile, Path::new(&profile), true);
     }
@@ -347,63 +550,246 @@ fn plan_computer(f: &mut Finder) {
             let data = Path::new(&appdata).join(name);
             if data.is_dir() {
                 f.add(TargetKind::LauncherData, &data, true);
+                f.add_installs_from_reg(&data.join("url_protocol.reg"), None);
             }
         }
     }
+    // The launcher records where it is installed; deep installs are missed by the drive walk.
+    let icon = reg_string(HKEY_CURRENT_USER, "Software\\Classes\\nikkelauncher\\DefaultIcon", None, 0);
+    if let Some(dir) = icon.flatten().as_deref().and_then(install_dir_in_value) {
+        f.add_install(Path::new(&dir));
+    }
+    let uninstall = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\nikke_launcher";
+    for (root, view) in [(HKEY_CURRENT_USER, 0), (HKEY_LOCAL_MACHINE, KEY_WOW64_64KEY), (HKEY_LOCAL_MACHINE, KEY_WOW64_32KEY)] {
+        if let Some(Some(dir)) = reg_string(root, uninstall, Some("GameInstallPath"), view) {
+            f.add_install(Path::new(&dir));
+        }
+    }
     for letter in b'A'..=b'Z' {
-        let drive = PathBuf::from(format!("{}:\\", letter as char));
-        // Depth 5 reaches C:\Program Files\Level Infinite\NIKKE\Launcher\nikke_launcher.exe.
-        f.root(&drive, 5);
+        let drive = format!("{}:\\", letter as char);
+        let wide: Vec<u16> = drive.encode_utf16().chain([0]).collect();
+        // SAFETY: NUL-terminated root path. GetDriveTypeW does not contact network servers.
+        let kind = unsafe { GetDriveTypeW(wide.as_ptr()) };
+        match kind {
+            // Depth 5 reaches C:\Program Files\Level Infinite\NIKKE\Launcher\nikke_launcher.exe.
+            DRIVE_FIXED | DRIVE_REMOVABLE => f.root(Path::new(&drive), 5),
+            DRIVE_REMOTE => f.stats.skipped_mounts.push(PathBuf::from(&drive)),
+            _ => {}
+        }
+    }
+}
+
+/// Mount points of filesystems that are not local, from the kernel's cached
+/// mount table (MNT_NOWAIT never asks a server, so a dead share cannot block it).
+#[cfg(target_os = "macos")]
+fn non_local_mounts() -> HashSet<PathBuf> {
+    use std::ffi::CStr;
+    use std::os::unix::ffi::OsStrExt;
+    // SAFETY: the first call only counts mounts. The second writes at most `size`
+    // bytes into `buf`, and set_len keeps only the entries it reports as filled.
+    unsafe {
+        let n = libc::getfsstat(std::ptr::null_mut(), 0, libc::MNT_NOWAIT);
+        if n <= 0 {
+            return HashSet::new();
+        }
+        let mut buf: Vec<libc::statfs> = Vec::with_capacity(n as usize);
+        let size = (buf.capacity() * std::mem::size_of::<libc::statfs>()) as libc::c_int;
+        let got = libc::getfsstat(buf.as_mut_ptr(), size, libc::MNT_NOWAIT);
+        buf.set_len(got.clamp(0, n) as usize);
+        buf.iter()
+            .filter(|m| m.f_flags & libc::MNT_LOCAL as u32 == 0)
+            .map(|m| PathBuf::from(OsStr::from_bytes(CStr::from_ptr(m.f_mntonname.as_ptr()).to_bytes())))
+            .collect()
     }
 }
 
 #[cfg(target_os = "macos")]
 fn plan_computer(f: &mut Finder) {
     let home = home();
+    // A network home folder is still scanned.
+    f.skip_mounts = non_local_mounts()
+        .into_iter()
+        .filter(|m| !home.as_ref().is_some_and(|h| h.starts_with(m)))
+        .collect();
     if let Some(home) = &home {
         f.root(home, 6);
     }
     f.root(Path::new("/Applications"), 4);
     if let Ok(volumes) = fs::read_dir("/Volumes") {
         for entry in volumes.flatten() {
+            let path = entry.path();
+            if f.skip_mounts.contains(&path) {
+                f.stats.skipped_mounts.push(path);
+                continue;
+            }
             // "Macintosh HD" is a symlink to /: skip links, walk real volumes.
             if entry.file_type().is_ok_and(|t| t.is_dir()) {
-                f.root(&entry.path(), 5);
+                f.root(&path, 5);
             }
         }
     }
     let mut candidates = Vec::new();
-    let mut apps = children(Path::new("/Applications"));
+    let mut folders = vec![PathBuf::from("/Applications")];
     if let Some(home) = &home {
         candidates.push(home.join(".wine"));
-        candidates.extend(children(&home.join("Library/Application Support/CrossOver/Bottles")));
-        candidates.extend(children(&home.join("Library/Containers/com.isaacmarovitz.Whisky/Bottles")));
-        candidates.extend(children(&home.join("Games/Heroic/Prefixes")));
-        candidates.extend(children(&home.join("Games/Heroic/Prefixes/default")));
-        apps.extend(children(&home.join("Applications")));
+        candidates.extend(f.children(&home.join("Library/Application Support/CrossOver/Bottles")));
+        candidates.extend(f.children(&home.join("Library/Containers/com.isaacmarovitz.Whisky/Bottles")));
+        candidates.extend(f.children(&home.join("Games/Heroic/Prefixes")));
+        candidates.extend(f.children(&home.join("Games/Heroic/Prefixes/default")));
+        folders.push(home.join("Applications"));
     }
-    // Wineskin and Kegworks wrappers keep the prefix inside the .app bundle.
-    for app in apps {
-        if app.extension().is_some_and(|e| e == "app") {
-            candidates.push(app.join("Contents/SharedSupport/prefix"));
+    // Wineskin, Kegworks and Sikarugir wrappers keep the prefix inside the .app
+    // bundle. Their Winery saves new wrappers one folder down, in
+    // ~/Applications/Wineskin (or Kegworks, Sikarugir).
+    let is_app = |p: &Path| p.extension().is_some_and(|e| e == "app");
+    let mut apps = Vec::new();
+    for folder in folders {
+        for child in f.children(&folder) {
+            if is_app(&child) {
+                apps.push(child);
+            } else {
+                apps.extend(f.children(&child).into_iter().filter(|p| is_app(p)));
+            }
         }
+    }
+    for app in apps {
+        candidates.push(app.join("Contents/SharedSupport/prefix"));
     }
     for candidate in candidates {
         f.prefix_candidate(&candidate);
     }
 }
 
+/// Kernel filesystems whose data lives on another machine.
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+fn is_network_fs(fstype: &str) -> bool {
+    const NETWORK: [&str; 13] = [
+        "nfs", "nfs4", "cifs", "smb3", "smbfs", "ncpfs", "afs", "ceph", "glusterfs", "lustre", "9p", "davfs", "sshfs",
+    ];
+    // FUSE filesystems that keep their data on local disks. Any other fuse.* type
+    // (sshfs, rclone, s3fs, MTP phones...) is treated as remote.
+    const LOCAL_FUSE: [&str; 10] = [
+        "mergerfs", "bindfs", "gocryptfs", "encfs", "cryfs", "ntfs-3g", "fuse-overlayfs", "squashfuse", "lxcfs", "unionfs",
+    ];
+    NETWORK.contains(&fstype)
+        || fstype == "fuse"
+        || fstype.strip_prefix("fuse.").is_some_and(|sub| !LOCAL_FUSE.contains(&sub))
+}
+
+/// mountinfo and fstab write a space in a path as `\040` (octal escapes).
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+fn unescape_mount(field: &str) -> PathBuf {
+    let b = field.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        let octal = b
+            .get(i + 1..i + 4)
+            .filter(|d| b[i] == b'\\' && d.iter().all(|c| (b'0'..=b'7').contains(c)));
+        match octal {
+            Some(d) => {
+                out.push(d.iter().fold(0u32, |n, c| n * 8 + u32::from(c - b'0')) as u8);
+                i += 4;
+            }
+            None => {
+                out.push(b[i]);
+                i += 1;
+            }
+        }
+    }
+    PathBuf::from(String::from_utf8_lossy(&out).into_owned())
+}
+
+/// Network and remote FUSE mount points in /proc/self/mountinfo. An automount
+/// point that is not mounted yet counts too, unless fstab gives it a local type:
+/// opening it would mount it, and a network share can then block the walk.
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+fn network_mounts(mountinfo: &str, fstab: &str) -> Vec<PathBuf> {
+    let mut mounts: Vec<(PathBuf, &str)> = Vec::new();
+    for line in mountinfo.lines() {
+        let Some((left, right)) = line.split_once(" - ") else {
+            continue;
+        };
+        if let (Some(point), Some(fstype)) = (left.split(' ').nth(4), right.split(' ').next()) {
+            mounts.push((unescape_mount(point), fstype));
+        }
+    }
+    let local_in_fstab = |point: &Path| {
+        fstab.lines().filter(|l| !l.trim_start().starts_with('#')).any(|l| {
+            let mut fields = l.split_whitespace();
+            fields.nth(1).is_some_and(|p| unescape_mount(p) == point) && fields.next().is_some_and(|t| !is_network_fs(t))
+        })
+    };
+    let mut out = Vec::new();
+    for (point, fstype) in &mounts {
+        let skip = if *fstype == "autofs" {
+            !mounts.iter().any(|(p, t)| p == point && *t != "autofs") && !local_in_fstab(point)
+        } else {
+            is_network_fs(fstype)
+        };
+        if skip && !out.contains(point) {
+            out.push(point.clone());
+        }
+    }
+    out
+}
+
+/// (login, home) from the /etc/passwd line whose field number `field` is `value`.
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+fn passwd_entry(passwd: &str, field: usize, value: &str) -> Option<(String, PathBuf)> {
+    passwd
+        .lines()
+        .map(|line| line.split(':').collect::<Vec<_>>())
+        .find(|f| f.len() >= 7 && f[field] == value)
+        .map(|f| (f[0].to_string(), PathBuf::from(f[5])))
+}
+
+/// Home folder and login to scan. Under sudo or pkexec, HOME and USER name root,
+/// so the user who ran the command is looked up in /etc/passwd instead.
+#[cfg(all(unix, not(target_os = "macos")))]
+fn real_user() -> (Option<PathBuf>, Option<std::ffi::OsString>) {
+    let var = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
+    let passwd = || fs::read_to_string("/etc/passwd").unwrap_or_default();
+    let found = if let Some(login) = var("SUDO_USER").filter(|_| var("USER").as_deref() == Some("root")) {
+        passwd_entry(&passwd(), 0, &login)
+    } else if let Some(uid) = var("PKEXEC_UID") {
+        passwd_entry(&passwd(), 2, &uid)
+    } else {
+        None
+    };
+    match found {
+        Some((login, home)) => (Some(home), Some(login.into())),
+        None => (home(), std::env::var_os("USER")),
+    }
+}
+
 #[cfg(all(unix, not(target_os = "macos")))]
 fn plan_computer(f: &mut Finder) {
-    let home = home();
+    let (home, user) = real_user();
+    if let Ok(mountinfo) = fs::read_to_string("/proc/self/mountinfo") {
+        let fstab = fs::read_to_string("/etc/fstab").unwrap_or_default();
+        // A network home folder is still scanned.
+        f.skip_mounts = network_mounts(&mountinfo, &fstab)
+            .into_iter()
+            .filter(|m| !home.as_ref().is_some_and(|h| h.starts_with(m)))
+            .collect();
+    }
     if let Some(home) = &home {
         f.root(home, 7);
     }
+    let run_media = user.as_ref().map(|u| Path::new("/run/media").join(u));
     for root in ["/mnt", "/media", "/opt", "/games"] {
+        // ostree systems (Silverblue, Bazzite) link /media to /run/media, walked below.
+        if root == "/media"
+            && run_media.is_some()
+            && fs::canonicalize(root).is_ok_and(|c| c.starts_with("/run/media"))
+        {
+            continue;
+        }
         f.root(Path::new(root), 6);
     }
-    if let Some(user) = std::env::var_os("USER") {
-        f.root(&Path::new("/run/media").join(user), 6);
+    if let Some(run_media) = &run_media {
+        f.root(run_media, 6);
     }
     let Some(home) = home else {
         return;
@@ -413,6 +799,7 @@ fn plan_computer(f: &mut Finder) {
         ".local/share/Steam",
         ".steam/steam",
         ".var/app/com.valvesoftware.Steam/.local/share/Steam",
+        "snap/steam/common/.local/share/Steam",
     ] {
         let steam = home.join(steam);
         let mut libraries = vec![steam.clone()];
@@ -420,7 +807,7 @@ fn plan_computer(f: &mut Finder) {
             libraries.extend(vdf_library_paths(&text));
         }
         for library in libraries {
-            for game in children(&library.join("steamapps/compatdata")) {
+            for game in f.children(&library.join("steamapps/compatdata")) {
                 candidates.push(game.join("pfx"));
             }
         }
@@ -434,7 +821,8 @@ fn plan_computer(f: &mut Finder) {
         ".var/app/com.usebottles.bottles/data/bottles/bottles",
         "Faugus",
     ] {
-        candidates.extend(children(&home.join(dir)));
+        let found = f.children(&home.join(dir));
+        candidates.extend(found);
     }
     for candidate in candidates {
         f.prefix_candidate(&candidate);
@@ -465,5 +853,52 @@ mod tests {
             Some(PathBuf::from("/g/NIKKE"))
         );
         assert_eq!(install_dir_for_file(Path::new("/g/other/debug.log")), None);
+    }
+
+    #[test]
+    fn install_paths_are_read_from_reg_files() {
+        // Wine user.reg (UTF-8, doubled backslashes).
+        let user_reg = "[Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\App Paths\\\\nikke_launcher.exe] 1793276426\n\
+\"InstallPath\"=\"Z:\\\\mnt\\\\Jeux\\\\NIKKE\\\\launcher\\\\nikke_launcher.exe\"\n\
+[Software\\\\Classes\\\\nikkelauncher\\\\Shell\\\\Open\\\\Command] 1793277019\n\
+@=\"\\\"S:\\\\NIKKE\\\\Launcher\\\\nikke_launcher.exe\\\" \\\"%1\\\"\"\n\
+\"UninstallString\"=\"Z:\\\\mnt\\\\Jeux\\\\NIKKE\\\\uninst.exe\"\n";
+        assert_eq!(install_dirs_in_reg(user_reg), vec!["Z:\\mnt\\Jeux\\NIKKE", "S:\\NIKKE"]);
+
+        // regedit export: UTF-16LE with a BOM and CR-only line ends.
+        let export = "Windows Registry Editor Version 5.00\r\r\n[HKEY_CURRENT_USER\\SOFTWARE\\Classes\\nikkelauncher\\DefaultIcon]\r@=\"D:\\\\Games\\\\Level Infinite\\\\NIKKE\\\\Launcher\\\\nikke_launcher.exe\"\r\r\n";
+        let mut bytes = vec![0xFF, 0xFE];
+        bytes.extend(export.encode_utf16().flat_map(u16::to_le_bytes));
+        assert_eq!(install_dirs_in_reg(&reg_text(&bytes)), vec!["D:\\Games\\Level Infinite\\NIKKE"]);
+        assert_eq!(install_dir_in_value("nikke_launcher.exe"), None);
+    }
+
+    #[test]
+    fn network_mounts_are_found() {
+        let mountinfo = "\
+36 25 0:32 / /mnt/nas rw,relatime shared:1 - nfs4 server:/export rw,vers=4.2
+37 25 8:17 / /mnt/Jeux rw,noatime shared:2 - ext4 /dev/sdb1 rw
+38 25 0:40 / /home/u/my\\040share rw - fuse.sshfs u@host: rw
+39 25 0:41 / /mnt/pool rw - fuse.mergerfs pool rw
+40 25 0:42 / /mnt/auto rw - autofs systemd-1 rw
+41 25 0:43 / /mnt/games rw - autofs systemd-1 rw
+42 41 8:33 / /mnt/games rw - ext4 /dev/sdc1 rw
+43 25 0:44 / /mnt/local-auto rw - autofs systemd-1 rw
+44 25 8:49 / /mnt/win rw - fuseblk /dev/sdd1 rw
+45 25 0:45 / /mnt/gdrive rw - fuse.rclone gdrive: rw
+";
+        let fstab = "# comment\n/dev/sde1 /mnt/local-auto ext4 noauto,x-systemd.automount 0 2\nserver:/x /mnt/auto nfs x-systemd.automount 0 0\n";
+        assert_eq!(
+            network_mounts(mountinfo, fstab),
+            ["/mnt/nas", "/home/u/my share", "/mnt/auto", "/mnt/gdrive"].map(PathBuf::from).to_vec()
+        );
+    }
+
+    #[test]
+    fn passwd_lookup() {
+        let passwd = "root:x:0:0::/root:/bin/bash\nlin:x:1000:1000:Lin:/home/lin:/bin/zsh\n";
+        assert_eq!(passwd_entry(passwd, 0, "lin"), Some(("lin".into(), PathBuf::from("/home/lin"))));
+        assert_eq!(passwd_entry(passwd, 2, "1000"), Some(("lin".into(), PathBuf::from("/home/lin"))));
+        assert_eq!(passwd_entry(passwd, 0, "nobody"), None);
     }
 }
