@@ -40,7 +40,19 @@ struct App {
     phase: Phase,
     last: Option<Request>,
     copied: u32,
-    copied_shown: bool,
+    copied_shown: Option<Clip>,
+    /// Id of the scan whose result the window waits for. Older results are dropped.
+    scan_id: u32,
+    /// The folder dialog is open (it does not block the window).
+    picking: bool,
+}
+
+/// What a copy button puts on the clipboard.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Clip {
+    Report,
+    HostsLines,
+    Link,
 }
 
 #[derive(Debug, Clone)]
@@ -49,8 +61,8 @@ enum Message {
     PickFolder,
     FolderPicked(Option<PathBuf>),
     ScanAgain,
-    Finished(Option<Arc<ScanResult>>),
-    CopyReport,
+    Finished(u32, Option<Arc<ScanResult>>),
+    Copy(Clip),
     CopiedDone(u32),
 }
 
@@ -68,6 +80,10 @@ impl App {
         matches!(self.phase, Phase::Scanning(_))
     }
 
+    fn busy(&self) -> bool {
+        self.scanning() || self.picking
+    }
+
     fn start(&mut self, request: Request) -> Task<Message> {
         let label = match &request {
             Request::Computer => "this computer".to_string(),
@@ -75,30 +91,42 @@ impl App {
         };
         self.phase = Phase::Scanning(label);
         self.last = Some(request.clone());
-        self.copied_shown = false;
+        self.copied_shown = None;
+        self.scan_id += 1;
+        let id = self.scan_id;
         background(
             move || match request {
                 Request::Computer => scan::scan_computer(),
                 Request::Folder(p) => scan::scan_folders(&[p]),
             },
-            |r| Message::Finished(r.map(Arc::new)),
+            move |r| Message::Finished(id, r.map(Arc::new)),
         )
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::ScanComputer | Message::PickFolder | Message::ScanAgain if self.busy() => Task::none(),
             Message::ScanComputer => self.start(Request::Computer),
-            Message::PickFolder => Task::perform(
-                rfd::AsyncFileDialog::new().set_title("Choose a folder to scan").pick_folder(),
-                |h| Message::FolderPicked(h.map(|h| h.path().to_path_buf())),
-            ),
-            Message::FolderPicked(Some(path)) => self.start(Request::Folder(path)),
-            Message::FolderPicked(None) => Task::none(),
+            Message::PickFolder => {
+                self.picking = true;
+                Task::perform(
+                    rfd::AsyncFileDialog::new().set_title("Choose a folder to scan").pick_folder(),
+                    |h| Message::FolderPicked(h.map(|h| h.path().to_path_buf())),
+                )
+            }
+            Message::FolderPicked(path) => {
+                self.picking = false;
+                match path {
+                    Some(path) if !self.scanning() => self.start(Request::Folder(path)),
+                    _ => Task::none(),
+                }
+            }
             Message::ScanAgain => match self.last.clone() {
                 Some(request) => self.start(request),
                 None => Task::none(),
             },
-            Message::Finished(result) => {
+            Message::Finished(id, _) if id != self.scan_id => Task::none(),
+            Message::Finished(_, result) => {
                 self.phase = match result {
                     Some(r) => {
                         let text = report::render(&r);
@@ -108,29 +136,40 @@ impl App {
                 };
                 Task::none()
             }
-            Message::CopyReport => {
-                let Phase::Done(_, text) = &self.phase else {
-                    return Task::none();
+            Message::Copy(what) => {
+                let text = match (&self.phase, what) {
+                    (_, Clip::Link) => report::GIST_URL.to_string(),
+                    (Phase::Done(_, text), Clip::Report) => text.clone(),
+                    (Phase::Done(r, _), Clip::HostsLines) => match &r.hosts {
+                        Some(h) => report::block_lines(h).join("\n"),
+                        None => return Task::none(),
+                    },
+                    _ => return Task::none(),
                 };
                 self.copied += 1;
-                self.copied_shown = true;
+                self.copied_shown = Some(what);
                 let id = self.copied;
                 Task::batch([
-                    iced::clipboard::write(text.clone()),
+                    iced::clipboard::write(text),
                     background(move || thread::sleep(Duration::from_secs(2)), move |_| Message::CopiedDone(id)),
                 ])
             }
             Message::CopiedDone(id) => {
                 if id == self.copied {
-                    self.copied_shown = false;
+                    self.copied_shown = None;
                 }
                 Task::none()
             }
         }
     }
 
+    fn copy_button(&self, what: Clip, label: &'static str) -> Element<'static, Message> {
+        let label = if self.copied_shown == Some(what) { "Copied" } else { label };
+        button(text(label)).padding([6, 14]).on_press(Message::Copy(what)).into()
+    }
+
     fn view(&self) -> Element<'_, Message> {
-        let busy = self.scanning();
+        let busy = self.busy();
         let header = column![
             text(report::APP_NAME).size(28).font(bold()),
             text(report::ABOUT).size(15),
@@ -147,7 +186,16 @@ impl App {
         .spacing(10);
 
         let body: Element<'_, Message> = match &self.phase {
-            Phase::Idle => text("Choose what to scan. A scan of the whole computer can take a few minutes.").into(),
+            Phase::Idle => {
+                let mut idle = column![text("Choose what to scan. A scan of the whole computer can take a few minutes.")].spacing(6);
+                // rfd needs an XDG portal file chooser or zenity, and returns nothing without them.
+                if cfg!(all(unix, not(target_os = "macos"))) {
+                    idle = idle.push(
+                        text("If no folder dialog opens, run nikke-check --cli <folder> in a terminal.").color(muted()),
+                    );
+                }
+                idle.into()
+            }
             Phase::Scanning(what) => text(format!("Scanning {what}...")).size(18).into(),
             Phase::Failed => text("The scan stopped with an internal error. Try again, or run nikke-check --cli to see the report in a terminal.")
                 .color(severity_color(Severity::Critical))
@@ -171,8 +219,11 @@ impl App {
         .style(move |_| filled(verdict_color(r.verdict)));
 
         let actions = row![
-            button(text(if self.copied_shown { "Copied" } else { "Copy report" })).padding([6, 14]).on_press(Message::CopyReport),
-            button(text("Scan again")).padding([6, 14]).style(button::secondary).on_press(Message::ScanAgain),
+            self.copy_button(Clip::Report, "Copy report"),
+            button(text("Scan again"))
+                .padding([6, 14])
+                .style(button::secondary)
+                .on_press_maybe((!self.busy()).then_some(Message::ScanAgain)),
         ]
         .spacing(12);
 
@@ -201,20 +252,25 @@ impl App {
             let mut p = Column::new()
                 .spacing(6)
                 .push(text(format!("Hosts file: {}. This is not an infection check: it shows whether the domains are blocked.", h.path.display())));
-            if !h.readable {
-                p = p.push(text("The hosts file could not be read."));
+            if let Some(note) = h.note {
+                p = p.push(text(note));
             }
             for (domain, blocked) in &h.domains {
-                let (state, color) = if *blocked {
-                    ("blocked", verdict_color(Verdict::NoTraces))
-                } else {
-                    ("not blocked", severity_color(Severity::Warning))
+                let color = match blocked {
+                    Some(true) => verdict_color(Verdict::NoTraces),
+                    Some(false) => severity_color(Severity::Warning),
+                    None => muted(),
                 };
-                p = p.push(row![text(format!("{domain}:")).font(Font::MONOSPACE), text(state).color(color)].spacing(8));
+                p = p.push(
+                    row![text(format!("{domain}:")).font(Font::MONOSPACE), text(report::block_state(*blocked)).color(color)]
+                        .spacing(8),
+                );
             }
-            if h.domains.iter().any(|(_, blocked)| !blocked) {
-                p = p.push(text("To block them, add these lines to the hosts file:"));
-                p = p.push(mono_box(report::block_lines().join("\n")));
+            let lines = report::block_lines(h);
+            if !lines.is_empty() {
+                p = p.push(text(report::BLOCK_LINES_INTRO));
+                p = p.push(mono_box(lines.join("\n")));
+                p = p.push(self.copy_button(Clip::HostsLines, "Copy these lines"));
             }
             p = p.push(text(report::HOSTS_NOTE).color(muted()));
             p = p.push(text(report::ip_note()).color(muted()));
@@ -230,7 +286,14 @@ impl App {
             col = col.push(text(format!("- {c}")));
         }
         col = col
-            .push(text(format!("Details: {}", report::GIST_URL)).font(Font::MONOSPACE).size(13))
+            .push(
+                row![
+                    text(format!("Details: {}", report::GIST_URL)).font(Font::MONOSPACE).size(13),
+                    self.copy_button(Clip::Link, "Copy link"),
+                ]
+                .spacing(12)
+                .align_y(iced::Alignment::Center),
+            )
             .push(text(format!("Scan stats: {}", report::stats_line(r))).size(13).color(muted()));
         col.into()
     }
@@ -301,7 +364,8 @@ fn filled(color: Color) -> container::Style {
 fn verdict_color(verdict: Verdict) -> Color {
     match verdict {
         Verdict::Infected => Color::from_rgb8(0xb3, 0x26, 0x1e),
-        Verdict::Exposed => Color::from_rgb8(0xc7, 0x6a, 0x10),
+        // White text on it needs 4.5:1 contrast (WCAG AA): #a85500 gives 5.3:1.
+        Verdict::Exposed => Color::from_rgb8(0xa8, 0x55, 0x00),
         Verdict::NoTraces => Color::from_rgb8(0x2e, 0x7d, 0x4f),
         Verdict::NotFound => Color::from_rgb8(0x5a, 0x5f, 0x66),
     }

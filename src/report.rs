@@ -3,7 +3,7 @@
 use std::fmt::Write;
 
 use crate::locate::TargetKind;
-use crate::scan::{DOMAINS, PAYLOAD_IP, ScanResult, Verdict};
+use crate::scan::{HostsStatus, PAYLOAD_IP, ScanResult, Verdict};
 
 pub const APP_NAME: &str = "NIKKE Launcher Check";
 pub const GIST_URL: &str = "https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5";
@@ -79,10 +79,24 @@ pub fn advice(verdict: Verdict) -> Vec<&'static str> {
     steps
 }
 
-/// Lines to paste into the hosts file.
-pub fn block_lines() -> Vec<String> {
-    DOMAINS.iter().map(|d| format!("0.0.0.0 {d}")).collect()
+/// Lines to paste into the hosts file, for the domains it does not block yet.
+pub fn block_lines(h: &HostsStatus) -> Vec<String> {
+    h.domains
+        .iter()
+        .filter(|(_, blocked)| *blocked != Some(true))
+        .map(|(d, _)| format!("0.0.0.0 {d}"))
+        .collect()
 }
+
+pub fn block_state(blocked: Option<bool>) -> &'static str {
+    match blocked {
+        Some(true) => "blocked",
+        Some(false) => "not blocked",
+        None => "unknown",
+    }
+}
+
+pub const BLOCK_LINES_INTRO: &str = "To block the domains that are not shown as blocked, add these lines to the hosts file:";
 
 pub const HOSTS_NOTE: &str = "Editing the hosts file needs administrator rights. This tool never edits it.";
 
@@ -179,15 +193,16 @@ pub fn render(r: &ScanResult) -> String {
     if let Some(h) = &r.hosts {
         let _ = writeln!(o, "PROTECTION (hosts file: {})", h.path.display());
         let _ = writeln!(o, "  This is not an infection check. It shows whether the domains are blocked.");
-        if !h.readable {
-            let _ = writeln!(o, "  The hosts file could not be read.");
+        if let Some(note) = h.note {
+            let _ = writeln!(o, "  {note}");
         }
         for (domain, blocked) in &h.domains {
-            let _ = writeln!(o, "  {domain}: {}", if *blocked { "blocked" } else { "not blocked" });
+            let _ = writeln!(o, "  {domain}: {}", block_state(*blocked));
         }
-        if h.domains.iter().any(|(_, blocked)| !blocked) {
-            let _ = writeln!(o, "  To block them, add these lines to the hosts file:");
-            for line in block_lines() {
+        let lines = block_lines(h);
+        if !lines.is_empty() {
+            let _ = writeln!(o, "  {BLOCK_LINES_INTRO}");
+            for line in lines {
                 let _ = writeln!(o, "    {line}");
             }
         }

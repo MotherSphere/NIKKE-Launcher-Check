@@ -2,6 +2,7 @@
 
 use std::ffi::OsString;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -102,9 +103,10 @@ impl Verdict {
 #[derive(Debug, Clone)]
 pub struct HostsStatus {
     pub path: PathBuf,
-    pub readable: bool,
-    /// (domain, blocked)
-    pub domains: Vec<(&'static str, bool)>,
+    /// Shown when the file is missing or could not be read.
+    pub note: Option<&'static str>,
+    /// (domain, blocked). `None` when the file could not be read.
+    pub domains: Vec<(&'static str, Option<bool>)>,
 }
 
 #[derive(Debug, Clone)]
@@ -672,12 +674,21 @@ pub fn hosts_path() -> PathBuf {
 
 fn check_hosts() -> HostsStatus {
     let path = hosts_path();
-    let text = fs::read(&path).ok().map(|b| String::from_utf8_lossy(&b).into_owned());
-    HostsStatus {
-        readable: text.is_some(),
-        domains: parse_hosts(text.as_deref().unwrap_or("")),
-        path,
-    }
+    let (note, domains) = match fs::read(&path) {
+        Ok(bytes) => (None, known(parse_hosts(&String::from_utf8_lossy(&bytes)))),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {
+            (Some("The hosts file does not exist, so it blocks nothing."), known(parse_hosts("")))
+        }
+        Err(_) => (
+            Some("The hosts file could not be read, so it is not known which domains it blocks."),
+            DOMAINS.iter().map(|&d| (d, None)).collect(),
+        ),
+    };
+    HostsStatus { path, note, domains }
+}
+
+fn known(domains: Vec<(&'static str, bool)>) -> Vec<(&'static str, Option<bool>)> {
+    domains.into_iter().map(|(d, blocked)| (d, Some(blocked))).collect()
 }
 
 /// Which of [`DOMAINS`] the hosts file maps to a null or loopback address.
