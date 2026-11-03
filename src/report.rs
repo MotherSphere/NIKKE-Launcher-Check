@@ -8,7 +8,7 @@ use crate::scan::{HostsStatus, PAYLOAD_IP, ScanResult, Verdict};
 pub const APP_NAME: &str = "NIKKE Launcher Check";
 pub const GIST_URL: &str = "https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5";
 
-pub const ABOUT: &str = "On 2026-09-27, three files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From November 1, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Level Infinite replaced two of the files on November 3. The third was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.";
+pub const ABOUT: &str = "On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 24, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.";
 
 pub const READ_ONLY: &str = "Read-only. No network access.";
 
@@ -57,20 +57,20 @@ pub fn advice(verdict: Verdict) -> Vec<&'static str> {
             "Save a copy of this report before you delete anything. Deleting tbs_cache also deletes the k2f.agent.state trace.",
             CLEAR_CACHE,
             BLOCK,
-            "On Windows, in %LOCALAPPDATA%\\Google\\Chrome\\User Data\\PlatformExperienceHelper, delete the subfolder named with 64 hex characters that holds platform_experience_helper.dll, then delete the registry key HKCU\\Software\\Classes\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04} (and the WOW6432Node copy if the report lists one). Leave the rest alone: Chrome keeps its own platform_experience_helper.exe in that folder, and the HKLM copy of the CLSID points to wpc.dll, which is part of Windows.",
+            "On Windows, delete the registry key HKCU\\Software\\Classes\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04} (and the WOW6432Node copy if the report lists one), restart Windows, then in %LOCALAPPDATA%\\Google\\Chrome\\User Data\\PlatformExperienceHelper delete the subfolder named with 64 hex characters that holds platform_experience_helper.dll. The DLL stays locked until the restart, even with Chrome closed. Leave the rest alone: Chrome keeps its own platform_experience_helper.exe in that folder, and the HKLM copy of the CLSID points to wpc.dll, which is part of Windows.",
             "Reinstalling Windows is the safest way to be sure the computer is clean, because the agent could run any command.",
         ],
         Verdict::Exposed => vec![
             DO_NOT_OPEN,
             CLEAR_CACHE,
             BLOCK,
-            "The agent was served from November 1, 2026 at the latest. If the launcher was open on or after that date, treat this computer as infected and follow these steps:",
+            "The agent was served from October 24, 2026 at the latest. If the launcher was open on or after that date, treat this computer as infected and follow these steps:",
         ],
         Verdict::NoTraces => vec![
             DO_NOT_OPEN,
             CLEAR_CACHE,
             BLOCK,
-            "If the launcher was open on or after November 1, 2026, change your NIKKE / Level Infinite password from a clean device anyway.",
+            "If the launcher was open on or after October 24, 2026, change your NIKKE / Level Infinite password from a clean device anyway.",
         ],
         Verdict::NotFound => vec![
             "If NIKKE is installed somewhere unusual, scan that folder: \"Scan a folder...\" in the window, or nikke-check --cli <folder>.",
