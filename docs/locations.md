@@ -4,7 +4,7 @@
 
 ## Windows
 
-- Every fixed and removable drive from `A:\` to `Z:\`, in full, with no depth limit. Only `\Windows` is left out: it holds system files, not NIKKE or the traces this tool looks for. Mapped network drives and CD drives are not walked, and the report lists the network drives it skipped.
+- Every fixed and removable drive from `A:\` to `Z:\`, in full, with no depth limit. Only `\Windows` is left out: it holds system files, not NIKKE or the traces this tool looks for. Mapped network drives and CD drives are not walked, and the report lists the network drives it skipped. Junctions and symbolic links are never followed, so a drive mounted in a folder (Disk Management, "Mount in the following empty NTFS folder") instead of on a letter is not walked. Scan that folder with "Scan a folder...".
 - `%APPDATA%\nikke_launcher` and `%APPDATA%\nikke_launcher_hmt`.
 - The `%USERPROFILE%` profile.
 
