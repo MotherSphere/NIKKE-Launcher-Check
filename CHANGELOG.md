@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.1](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.2.0...v0.2.1) (2026-11-03)
+
+
+### Fixes
+
+* **report:** date the agent from October 24 and fix the DLL removal order ([1772cfd](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/1772cfde64ca79285a58b4de91bb9d8128f4e24e))
+
+
+### Documentation
+
+* add vue-bucket.min.js, the October 24 agent starts, payload builds and the Chrome DLL ([8b867b2](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/8b867b205af5ed5aff3fb4200b54d8bc0ce0fc1b))
+* note that drives mounted in a folder are not walked on Windows ([f1e0acd](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/f1e0acdee6d0ce11cc30341409b4adf9f1c1f9a8))
+
 ## [0.2.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.1.0...v0.2.0) (2026-11-03)
 
 
