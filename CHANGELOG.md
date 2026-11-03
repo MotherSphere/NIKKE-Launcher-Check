@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.1.0...v0.2.0) (2026-11-03)
+
+
+### Features
+
+* **scan:** search the whole computer with no depth limit ([3679171](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/3679171326a048a1b47b4bbc001105c40a35f0f4))
+
+
+### Fixes
+
+* show the window for any item dropped on the .exe ([cc25533](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/cc25533966f178434224aa1949c00f0542817d3d))
+
+
+### Documentation
+
+* split the README into a docs/ folder and add screenshots ([5741c61](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/5741c61e422eced55c5774344109d96f688d5ce5))
+
 ## 0.1.0 (2026-11-03)
 
 
