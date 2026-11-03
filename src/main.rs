@@ -16,6 +16,7 @@ Read-only. No network access.
 
 Usage:
   nikke-check                  Open the window
+  nikke-check PATH             Open the window and scan this folder
   nikke-check --cli            Scan this computer and print a report
   nikke-check --cli PATH...    Scan only these folders and print a report
   nikke-check --help           Show this help
@@ -32,13 +33,7 @@ fn main() -> ExitCode {
     quiet_drive_errors();
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let Some(first) = args.first() else {
-        return match ui::run() {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(err) => {
-                eprintln!("Could not open the window: {err}");
-                ExitCode::FAILURE
-            }
-        };
+        return window(None);
     };
     attach_console();
     match first.to_str() {
@@ -47,6 +42,11 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Some("--cli") => cli(&args[1..]),
+        // One folder: dropping a folder on the .exe in Explorer starts it this way.
+        arg if args.len() == 1 && !arg.is_some_and(|a| a.starts_with('-')) => match folder(first) {
+            Ok(folder) => window(Some(folder)),
+            Err(code) => code,
+        },
         _ => {
             eprintln!("Unknown argument: {}\n\n{USAGE}", first.to_string_lossy());
             ExitCode::from(4)
@@ -54,28 +54,48 @@ fn main() -> ExitCode {
     }
 }
 
-fn cli(paths: &[OsString]) -> ExitCode {
-    let mut folders = Vec::new();
-    for path in paths.iter().map(PathBuf::from) {
-        match std::path::absolute(&path) {
-            Ok(full) if full.is_dir() => {
-                // A folder that cannot be listed would otherwise read as "NIKKE not found".
-                if let Err(err) = std::fs::read_dir(&full) {
-                    eprintln!("Cannot read folder {}: {err}", path.display());
-                    return ExitCode::from(4);
-                }
-                folders.push(full);
-            }
-            _ => {
-                eprintln!("Not a folder: {}", path.display());
-                return ExitCode::from(4);
-            }
+fn window(folder: Option<PathBuf>) -> ExitCode {
+    match ui::run(folder) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("Could not open the window: {err}");
+            ExitCode::FAILURE
         }
     }
+}
+
+/// The absolute path of a folder argument, or exit code 4.
+fn folder(path: &OsString) -> Result<PathBuf, ExitCode> {
+    let path = PathBuf::from(path);
+    match std::path::absolute(&path) {
+        Ok(full) if full.is_dir() => {
+            // A folder that cannot be listed would otherwise read as "NIKKE not found".
+            if let Err(err) = std::fs::read_dir(&full) {
+                eprintln!("Cannot read folder {}: {err}", path.display());
+                return Err(ExitCode::from(4));
+            }
+            Ok(full)
+        }
+        _ => {
+            eprintln!("Not a folder: {}", path.display());
+            Err(ExitCode::from(4))
+        }
+    }
+}
+
+fn cli(paths: &[OsString]) -> ExitCode {
+    let mut folders = Vec::new();
+    for path in paths {
+        match folder(path) {
+            Ok(full) => folders.push(full),
+            Err(code) => return code,
+        }
+    }
+    let progress = locate::Progress::default();
     let result = if folders.is_empty() {
-        scan::scan_computer()
+        scan::scan_computer(&progress)
     } else {
-        scan::scan_folders(&folders)
+        scan::scan_folders(&folders, &progress)
     };
     let mut stdout = std::io::stdout().lock();
     let _ = stdout.write_all(report::render(&result).as_bytes());

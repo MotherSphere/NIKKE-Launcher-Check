@@ -4,11 +4,12 @@ use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use walkdir::WalkDir;
 
-use crate::locate::{self, Discovery, TargetKind, WalkStats, find_ci};
+use crate::locate::{self, Discovery, Progress, Stage, TargetKind, WalkStats, find_ci};
 
 pub const DOMAINS: [&str; 3] = ["insightjs.com", "analytics.insightjs.com", "insightjs.org"];
 pub const PAYLOAD_IP: &str = "89.127.233.127";
@@ -121,40 +122,56 @@ pub struct ScanResult {
     pub seconds: f64,
 }
 
-pub fn scan_computer() -> ScanResult {
+pub fn scan_computer(progress: &Progress) -> ScanResult {
     let start = Instant::now();
-    let discovery = locate::discover_computer();
-    run("this computer".into(), discovery, true, start)
+    let discovery = locate::discover_computer(progress);
+    run("this computer".into(), discovery, true, start, progress)
 }
 
-pub fn scan_folders(paths: &[PathBuf]) -> ScanResult {
+pub fn scan_folders(paths: &[PathBuf], progress: &Progress) -> ScanResult {
     let start = Instant::now();
     let scope = paths
         .iter()
         .map(|p| p.display().to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    run(scope, locate::discover_folders(paths), true, start)
+    run(scope, locate::discover_folders(paths, progress), true, start, progress)
 }
 
 /// Runs every check on the discovered targets. `system_checks` adds the
-/// running-process check and the hosts file (left out in tests).
-pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Instant) -> ScanResult {
+/// running-process check and the hosts file (left out in tests). A cancelled
+/// scan skips the remaining targets; its result is incomplete and is dropped.
+pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Instant, progress: &Progress) -> ScanResult {
     let started = utc(SystemTime::now()).unwrap_or_default();
+    let tally = |findings: &[Finding]| {
+        for f in findings {
+            progress.findings[f.severity as usize].fetch_add(1, Relaxed);
+        }
+    };
     let mut groups = Vec::new();
     if system_checks {
+        progress.set_stage(Stage::Programs);
         let running = check_processes();
+        tally(&running);
         if !running.is_empty() {
             groups.push(Group { label: "Running programs".into(), path: None, findings: running });
         }
     }
+    progress.set_stage(Stage::Locations);
+    progress.checks_total.store(discovery.targets.len(), Relaxed);
     for target in &discovery.targets {
+        if progress.cancelled() {
+            break;
+        }
+        progress.show(&target.path);
         let mut findings = match target.kind {
             TargetKind::InstallDir => check_install(&target.path),
             TargetKind::LauncherData => check_launcher_data(&target.path),
             TargetKind::UserProfile => check_profile(&target.path, target.host),
             TargetKind::WinePrefix => check_prefix(&target.path),
         };
+        tally(&findings);
+        progress.checks_done.fetch_add(1, Relaxed);
         if !findings.is_empty() {
             findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
             groups.push(Group {
@@ -165,6 +182,7 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         }
     }
     let coverage = check_coverage(&discovery);
+    tally(&coverage);
     if !coverage.is_empty() {
         groups.push(Group { label: "Scan coverage".into(), path: None, findings: coverage });
     }
@@ -179,13 +197,18 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         _ if found => Verdict::NoTraces,
         _ => Verdict::NotFound,
     };
+    let hosts = system_checks.then(|| {
+        progress.set_stage(Stage::Hosts);
+        check_hosts()
+    });
+    progress.set_stage(Stage::Done);
     ScanResult {
         scope,
         started,
         verdict,
         targets: discovery.targets,
         groups,
-        hosts: system_checks.then(check_hosts),
+        hosts,
         stats: discovery.stats,
         seconds: start.elapsed().as_secs_f64(),
     }
@@ -924,8 +947,7 @@ mod tests {
         }
 
         fn scan(&self) -> ScanResult {
-            let discovery = locate::discover_folders(std::slice::from_ref(&self.0));
-            run("test".into(), discovery, false, Instant::now())
+            scan(std::slice::from_ref(&self.0))
         }
     }
 
@@ -934,6 +956,11 @@ mod tests {
             // remove_dir_all removes symlinks themselves, never their targets.
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    fn scan(roots: &[PathBuf]) -> ScanResult {
+        let progress = Progress::default();
+        run("test".into(), locate::discover_folders(roots, &progress), false, Instant::now(), &progress)
     }
 
     fn findings(r: &ScanResult) -> Vec<&Finding> {
@@ -1149,7 +1176,7 @@ mod tests {
         fx.dir("win/Users/Bob/AppData/Roaming/nikke_launcher");
         fx.dir("win/Users/Public/AppData/Local");
         for root in [fx.0.join("win"), fx.0.join("win/Users/Bob")] {
-            let r = run("test".into(), locate::discover_folders(std::slice::from_ref(&root)), false, Instant::now());
+            let r = scan(std::slice::from_ref(&root));
             assert_eq!(r.verdict, Verdict::Infected, "{root:?}");
             assert!(has(&r, Severity::Critical, "Chrome persistence is installed"));
             assert!(has(&r, Severity::Critical, "Files left by the malware in Temp"));
@@ -1166,7 +1193,7 @@ mod tests {
         fx.file(&format!("{launcher}/nikke_launcher.exe"), b"MZ");
         fx.file(&format!("{launcher}/intl_service/debug.log"), DEBUG_LOG);
         for root in [fx.0.clone(), fx.0.join("a/b/c/d/pfx/drive_c")] {
-            let r = run("test".into(), locate::discover_folders(std::slice::from_ref(&root)), false, Instant::now());
+            let r = scan(std::slice::from_ref(&root));
             assert_eq!(r.verdict, Verdict::Infected, "{root:?}");
             assert!(has(&r, Severity::Critical, "The malware agent ran"));
         }
@@ -1217,14 +1244,14 @@ mod tests {
         fx.file("real/tbs_cache/Code Cache/js/aa_0", b"\x00https://insightjs.com/l.js?f=aegis\x00");
         let roaming = fx.dir("scan/pfx/drive_c/users/steamuser/AppData/Roaming");
         symlink(fx.0.join("real"), roaming.join("nikke_launcher")).unwrap();
-        let r = run("test".into(), locate::discover_folders(&[fx.0.join("scan")]), false, Instant::now());
+        let r = scan(&[fx.0.join("scan")]);
         assert!(has(&r, Severity::Warning, "The launcher loaded the malicious script"));
         assert_eq!(r.verdict, Verdict::Exposed);
 
         // A link to a folder above itself is reported, not walked.
         let up = fx.dir("up/drive_c/users/u/AppData/Roaming");
         symlink(&fx.0, up.join("nikke_launcher")).unwrap();
-        let r = run("test".into(), locate::discover_folders(&[fx.0.join("up")]), false, Instant::now());
+        let r = scan(&[fx.0.join("up")]);
         assert!(has(&r, Severity::Info, "Launcher data folder is a link and was not read"));
     }
 
@@ -1244,7 +1271,7 @@ mod tests {
             "scan/pfx/user.reg",
             b"WINE REGISTRY Version 2\n\n[Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\App Paths\\\\nikke_launcher.exe] 1793276426\n\"InstallPath\"=\"S:\\\\games\\\\nikke\\\\launcher\\\\nikke_launcher.exe\"\n",
         );
-        let r = run("test".into(), locate::discover_folders(&[fx.0.join("scan")]), false, Instant::now());
+        let r = scan(&[fx.0.join("scan")]);
         assert_eq!(r.verdict, Verdict::Infected);
         let installs: Vec<_> = r.targets.iter().filter(|t| t.kind == TargetKind::InstallDir).collect();
         assert_eq!(installs.len(), 1);
@@ -1278,8 +1305,66 @@ mod tests {
         for i in 0..20 {
             fx.file(&format!("d{i}/f"), b"");
         }
-        let d = locate::discover_folders_with_cap(std::slice::from_ref(&fx.0), 10);
+        let d = locate::discover_folders_with_cap(std::slice::from_ref(&fx.0), 10, &Progress::default());
         assert!(d.stats.cap_hit);
         assert_eq!(d.stats.entries, 10);
+    }
+
+    /// The layout of `exposed_only`, which has one target of each kind.
+    fn exposed_fixture() -> Fixture {
+        let fx = Fixture::new("progress");
+        fx.file("NIKKE/Launcher/nikke_launcher.exe", b"MZ");
+        fx.file("NIKKE/Launcher/intl_service/debug.log", DEBUG_LOG);
+        fx.file(
+            "NIKKE/prefix/drive_c/users/steamuser/AppData/Roaming/nikke_launcher/tbs_cache/Code Cache/js/aa_0",
+            b"\x00https://insightjs.com/l.js?f=aegis\x00",
+        );
+        for i in 0..100 {
+            fx.file(&format!("NIKKE/Data/d{i}/f"), b"");
+        }
+        fx
+    }
+
+    #[test]
+    fn progress_matches_the_result() {
+        let fx = exposed_fixture();
+        let progress = Progress::default();
+        let d = locate::discover_folders(std::slice::from_ref(&fx.0), &progress);
+        assert_eq!(progress.entries.load(Relaxed), d.stats.entries);
+        assert_eq!(progress.folders.load(Relaxed), d.stats.folders);
+        for kind in [TargetKind::InstallDir, TargetKind::LauncherData, TargetKind::WinePrefix, TargetKind::UserProfile] {
+            let n = d.targets.iter().filter(|t| t.kind == kind).count();
+            assert!(n > 0, "{kind:?}");
+            assert_eq!(progress.found[kind as usize].load(Relaxed), n, "{kind:?}");
+        }
+        let total = d.targets.len();
+        let r = run("test".into(), d, false, Instant::now(), &progress);
+        assert_eq!(progress.stage(), Stage::Done);
+        assert_eq!(progress.checks_total.load(Relaxed), total);
+        assert_eq!(progress.checks_done.load(Relaxed), total);
+        for severity in [Severity::Info, Severity::Warning, Severity::Critical] {
+            let n = findings(&r).iter().filter(|f| f.severity == severity).count();
+            assert_eq!(progress.findings[severity as usize].load(Relaxed), n, "{severity:?}");
+        }
+        assert_eq!(r.verdict, Verdict::Infected);
+    }
+
+    #[test]
+    fn cancel_stops_the_scan() {
+        let fx = exposed_fixture();
+        let progress = Progress::default();
+        progress.cancel();
+        let d = locate::discover_folders(std::slice::from_ref(&fx.0), &progress);
+        assert_eq!(d.stats.entries, 0);
+        assert!(d.targets.is_empty());
+
+        // Cancelled after discovery: no target is checked.
+        let progress = Progress::default();
+        let d = locate::discover_folders(std::slice::from_ref(&fx.0), &progress);
+        assert!(d.stats.entries > 100 && !d.targets.is_empty());
+        progress.cancel();
+        let r = run("test".into(), d, false, Instant::now(), &progress);
+        assert_eq!(progress.checks_done.load(Relaxed), 0);
+        assert!(r.groups.is_empty());
     }
 }

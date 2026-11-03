@@ -7,9 +7,72 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering::Relaxed};
+use std::time::{Duration, Instant};
 
 /// Upper bound on directory entries visited in one scan.
 pub const ENTRY_CAP: u64 = 3_000_000;
+
+/// What a running scan does now, in the order the stages run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Stage {
+    Searching,
+    Programs,
+    Locations,
+    Hosts,
+    Done,
+}
+
+/// Live state of a running scan, shared with the window. The scan thread writes
+/// it and the window reads it on each frame. Relaxed ordering is enough: every
+/// value is shown on its own, and nothing else is published through them.
+#[derive(Debug, Default)]
+pub struct Progress {
+    stage: AtomicU8,
+    pub entries: AtomicU64,
+    pub folders: AtomicU64,
+    /// Locations found so far, indexed by `TargetKind as usize`.
+    pub found: [AtomicUsize; 4],
+    pub checks_done: AtomicUsize,
+    pub checks_total: AtomicUsize,
+    /// Findings so far, indexed by `Severity as usize` (info, warning, critical).
+    pub findings: [AtomicUsize; 3],
+    /// The folder walked or the location checked now.
+    pub folder: Mutex<PathBuf>,
+    cancel: AtomicBool,
+}
+
+impl Progress {
+    pub fn stage(&self) -> Stage {
+        match self.stage.load(Relaxed) {
+            0 => Stage::Searching,
+            1 => Stage::Programs,
+            2 => Stage::Locations,
+            3 => Stage::Hosts,
+            _ => Stage::Done,
+        }
+    }
+
+    pub fn set_stage(&self, stage: Stage) {
+        self.stage.store(stage as u8, Relaxed);
+        self.show(Path::new(""));
+    }
+
+    pub fn show(&self, folder: &Path) {
+        if let Ok(mut shown) = self.folder.lock() {
+            folder.clone_into(&mut shown);
+        }
+    }
+
+    pub fn cancel(&self) {
+        self.cancel.store(true, Relaxed);
+    }
+
+    pub fn cancelled(&self) -> bool {
+        self.cancel.load(Relaxed)
+    }
+}
 
 /// Launcher data folder names under `AppData/Roaming`.
 pub const LAUNCHER_DATA_NAMES: [&str; 2] = ["nikke_launcher", "nikke_launcher_hmt"];
@@ -74,19 +137,19 @@ pub struct Discovery {
 }
 
 /// Searches the usual places on this computer.
-pub fn discover_computer() -> Discovery {
-    let mut finder = Finder::new(ENTRY_CAP, 5);
+pub fn discover_computer(progress: &Progress) -> Discovery {
+    let mut finder = Finder::new(ENTRY_CAP, 5, progress);
     plan_computer(&mut finder);
     finder.finish()
 }
 
 /// Searches the given folders only (GUI "Scan a folder...", CLI paths).
-pub fn discover_folders(paths: &[PathBuf]) -> Discovery {
-    discover_folders_with_cap(paths, ENTRY_CAP)
+pub fn discover_folders(paths: &[PathBuf], progress: &Progress) -> Discovery {
+    discover_folders_with_cap(paths, ENTRY_CAP, progress)
 }
 
-pub fn discover_folders_with_cap(paths: &[PathBuf], cap: u64) -> Discovery {
-    let mut finder = Finder::new(cap, 12);
+pub fn discover_folders_with_cap(paths: &[PathBuf], cap: u64, progress: &Progress) -> Discovery {
+    let mut finder = Finder::new(cap, 12, progress);
     // A scan of the user's own profile, or of a folder above it, also gets the host-only checks.
     #[cfg(windows)]
     if let Some(profile) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
@@ -110,7 +173,7 @@ enum Mode {
     DriveC,
 }
 
-struct Finder {
+struct Finder<'p> {
     cap: u64,
     /// How deep each prefix's drive_c is walked.
     prefix_depth: usize,
@@ -120,10 +183,13 @@ struct Finder {
     seen: HashSet<(TargetKind, PathBuf)>,
     targets: Vec<Target>,
     pending_prefixes: Vec<PathBuf>,
+    progress: &'p Progress,
+    /// When the folder shown in the window last changed.
+    shown_at: Instant,
 }
 
-impl Finder {
-    fn new(cap: u64, prefix_depth: usize) -> Self {
+impl<'p> Finder<'p> {
+    fn new(cap: u64, prefix_depth: usize, progress: &'p Progress) -> Self {
         Self {
             cap,
             prefix_depth,
@@ -132,6 +198,8 @@ impl Finder {
             seen: HashSet::new(),
             targets: Vec::new(),
             pending_prefixes: Vec::new(),
+            progress,
+            shown_at: Instant::now(),
         }
     }
 
@@ -140,6 +208,7 @@ impl Finder {
         if !self.seen.insert((kind, key)) {
             return;
         }
+        self.progress.found[kind as usize].fetch_add(1, Relaxed);
         if kind == TargetKind::WinePrefix {
             self.pending_prefixes.push(path.to_path_buf());
         }
@@ -181,15 +250,35 @@ impl Finder {
         }
     }
 
-    /// Counts one entry. False once the entry cap is reached.
+    /// Counts one entry. False once the entry cap is reached or the scan is cancelled.
     fn count(&mut self, is_dir: bool) -> bool {
+        if self.progress.cancelled() {
+            return false;
+        }
         if self.stats.entries >= self.cap {
             self.stats.cap_hit = true;
             return false;
         }
         self.stats.entries += 1;
         self.stats.folders += u64::from(is_dir);
+        // Batched so the hot loop does not write a shared cache line on every entry.
+        if self.stats.entries.is_multiple_of(64) {
+            self.publish();
+        }
         true
+    }
+
+    fn publish(&self) {
+        self.progress.entries.store(self.stats.entries, Relaxed);
+        self.progress.folders.store(self.stats.folders, Relaxed);
+    }
+
+    /// Shows `dir` in the window, at most every 50 ms.
+    fn walking(&mut self, dir: &Path) {
+        if self.shown_at.elapsed() >= Duration::from_millis(50) {
+            self.shown_at = Instant::now();
+            self.progress.show(dir);
+        }
     }
 
     /// A plain stack walk rather than walkdir: walkdir opens a folder before the
@@ -204,6 +293,7 @@ impl Finder {
         }
         let mut stack = vec![(root.to_path_buf(), 0)];
         while let Some((dir, depth)) = stack.pop() {
+            self.walking(&dir);
             let entries = match fs::read_dir(&dir) {
                 Ok(entries) => entries,
                 Err(err) => {
@@ -345,9 +435,12 @@ impl Finder {
     }
 
     fn finish(mut self) -> Discovery {
-        while let Some(prefix) = self.pending_prefixes.pop() {
+        while !self.progress.cancelled()
+            && let Some(prefix) = self.pending_prefixes.pop()
+        {
             self.scan_prefix(&prefix);
         }
+        self.publish();
         self.targets.sort_by(|a, b| (a.kind, &a.path).cmp(&(b.kind, &b.path)));
         Discovery { targets: self.targets, stats: self.stats }
     }
@@ -537,7 +630,7 @@ pub(crate) fn reg_string(
 }
 
 #[cfg(windows)]
-fn plan_computer(f: &mut Finder) {
+fn plan_computer(f: &mut Finder<'_>) {
     use std::env;
     use windows_sys::Win32::Storage::FileSystem::GetDriveTypeW;
     use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_WOW64_32KEY, KEY_WOW64_64KEY};
@@ -604,7 +697,7 @@ fn non_local_mounts() -> HashSet<PathBuf> {
 }
 
 #[cfg(target_os = "macos")]
-fn plan_computer(f: &mut Finder) {
+fn plan_computer(f: &mut Finder<'_>) {
     let home = home();
     // A network home folder is still scanned.
     f.skip_mounts = non_local_mounts()
@@ -764,7 +857,7 @@ fn real_user() -> (Option<PathBuf>, Option<std::ffi::OsString>) {
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
-fn plan_computer(f: &mut Finder) {
+fn plan_computer(f: &mut Finder<'_>) {
     let (home, user) = real_user();
     if let Ok(mountinfo) = fs::read_to_string("/proc/self/mountinfo") {
         let fstab = fs::read_to_string("/etc/fstab").unwrap_or_default();

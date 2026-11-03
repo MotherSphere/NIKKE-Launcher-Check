@@ -11,7 +11,8 @@ name = "nikke-check"
 path = "src/main.rs"
 
 [dependencies]
-iced = "0.14"
+# canvas: the scan ring and the icons, drawn in code (no image or font files).
+iced = { version = "0.14", features = ["canvas"] }
 rfd = "0.17"
 walkdir = "2"
 # Process list only, for the "launcher is running now" check.
