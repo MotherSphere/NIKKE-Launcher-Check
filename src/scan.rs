@@ -12,6 +12,7 @@ use walkdir::WalkDir;
 
 use crate::exposure::{self, Exposure};
 use crate::hsts;
+use crate::ldb;
 use crate::locate::{self, Discovery, Progress, Stage, TargetKind, WalkStats, find_ci};
 use crate::timeline::{self, AgentRun, PayloadBuild, RunKind};
 
@@ -597,12 +598,14 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         (Hits::default(), Hits::default(), Hits::default(), Hits::default(), Hits::default());
     let mut checked = 0usize;
     for path in files_under(dir, 12) {
-        let Some(bytes) = read_small(&path) else {
+        let Some(raw) = read_small(&path) else {
             continue;
         };
         checked += 1;
         let rel = path.strip_prefix(dir).unwrap_or(&path).display().to_string();
         let name = file_name(&path);
+        // Local Storage tables are often Snappy-compressed: search their records instead.
+        let bytes = if name.ends_with(".ldb") { ldb::readable(&raw).unwrap_or(raw) } else { raw };
         // k2f.agent.state is the agent's saved ID in Local Storage. It outlives the install folder and its debug.log.
         if contains(&bytes, b"k2f_chan") || contains(&bytes, b"k2f.agent") {
             // The key name only: the saved state that follows holds the agent's password.
