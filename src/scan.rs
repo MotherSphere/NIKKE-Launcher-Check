@@ -356,6 +356,29 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
 /// Needles of the agent's debug.log lines quoted in "The malware agent ran".
 const AGENT_LINES: [&[u8]; 5] = [b"k2f_chan", b"adopted ", b"resuming ", b"agent started as", b"lua downloaded to"];
 const MENTIONS: [&[u8]; 1] = [b"insightjs"];
+/// Names that only the agent stage puts in a log. A line that names insightjs without
+/// them is the loader alone, for example the insightjs.org fallback script failing to run.
+const AGENT_SERVER: [&[u8]; 2] = [b"analytics.insightjs.com", b"insight.bundle"];
+
+/// The finding for a launcher log that names insightjs: critical with the agent server, a warning without it.
+fn log_mention(name: &str, lines: Vec<String>, time: Option<String>, server: bool) -> Finding {
+    let (kind, severity, title, detail) = if server {
+        (
+            FindingKind::AgentServerContacted,
+            Severity::Critical,
+            format!("{name} names the agent server"),
+            format!("{name} names analytics.insightjs.com or insight.bundle. That server sends the agent, so the launcher got as far as asking for it."),
+        )
+    } else {
+        (
+            FindingKind::LauncherContacted,
+            Severity::Warning,
+            format!("{name} mentions insightjs"),
+            format!("{name} names insightjs, the domain of the malicious loader script. No line names the agent server (analytics.insightjs.com or insight.bundle), so this alone does not show that the agent was downloaded."),
+        )
+    };
+    Finding::new(kind, severity, title, detail).evidence(lines).time(time)
+}
 
 fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<PayloadBuild>) -> Vec<Finding> {
     let mut out = Vec::new();
@@ -367,9 +390,10 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
     let debug_note = match debug.as_deref() {
         None => "No Launcher/intl_service/debug.log was found. It may have been deleted, or the launcher was never started from this folder.".to_string(),
         Some(path) => {
-            let (mut ran, mut agent, mut mentions) = (false, Vec::new(), Vec::new());
+            let (mut ran, mut server, mut agent, mut mentions) = (false, false, Vec::new(), Vec::new());
             let read = each_line(path, |line| {
                 ran |= contains(line, b"k2f_chan");
+                server |= AGENT_SERVER.iter().any(|n| contains(line, n));
                 for (lines, needles) in [(&mut agent, &AGENT_LINES[..]), (&mut mentions, &MENTIONS[..])] {
                     if lines.len() < MAX_EVIDENCE {
                         for s in snippets(line, needles, 1) {
@@ -409,17 +433,7 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                 }
                 if !mentions.is_empty() {
                     let time = mentions.iter().find_map(|l| cef_time(l));
-                    out.push(
-                        Finding::new(
-                            FindingKind::LauncherContacted,
-                            Severity::Critical,
-                            "The launcher log mentions insightjs",
-                            "debug.log names insightjs, the domain that serves the malicious script and the agent.",
-                        )
-                        .at(path)
-                        .evidence(mentions)
-                        .time(time),
-                    );
+                    out.push(log_mention("debug.log", mentions, time, server).at(path));
                 }
                 "Launcher/intl_service/debug.log was checked. It holds the launches since the file was created.".to_string()
             }
@@ -455,31 +469,32 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                 continue;
             }
             let name = file_name(&path);
-            let (kind, title, detail, needle): (FindingKind, &str, String, &[u8]) = if bundle {
-                let text = String::from_utf8_lossy(&bytes);
-                downloads.extend(text.lines().filter_map(|l| timeline::tinyget_download(l, &path)));
-                for build in timeline::payload_builds(&text, &path) {
-                    if !all_builds.iter().any(|b| b.etag == build.etag && b.last_modified == build.last_modified) {
-                        all_builds.push(build);
-                    }
+            if !bundle {
+                let lines = snippets(&bytes, &MENTIONS, MAX_EVIDENCE);
+                let time = lines.iter().find_map(|l| log_time(l));
+                out.push(log_mention(&name, lines, time, contains(&bytes, AGENT_SERVER[0])).at(&path));
+                continue;
+            }
+            let text = String::from_utf8_lossy(&bytes);
+            downloads.extend(text.lines().filter_map(|l| timeline::tinyget_download(l, &path)));
+            for build in timeline::payload_builds(&text, &path) {
+                if !all_builds.iter().any(|b| b.etag == build.etag && b.last_modified == build.last_modified) {
+                    all_builds.push(build);
                 }
-                (
+            }
+            let lines = snippets(&bytes, &[b"insight.bundle"], MAX_EVIDENCE);
+            let time = lines.iter().find_map(|l| log_time(l));
+            out.push(
+                Finding::new(
                     FindingKind::PayloadDownloaded,
+                    Severity::Critical,
                     "The launcher downloaded the malware",
                     format!("{name} records the launcher downloading insight.bundle from analytics.insightjs.com. That file is the remote-access agent."),
-                    b"insight.bundle",
                 )
-            } else {
-                (
-                    FindingKind::LauncherContacted,
-                    "A launcher log mentions insightjs",
-                    format!("{name} names insightjs, the domain that serves the malicious script and the agent."),
-                    b"insightjs",
-                )
-            };
-            let lines = snippets(&bytes, &[needle], MAX_EVIDENCE);
-            let time = lines.iter().find_map(|l| log_time(l));
-            out.push(Finding::new(kind, Severity::Critical, title, detail).at(&path).evidence(lines).time(time));
+                .at(&path)
+                .evidence(lines)
+                .time(time),
+            );
         }
     }
     // A tinyget download that debug.log does not record (debug.log deleted or cut) is a run of its own.
@@ -1361,6 +1376,26 @@ mod tests {
 
     const TINYGET_LOG: &[u8] = b"[2026-11-03 01:47:25.874][316][INFO][main.cpp(1)]start\n\
 [2026-11-03 01:47:35.556][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, task_id=2147483648, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261103-014735-553.log\n";
+
+    #[test]
+    fn loader_only_log_is_a_warning() {
+        let fx = Fixture::new("loader-only");
+        fx.file("NIKKE/Launcher/nikke_launcher.exe", b"MZ");
+        fx.file(
+            "NIKKE/Launcher/intl_service/debug.log",
+            b"[1103/120001.001:INFO:CONSOLE(61)] \"Uncaught SyntaxError: Invalid or unexpected token\", source: https://insightjs.org/l.js?f=aegis (61)\r\n",
+        );
+        fx.file("NIKKE/Launcher/log/other.log", b"[2026-11-03 12:00:01.000][1][INFO][x]x\tGET https://insightjs.org/l.js?f=vue\n");
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Exposed);
+        assert!(has(&r, Severity::Warning, "debug.log mentions insightjs"));
+        assert!(has(&r, Severity::Warning, "other.log mentions insightjs"));
+
+        fx.file("NIKKE/Launcher/log/other.log", b"GET https://analytics.insightjs.com/comm/assets/x\n");
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Infected);
+        assert!(has(&r, Severity::Critical, "other.log names the agent server"));
+    }
 
     #[test]
     fn infected_install() {

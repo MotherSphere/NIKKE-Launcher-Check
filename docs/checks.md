@@ -17,7 +17,8 @@ An install is a folder that holds `Launcher/nikke_launcher.exe` or `Launcher/int
 `Launcher/intl_service/debug.log` is read line by line, whatever its size. A line longer than 64 KiB is cut.
 
 - A line with `k2f_chan` means the agent ran (critical). The report quotes the `k2f_chan registered`, `adopted <id>`, `resuming <id>`, `agent started as <hostname>` and `lua downloaded to ...` lines.
-- A line with `insightjs` is also critical.
+- A line with `analytics.insightjs.com` or `insight.bundle` is critical: the launcher asked the server that sends the agent.
+- A line that names `insightjs` without them is a warning. Only the loader ran. One case is the launcher falling back to `insightjs.org`, whose current script fails with a `SyntaxError` at line 61.
 - The install is listed as info, with the time `debug.log` was last written, or a note that the file is missing. The launcher appends to `debug.log` at each launch, so the file holds every launch since it was created.
 - A `debug.log` that exists but cannot be read is an info finding under "What this scan could not check". The first answer then shows "No" in orange, because the scan could not tell whether the agent ran.
 
@@ -25,7 +26,7 @@ Every file under `Launcher/log/`, up to 8 levels down and 64 MiB, is read too. T
 
 - A file that starts with LuaJIT bytecode (the bytes `1B 4C 4A`) is the downloaded agent itself (critical). The launcher saves the agent under a `tinyget` log name. The report gives the file size; the known agent is 205,135 bytes.
 - `insight.bundle` in a file means the launcher downloaded the agent (critical). The report names the file and gives the time from the log line.
-- `insightjs` in a file is critical as well.
+- In a file without `insight.bundle`, `analytics.insightjs.com` is critical, and `insightjs` alone is a warning, as in `debug.log`.
 
 ### Agent runs and payload builds
 
