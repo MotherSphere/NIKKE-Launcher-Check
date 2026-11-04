@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.2](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.1...v0.5.2) (2026-11-04)
+
+
+### Fixes
+
+* **i18n:** rewrite 247 Korean texts in natural Korean ([96c69f4](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/96c69f493e9fd5746773ccf226a5cbf7f7d68a9f))
+* **scan:** count only k2f- and k2f_ files in Temp ([435ea38](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/435ea38ada82ea6325b4a789fb32423bb91fbeb7))
+* **scan:** quote a startup failed line only when it ends an agent run ([4fa775d](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/4fa775de9627d09da9d90636ba1c76c8c5de8dc7))
+* **scan:** recognize the Google Play Games launcher, nikke_launcher_google.exe ([2aba144](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/2aba14446b6ba089447fff6c6bfb8ba3fdec0e48))
+* **scan:** show when the agent loaded but its startup failed ([107ae39](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/107ae396a7b851acf0ad5ae0e7c2d085c593293a))
+
+
+### Documentation
+
+* correct the DLL folder and the CDN state ([5cb1ad2](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/5cb1ad204ddcb0007dd6ae5ab23245f7fe3f7738))
+
 ## [0.5.1](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.0...v0.5.1) (2026-11-04)
 
 
