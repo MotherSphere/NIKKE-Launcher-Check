@@ -592,6 +592,23 @@ fn home() -> Option<PathBuf> {
     std::env::var_os("HOME").filter(|h| !h.is_empty()).map(PathBuf::from)
 }
 
+/// The home folder of the user who started the tool, also under sudo or pkexec.
+#[cfg(all(unix, not(target_os = "macos")))]
+pub fn real_home() -> Option<PathBuf> {
+    real_user().0
+}
+
+#[cfg(target_os = "macos")]
+pub fn real_home() -> Option<PathBuf> {
+    home()
+}
+
+/// None on Windows, where the user's profile is a scan target already.
+#[cfg(windows)]
+pub fn real_home() -> Option<PathBuf> {
+    None
+}
+
 /// A string value of a registry key (`None` name: the default value). The outer
 /// `None` means the key does not exist. `view` is 0, KEY_WOW64_64KEY or KEY_WOW64_32KEY.
 #[cfg(windows)]

@@ -1,21 +1,30 @@
 //! The checks. Pure logic: reads files, never writes, never uses the network.
 
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
-use std::io;
+use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering::Relaxed;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use walkdir::WalkDir;
 
+use crate::exposure::{self, Exposure};
+use crate::hsts;
 use crate::locate::{self, Discovery, Progress, Stage, TargetKind, WalkStats, find_ci};
+use crate::timeline::{self, AgentRun, PayloadBuild, RunKind};
 
 pub const DOMAINS: [&str; 3] = ["insightjs.com", "analytics.insightjs.com", "insightjs.org"];
 pub const PAYLOAD_IP: &str = "89.127.233.127";
+/// The attacker's servers: 89.127.233.127 sent the agent, 89.126.250.172 served
+/// insightjs.com until about October 21, 2026 (reported by a victim).
+pub const ATTACKER_IPS: [&str; 2] = [PAYLOAD_IP, "89.126.250.172"];
 pub const CLSID: &str = "{E77CC89B-7401-4C04-8CED-149DB35ADD04}";
 
 const MAX_FILE: u64 = 64 * 1024 * 1024;
+/// Longer lines are cut when a file is read line by line.
+const MAX_LINE: usize = 64 * 1024;
 const MAX_EVIDENCE: usize = 5;
 const EVIDENCE_CHARS: usize = 240;
 
@@ -36,30 +45,88 @@ impl Severity {
     }
 }
 
+/// What a finding means. The window and the report group findings by kind and
+/// pick the steps to show from it.
+#[cfg_attr(not(windows), allow(dead_code))] // DllLoaded is only built on Windows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FindingKind {
+    /// debug.log shows the agent starting.
+    AgentRan,
+    /// A launcher log records the download of insight.bundle.
+    PayloadDownloaded,
+    /// The downloaded agent is still in the launcher's log folder.
+    PayloadFile,
+    /// k2f.agent.state or k2f_chan in the launcher data.
+    AgentState,
+    /// The loader script in the launcher's browser cache.
+    LoaderCached,
+    /// The launcher contacted insightjs.com, or one of its logs names insightjs.
+    LauncherContacted,
+    /// The launcher contacted analytics.insightjs.com, the server that sends the agent.
+    AgentServerContacted,
+    /// platform_experience_helper.dll in a browser's PlatformExperienceHelper folder.
+    ChromeDll,
+    /// The HKCU CLSID key that makes the browser load the DLL.
+    RegistryKey,
+    /// The HKCU CLSID key with no DLL path: the DLL was installed, then uninstalled.
+    RegistryLeftover,
+    /// Files of an earlier version in Chrome's Application\PlatformExperienceHelper folder.
+    LegacyDll,
+    /// A running program has the DLL loaded.
+    DllLoaded,
+    /// k2f files in Temp.
+    TempFile,
+    LauncherRunning,
+    /// A place the scan could not check.
+    Coverage,
+    /// Context that does not change the verdict.
+    Info,
+}
+
 #[derive(Debug, Clone)]
 pub struct Finding {
+    pub kind: FindingKind,
     pub severity: Severity,
     pub title: String,
     pub detail: String,
     pub path: Option<PathBuf>,
+    /// What "Open folder" shows: a file to select, or a folder.
+    pub open_path: Option<PathBuf>,
+    /// Text for a copy button, such as the registry key to delete.
+    pub copy_text: Option<String>,
     pub evidence: Vec<String>,
     pub time: Option<String>,
 }
 
 impl Finding {
-    fn new(severity: Severity, title: impl Into<String>, detail: impl Into<String>) -> Self {
+    fn new(kind: FindingKind, severity: Severity, title: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
+            kind,
             severity,
             title: title.into(),
             detail: detail.into(),
             path: None,
+            open_path: None,
+            copy_text: None,
             evidence: Vec::new(),
             time: None,
         }
     }
 
+    /// Sets the path, and what "Open folder" shows unless [`Finding::open`] changes it.
     fn at(mut self, path: &Path) -> Self {
         self.path = Some(path.to_path_buf());
+        self.open_path = Some(path.to_path_buf());
+        self
+    }
+
+    fn open(mut self, path: &Path) -> Self {
+        self.open_path = Some(path.to_path_buf());
+        self
+    }
+
+    fn copy(mut self, text: impl Into<String>) -> Self {
+        self.copy_text = Some(text.into());
         self
     }
 
@@ -120,12 +187,21 @@ pub struct ScanResult {
     pub hosts: Option<HostsStatus>,
     pub stats: WalkStats,
     pub seconds: f64,
+    /// Agent steps from debug.log and the tinyget logs, in log order per install.
+    pub runs: Vec<AgentRun>,
+    /// insight.bundle builds from the download headers in the tinyget logs.
+    pub builds: Vec<PayloadBuild>,
+    /// What the agent could read. None when no NIKKE install or launcher data was found.
+    pub exposure: Option<Exposure>,
 }
+
+/// The `scope` of a full scan; a folder scan has its paths.
+pub const COMPUTER_SCOPE: &str = "this computer";
 
 pub fn scan_computer(progress: &Progress) -> ScanResult {
     let start = Instant::now();
     let discovery = locate::discover_computer(progress);
-    run("this computer".into(), discovery, true, start, progress)
+    run(COMPUTER_SCOPE.into(), discovery, true, start, progress)
 }
 
 pub fn scan_folders(paths: &[PathBuf], progress: &Progress) -> ScanResult {
@@ -139,8 +215,9 @@ pub fn scan_folders(paths: &[PathBuf], progress: &Progress) -> ScanResult {
 }
 
 /// Runs every check on the discovered targets. `system_checks` adds the
-/// running-process check and the hosts file (left out in tests). A cancelled
-/// scan skips the remaining targets; its result is incomplete and is dropped.
+/// running-process check, the hosts file and the real home folder of a
+/// Linux or macOS user (left out in tests). A cancelled scan skips the
+/// remaining targets; its result is incomplete and is dropped.
 pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Instant, progress: &Progress) -> ScanResult {
     let started = utc(SystemTime::now()).unwrap_or_default();
     let tally = |findings: &[Finding]| {
@@ -149,23 +226,22 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         }
     };
     let mut groups = Vec::new();
+    let mut running = Vec::new();
     if system_checks {
         progress.set_stage(Stage::Programs);
-        let running = check_processes();
+        running = check_processes();
         tally(&running);
-        if !running.is_empty() {
-            groups.push(Group { label: "Running programs".into(), path: None, findings: running });
-        }
     }
     progress.set_stage(Stage::Locations);
     progress.checks_total.store(discovery.targets.len(), Relaxed);
+    let (mut runs, mut builds) = (Vec::new(), Vec::new());
     for target in &discovery.targets {
         if progress.cancelled() {
             break;
         }
         progress.show(&target.path);
         let mut findings = match target.kind {
-            TargetKind::InstallDir => check_install(&target.path),
+            TargetKind::InstallDir => check_install(&target.path, &mut runs, &mut builds),
             TargetKind::LauncherData => check_launcher_data(&target.path),
             TargetKind::UserProfile => check_profile(&target.path, target.host),
             TargetKind::WinePrefix => check_prefix(&target.path),
@@ -181,22 +257,41 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
             });
         }
     }
+    // After the locations: Windows keeps the DLL loaded until a restart, even once its files are gone.
+    #[cfg(windows)]
+    if system_checks && !progress.cancelled() {
+        let loaded = check_loaded_dlls();
+        tally(&loaded);
+        running.extend(loaded);
+    }
+    if !running.is_empty() {
+        groups.insert(0, Group { label: "Running programs".into(), path: None, findings: running });
+    }
     let coverage = check_coverage(&discovery);
     tally(&coverage);
     if !coverage.is_empty() {
         groups.push(Group { label: "Scan coverage".into(), path: None, findings: coverage });
     }
     let worst = groups.iter().flat_map(|g| &g.findings).map(|f| f.severity).max();
-    let found = discovery
-        .targets
-        .iter()
-        .any(|t| matches!(t.kind, TargetKind::InstallDir | TargetKind::LauncherData));
+    let has = |kind| discovery.targets.iter().any(|t| t.kind == kind);
+    let found = has(TargetKind::InstallDir) || has(TargetKind::LauncherData);
     let verdict = match worst {
         Some(Severity::Critical) => Verdict::Infected,
         Some(Severity::Warning) => Verdict::Exposed,
         _ if found => Verdict::NoTraces,
         _ => Verdict::NotFound,
     };
+    let exposure = (found && !progress.cancelled()).then(|| {
+        let mut homes: Vec<PathBuf> =
+            discovery.targets.iter().filter(|t| t.kind == TargetKind::UserProfile).map(|t| t.path.clone()).collect();
+        // Under Wine the agent's commands reach the whole home folder through Z:.
+        if system_checks && cfg!(unix) && has(TargetKind::WinePrefix) {
+            homes.extend(locate::real_home());
+        }
+        let mut seen = HashSet::new();
+        homes.retain(|h| seen.insert(fs::canonicalize(h).unwrap_or_else(|_| h.clone())));
+        exposure::collect(&homes)
+    });
     let hosts = system_checks.then(|| {
         progress.set_stage(Stage::Hosts);
         check_hosts()
@@ -211,6 +306,9 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         hosts,
         stats: discovery.stats,
         seconds: start.elapsed().as_secs_f64(),
+        runs,
+        builds,
+        exposure,
     }
 }
 
@@ -220,6 +318,7 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
     let has = |kind| discovery.targets.iter().any(|t| t.kind == kind);
     if has(TargetKind::LauncherData) && !has(TargetKind::InstallDir) {
         out.push(Finding::new(
+            FindingKind::Coverage,
             Severity::Info,
             "The NIKKE install folder was not found",
             "Launcher data was found, but not the install folder, so debug.log and the download logs were not checked. If you know where NIKKE is installed, scan that folder: \"Scan a folder...\" in the window, or nikke-check --cli <folder>.",
@@ -230,6 +329,7 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
     if !stats.unreadable.is_empty() {
         out.push(
             Finding::new(
+                FindingKind::Coverage,
                 Severity::Info,
                 "Some folders could not be read",
                 "The scan was not allowed to open these folders, so nothing in them was checked. On macOS, give Terminal (or the app you started this tool from) Full Disk Access in System Settings > Privacy & Security, then scan again. Elsewhere, scan again as a user who can read them.",
@@ -240,6 +340,7 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
     if !stats.skipped_mounts.is_empty() {
         out.push(
             Finding::new(
+                FindingKind::Coverage,
                 Severity::Info,
                 "Network drives were not scanned",
                 "\"Scan this computer\" skips network drives and remote mounts, because reading them is slow and a disconnected one can stop the scan. If NIKKE is installed on one, scan it with \"Scan a folder...\" or nikke-check --cli <folder>.",
@@ -252,55 +353,81 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
 
 // ---------------------------------------------------------------- A: install
 
-fn check_install(dir: &Path) -> Vec<Finding> {
+/// Needles of the agent's debug.log lines quoted in "The malware agent ran".
+const AGENT_LINES: [&[u8]; 5] = [b"k2f_chan", b"adopted ", b"resuming ", b"agent started as", b"lua downloaded to"];
+const MENTIONS: [&[u8]; 1] = [b"insightjs"];
+
+fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<PayloadBuild>) -> Vec<Finding> {
     let mut out = Vec::new();
     let launcher = find_ci(dir, &["Launcher"]);
     let debug = launcher.as_deref().and_then(|l| find_ci(l, &["intl_service", "debug.log"]));
+    let mut runs = Vec::new();
 
-    // A1
+    // A1: read line by line, because the launcher appends to debug.log at every launch.
     let debug_note = match debug.as_deref() {
         None => "No Launcher/intl_service/debug.log was found. It may have been deleted, or the launcher was never started from this folder.".to_string(),
-        Some(path) => match read_small(path) {
-            None => "Launcher/intl_service/debug.log exists but could not be read (too large or no permission).".to_string(),
-            Some(bytes) => {
-                if contains(&bytes, b"k2f_chan") {
-                    let lines = snippets(
-                        &bytes,
-                        &[b"k2f_chan", b"adopted ", b"agent started as", b"lua downloaded to"],
-                        MAX_EVIDENCE,
-                    );
-                    let time = lines.iter().find_map(|l| cef_time(l));
+        Some(path) => {
+            let (mut ran, mut agent, mut mentions) = (false, Vec::new(), Vec::new());
+            let read = each_line(path, |line| {
+                ran |= contains(line, b"k2f_chan");
+                for (lines, needles) in [(&mut agent, &AGENT_LINES[..]), (&mut mentions, &MENTIONS[..])] {
+                    if lines.len() < MAX_EVIDENCE {
+                        for s in snippets(line, needles, 1) {
+                            if !lines.contains(&s) {
+                                lines.push(s);
+                            }
+                        }
+                    }
+                }
+                runs.extend(timeline::debug_event(&String::from_utf8_lossy(line), path));
+            });
+            if read.is_err() {
+                out.push(
+                    Finding::new(
+                        FindingKind::Coverage,
+                        Severity::Info,
+                        "debug.log could not be read",
+                        "Launcher/intl_service/debug.log exists, but this scan was not allowed to open it, so it could not check whether the agent ran. Scan again as a user who can read it.",
+                    )
+                    .at(path),
+                );
+                "Launcher/intl_service/debug.log exists but could not be read (no permission).".to_string()
+            } else {
+                if ran {
+                    let time = agent.iter().find_map(|l| cef_time(l));
                     out.push(
                         Finding::new(
+                            FindingKind::AgentRan,
                             Severity::Critical,
                             "The malware agent ran",
                             "debug.log shows the remote-access agent starting inside the launcher (k2f_chan registered). While the launcher was open, the attacker could run commands on this computer.",
                         )
                         .at(path)
-                        .evidence(lines)
+                        .evidence(agent)
                         .time(time),
                     );
                 }
-                let lines = snippets(&bytes, &[b"insightjs"], MAX_EVIDENCE);
-                if !lines.is_empty() {
-                    let time = lines.iter().find_map(|l| cef_time(l));
+                if !mentions.is_empty() {
+                    let time = mentions.iter().find_map(|l| cef_time(l));
                     out.push(
                         Finding::new(
+                            FindingKind::LauncherContacted,
                             Severity::Critical,
                             "The launcher log mentions insightjs",
                             "debug.log names insightjs, the domain that serves the malicious script and the agent.",
                         )
                         .at(path)
-                        .evidence(lines)
+                        .evidence(mentions)
                         .time(time),
                     );
                 }
                 "Launcher/intl_service/debug.log was checked. It holds the launches since the file was created.".to_string()
             }
-        },
+        }
     };
 
     // A2
+    let mut downloads = Vec::new();
     if let Some(log) = launcher.as_deref().and_then(|l| find_ci(l, &["log"])) {
         for path in files_under(&log, 8) {
             let Some(bytes) = read_small(&path) else {
@@ -309,6 +436,7 @@ fn check_install(dir: &Path) -> Vec<Finding> {
             if bytes.starts_with(b"\x1bLJ") {
                 out.push(
                     Finding::new(
+                        FindingKind::PayloadFile,
                         Severity::Critical,
                         "The malware file is still on disk",
                         "This file in the launcher's log folder is LuaJIT bytecode. The launcher saved the downloaded agent (insight.bundle) under a tinyget log name.",
@@ -327,14 +455,23 @@ fn check_install(dir: &Path) -> Vec<Finding> {
                 continue;
             }
             let name = file_name(&path);
-            let (title, detail, needle): (&str, String, &[u8]) = if bundle {
+            let (kind, title, detail, needle): (FindingKind, &str, String, &[u8]) = if bundle {
+                let text = String::from_utf8_lossy(&bytes);
+                downloads.extend(text.lines().filter_map(|l| timeline::tinyget_download(l, &path)));
+                for build in timeline::payload_builds(&text, &path) {
+                    if !all_builds.iter().any(|b| b.etag == build.etag && b.last_modified == build.last_modified) {
+                        all_builds.push(build);
+                    }
+                }
                 (
+                    FindingKind::PayloadDownloaded,
                     "The launcher downloaded the malware",
                     format!("{name} records the launcher downloading insight.bundle from analytics.insightjs.com. That file is the remote-access agent."),
                     b"insight.bundle",
                 )
             } else {
                 (
+                    FindingKind::LauncherContacted,
                     "A launcher log mentions insightjs",
                     format!("{name} names insightjs, the domain that serves the malicious script and the agent."),
                     b"insightjs",
@@ -342,9 +479,17 @@ fn check_install(dir: &Path) -> Vec<Finding> {
             };
             let lines = snippets(&bytes, &[needle], MAX_EVIDENCE);
             let time = lines.iter().find_map(|l| log_time(l));
-            out.push(Finding::new(Severity::Critical, title, detail).at(&path).evidence(lines).time(time));
+            out.push(Finding::new(kind, Severity::Critical, title, detail).at(&path).evidence(lines).time(time));
         }
     }
+    // A tinyget download that debug.log does not record (debug.log deleted or cut) is a run of its own.
+    for download in downloads {
+        let logged = |r: &AgentRun| r.kind == RunKind::Downloaded && r.file == download.file;
+        if !runs.iter().any(logged) {
+            runs.push(download);
+        }
+    }
+    all_runs.extend(runs);
 
     // A3
     let debug_time = debug.as_deref().and_then(mtime);
@@ -352,7 +497,7 @@ fn check_install(dir: &Path) -> Vec<Finding> {
         Some(t) => format!("{debug_note} Last written {t}."),
         None => debug_note,
     };
-    out.push(Finding::new(Severity::Info, format!("NIKKE install found at {}", dir.display()), detail).at(dir));
+    out.push(Finding::new(FindingKind::Info, Severity::Info, format!("NIKKE install found at {}", dir.display()), detail).at(dir));
     out
 }
 
@@ -364,6 +509,8 @@ struct Hits {
     first: Option<PathBuf>,
     evidence: Vec<String>,
     newest: Option<SystemTime>,
+    /// A logged time that replaces the file times.
+    observed: Option<String>,
 }
 
 impl Hits {
@@ -380,13 +527,13 @@ impl Hits {
         self.newest = self.newest.max(modified);
     }
 
-    fn finding(self, severity: Severity, title: &str, detail: String) -> Option<Finding> {
+    fn finding(self, kind: FindingKind, severity: Severity, title: &str, detail: String) -> Option<Finding> {
         let first = self.first?;
         Some(
-            Finding::new(severity, title, detail)
+            Finding::new(kind, severity, title, detail)
                 .at(&first)
                 .evidence(self.evidence)
-                .time(self.newest.and_then(utc)),
+                .time(self.observed.or_else(|| self.newest.and_then(utc))),
         )
     }
 }
@@ -400,6 +547,7 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         let shown = fs::read_link(dir).map_or_else(|_| "an unknown target".into(), |t| t.display().to_string());
         return vec![
             Finding::new(
+                FindingKind::Coverage,
                 Severity::Info,
                 "Launcher data folder is a link and was not read",
                 format!("This folder links to {shown}, which is missing, a drive root or a folder above the link, so its files were not checked. Scan the real launcher data folder with \"Scan a folder...\" or nikke-check --cli <folder>."),
@@ -408,8 +556,8 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         ];
     };
     let dir = real.as_path();
-    let (mut agent, mut cache, mut network, mut other) =
-        (Hits::default(), Hits::default(), Hits::default(), Hits::default());
+    let (mut agent, mut server, mut cache, mut network, mut other) =
+        (Hits::default(), Hits::default(), Hits::default(), Hits::default(), Hits::default());
     let mut checked = 0usize;
     for path in files_under(dir, 12) {
         let Some(bytes) = read_small(&path) else {
@@ -417,6 +565,7 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         };
         checked += 1;
         let rel = path.strip_prefix(dir).unwrap_or(&path).display().to_string();
+        let name = file_name(&path);
         // k2f.agent.state is the agent's saved ID in Local Storage. It outlives the install folder and its debug.log.
         if contains(&bytes, b"k2f_chan") || contains(&bytes, b"k2f.agent") {
             // The key name only: the saved state that follows holds the agent's password.
@@ -425,49 +574,79 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
                 .map(|s| s.split("agent_pass").next().unwrap_or_default().to_string());
             agent.add(&path, &rel, snippet);
         }
-        if contains(&bytes, b"insightjs") {
-            let snippet = snippets(&bytes, &[b"insightjs"], 1).pop();
-            let name = file_name(&path);
+        // TransportSecurity stores hashed host names, so it never contains "insightjs".
+        if name == "TransportSecurity" {
+            let entries = hsts::entries(&String::from_utf8_lossy(&bytes));
+            let when = |seen: Option<u64>| seen.and_then(|s| UNIX_EPOCH.checked_add(Duration::from_secs(s))).and_then(utc);
+            let line = entries
+                .iter()
+                .map(|(host, seen)| match when(*seen) {
+                    Some(t) => format!("HSTS entry for {host}, last received {t}"),
+                    None => format!("HSTS entry for {host}"),
+                })
+                .collect::<Vec<_>>()
+                .join("; ");
+            if let Some((_, seen)) = entries.iter().find(|(host, _)| *host == "analytics.insightjs.com") {
+                server.add(&path, &rel, Some(line));
+                server.observed = when(*seen);
+            } else if !entries.is_empty() {
+                network.add(&path, &rel, Some(line));
+            }
+        } else if contains(&bytes, b"insightjs") {
             // Exact names: the CEF profile folder itself is called tbs_cache.
             let in_cache = path.strip_prefix(dir).unwrap_or(&path).components().any(|c| {
                 let c = c.as_os_str().to_string_lossy();
                 c.eq_ignore_ascii_case("Code Cache") || c.eq_ignore_ascii_case("Cache")
             });
-            let bucket = if ["Network Persistent State", "TransportSecurity", "Reporting and NEL"].contains(&name.as_str()) {
+            if name == "Network Persistent State" && contains(&bytes, b"analytics.insightjs.com") {
+                server.add(&path, &rel, snippets(&bytes, &[b"analytics.insightjs.com"], 1).pop());
+                continue;
+            }
+            let bucket = if ["Network Persistent State", "Reporting and NEL"].contains(&name.as_str()) {
                 &mut network
             } else if in_cache {
                 &mut cache
             } else {
                 &mut other
             };
-            bucket.add(&path, &rel, snippet);
+            bucket.add(&path, &rel, snippets(&bytes, &[b"insightjs"], 1).pop());
         }
     }
     let mut out = Vec::new();
-    let (a, c, n, o) = (agent.files, cache.files, network.files, other.files);
+    let (a, s, c, n, o) = (agent.files, server.files, cache.files, network.files, other.files);
     out.extend(agent.finding(
+        FindingKind::AgentState,
         Severity::Critical,
         "The malware agent left traces in the launcher data",
         format!("k2f_chan (the agent's bridge channel name) or k2f.agent.state (the ID the agent saves) appears in {} in the launcher data. This shows that the agent ran.", plural(a, "file")),
     ));
+    out.extend(server.finding(
+        FindingKind::AgentServerContacted,
+        Severity::Critical,
+        "The launcher contacted the agent server",
+        format!("analytics.insightjs.com is recorded in {} of network state. That server sends the agent (insight.bundle) and receives its check-ins. A launch where the loader ran without the agent recorded only insightjs.com.", plural(s, "file")),
+    ));
     out.extend(cache.finding(
+        FindingKind::LoaderCached,
         Severity::Warning,
         "The launcher loaded the malicious script",
         format!("The insightjs.com loader address appears in {} cached by the launcher's built-in browser. The injected script ran; this alone does not show that the agent was downloaded.", plural(c, "file")),
     ));
     out.extend(network.finding(
+        FindingKind::LauncherContacted,
         Severity::Warning,
         "The launcher connected to insightjs.com",
-        format!("insightjs.com appears in {} of network state, so the launcher's built-in browser contacted it.", plural(n, "file")),
+        format!("insightjs.com is recorded in {} of network state, so the launcher's built-in browser contacted it.", plural(n, "file")),
     ));
     out.extend(other.finding(
+        FindingKind::LauncherContacted,
         Severity::Warning,
         "Launcher data mentions insightjs.com",
         format!("insightjs.com appears in {} in the launcher data.", plural(o, "file")),
     ));
     if out.is_empty() {
         out.push(
-            Finding::new(Severity::Info, "No traces in the launcher data", format!("Checked {}.", plural(checked, "file")))
+            Finding::new(FindingKind::Info, Severity::Info, "No traces in the launcher data", format!("Checked {}.", plural(checked, "file")))
                 .at(dir),
         );
     }
@@ -492,45 +671,29 @@ fn check_profile(profile: &Path, host: bool) -> Vec<Finding> {
     let mut out = Vec::new();
     let local = find_ci(profile, &["AppData", "Local"]);
 
-    // C1
-    if let Some(helper) = local
-        .as_deref()
-        .and_then(|l| find_ci(l, &["Google", "Chrome", "User Data", "PlatformExperienceHelper"]))
-        .filter(|p| p.is_dir())
-    {
-        let entries: Vec<walkdir::DirEntry> = WalkDir::new(&helper).follow_links(false).min_depth(1).into_iter().flatten().collect();
-        // Chrome's own helper (platform_experience_helper.exe, LoadFeatures) lives in this
-        // folder too. The malware adds <sha256>/platform_experience_helper.dll.
-        let dll = entries
-            .iter()
-            .any(|e| e.file_name().to_string_lossy().eq_ignore_ascii_case("platform_experience_helper.dll"));
-        let hash_dir = entries
-            .iter()
-            .any(|e| e.depth() == 1 && e.file_type().is_dir() && is_sha256(&e.file_name().to_string_lossy()));
-        let mut contents: Vec<String> = entries
-            .iter()
-            .map(|e| e.path().strip_prefix(&helper).unwrap_or(e.path()).display().to_string())
-            .collect();
-        contents.sort();
-        if contents.is_empty() {
-            contents.push("(empty folder)".into());
+    // C1: the HKCU key is per user, so any Chromium browser of this user could be the target.
+    for (browser, firefox, rel) in exposure::BROWSERS {
+        if firefox || !rel.starts_with("AppData/") {
+            continue;
         }
-        let finding = if dll || hash_dir {
-            let detail = if dll {
-                "The malware's folder exists in Chrome's user data and holds platform_experience_helper.dll, which a hijacked HKCU COM registration makes Google Chrome load."
-            } else {
-                "The malware's folder exists in Chrome's user data: a subfolder named with 64 hex characters (a SHA-256), where the malware puts platform_experience_helper.dll. The DLL itself was not found, so it may already have been removed."
-            };
-            Finding::new(Severity::Critical, "Chrome persistence is installed", detail)
-        } else {
-            Finding::new(
-                Severity::Info,
-                "Chrome's Platform Experience Helper folder",
-                "This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters. That matches Chrome's own Platform Experience Helper (platform_experience_helper.exe, LoadFeatures), which per-user Chrome installs keep here. It is not a sign of infection.",
-            )
-        };
-        out.push(finding.at(&helper).evidence(capped(contents)).time(mtime(&helper)));
+        let parts: Vec<&str> = rel.split('/').chain(["PlatformExperienceHelper"]).collect();
+        if let Some(helper) = find_ci(profile, &parts).filter(|p| p.is_dir()) {
+            out.push(check_helper(browser, &helper));
+        }
     }
+
+    // C6: an earlier agent version put its files in Chrome's own Application folder.
+    #[cfg_attr(not(windows), allow(unused_mut))]
+    let mut apps: Vec<PathBuf> = find_ci(profile, &["AppData", "Local", "Google", "Chrome", "Application"]).into_iter().collect();
+    #[cfg(windows)]
+    if host {
+        for var in ["ProgramW6432", "ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"] {
+            if let Some(dir) = std::env::var_os(var) {
+                apps.push(Path::new(&dir).join("Google\\Chrome\\Application"));
+            }
+        }
+    }
+    check_legacy(apps, &mut out);
 
     // C2, C3
     let mut temps: Vec<PathBuf> = local.as_deref().and_then(|l| find_ci(l, &["Temp"])).into_iter().collect();
@@ -552,6 +715,82 @@ fn check_profile(profile: &Path, host: bool) -> Vec<Finding> {
         out.extend(check_host_registry());
     }
     out
+}
+
+/// A browser's PlatformExperienceHelper folder in its user data.
+fn check_helper(browser: &str, helper: &Path) -> Finding {
+    let entries: Vec<walkdir::DirEntry> = WalkDir::new(helper).follow_links(false).min_depth(1).into_iter().flatten().collect();
+    // Chrome's own helper (platform_experience_helper.exe, LoadFeatures) lives in this
+    // folder too. The malware adds <sha256>/platform_experience_helper.dll.
+    let dll = entries
+        .iter()
+        .find(|e| e.file_name().to_string_lossy().eq_ignore_ascii_case("platform_experience_helper.dll"));
+    let hash_dir = entries
+        .iter()
+        .find(|e| e.depth() == 1 && e.file_type().is_dir() && is_sha256(&e.file_name().to_string_lossy()));
+    let mut contents: Vec<String> = entries
+        .iter()
+        .map(|e| e.path().strip_prefix(helper).unwrap_or(e.path()).display().to_string())
+        .collect();
+    contents.sort();
+    if contents.is_empty() {
+        contents.push("(empty folder)".into());
+    }
+    let finding = if dll.is_some() || hash_dir.is_some() {
+        let mut detail = if dll.is_some() {
+            format!("The malware's folder exists in {browser}'s user data and holds platform_experience_helper.dll, which a hijacked HKCU COM registration makes {browser} load.")
+        } else {
+            format!("The malware's folder exists in {browser}'s user data: a subfolder named with 64 hex characters (a SHA-256), where the malware puts platform_experience_helper.dll. The DLL itself was not found, so it may already have been removed.")
+        };
+        // chrome_install creates the folder without checking that Chrome is installed.
+        if browser == "Chrome" {
+            detail += " The malware creates this folder even when Chrome is not installed.";
+        }
+        let target = dll.or(hash_dir).map_or(helper, |e| e.path());
+        Finding::new(FindingKind::ChromeDll, Severity::Critical, format!("{browser} persistence is installed"), detail)
+            .at(helper)
+            .open(target)
+    } else {
+        let detail = if browser == "Chrome" {
+            "This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters. That matches Chrome's own Platform Experience Helper (platform_experience_helper.exe, LoadFeatures), which per-user Chrome installs keep here. It is not a sign of infection."
+        } else {
+            "This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters, so it does not match the malware's layout. It is not a sign of infection."
+        };
+        Finding::new(FindingKind::Info, Severity::Info, format!("{browser}'s Platform Experience Helper folder"), detail).at(helper)
+    };
+    finding.evidence(capped(contents)).time(mtime(helper))
+}
+
+/// Files the agent's cleanup code deletes from `<Chrome Application>/PlatformExperienceHelper`,
+/// left by an earlier version. Chrome's own platform_experience_helper.exe sits there too.
+const LEGACY_FILES: [&str; 3] = ["platform_experience_helper.dll", "platform_experience_helper.dll.old", "old-clsid.txt"];
+
+fn check_legacy(apps: Vec<PathBuf>, out: &mut Vec<Finding>) {
+    let mut seen = HashSet::new();
+    for app in apps {
+        let Some(helper) = find_ci(&app, &["PlatformExperienceHelper"]) else {
+            continue;
+        };
+        if !seen.insert(fs::canonicalize(&helper).unwrap_or_else(|_| helper.clone())) {
+            continue;
+        }
+        let found: Vec<PathBuf> = LEGACY_FILES.iter().filter_map(|f| find_ci(&helper, &[f])).filter(|p| p.is_file()).collect();
+        let Some(first) = found.first() else {
+            continue;
+        };
+        out.push(
+            Finding::new(
+                FindingKind::LegacyDll,
+                Severity::Critical,
+                "Files of an older Chrome persistence are installed",
+                "Chrome's Application\\PlatformExperienceHelper folder holds files that the agent's cleanup code deletes: platform_experience_helper.dll, platform_experience_helper.dll.old or old-clsid.txt. An earlier version of the agent put its DLL here. Chrome's own platform_experience_helper.exe in this folder is normal.",
+            )
+            .at(&helper)
+            .open(first)
+            .evidence(found.iter().map(|p| file_name(p)))
+            .time(mtime(first)),
+        );
+    }
 }
 
 fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
@@ -579,6 +818,7 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
         let evidence = capped(k2f.iter().map(|p| file_name(p)).collect());
         out.push(
             Finding::new(
+                FindingKind::TempFile,
                 Severity::Critical,
                 "Files left by the malware in Temp",
                 "The agent names its temporary files k2f-bcreds-* (collected browser credentials) and k2f_screen_*.jpg (screenshots).",
@@ -598,6 +838,7 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
             .collect();
         out.push(
             Finding::new(
+                FindingKind::Info,
                 Severity::Info,
                 "Hex ID file in Temp",
                 "A 22-byte .tmp file in Temp holds a 22-character hex ID. On the infected computer studied, a file like this was written one second before the agent download. Other Tencent software writes a file with the same name (seen in a Delta Force prefix dated 2026-09-20, before the CDN files were changed), so on its own it is not a sign of infection.",
@@ -609,59 +850,75 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
     }
 }
 
+/// Copied for the user, to paste into `reg delete`.
+pub const CLSID_KEYS: [&str; 2] = [
+    "HKCU\\Software\\Classes\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04}",
+    "HKCU\\Software\\Classes\\WOW6432Node\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04}",
+];
+
+/// The registry finding for the CLSID key: the DLL it names, or the empty key
+/// the agent's chrome_uninstall leaves (it clears the default value only).
+fn clsid_finding(installed: bool, detail: &str) -> Finding {
+    if installed {
+        Finding::new(FindingKind::RegistryKey, Severity::Critical, "Registry persistence found (HKCU CLSID hijack)", format!("{detail} The malware registers it so Google Chrome loads its DLL. The HKLM copy that points to wpc.dll is part of Windows and is normal."))
+    } else {
+        Finding::new(FindingKind::RegistryLeftover, Severity::Critical, "Registry leftover of the persistence (HKCU CLSID)", format!("{detail} Its default value is empty or missing: the agent installed the DLL and later uninstalled it, which clears the value but leaves the key. The DLL may still be on disk. The HKLM copy that points to wpc.dll is part of Windows and is normal."))
+    }
+}
+
+/// HKCU only: HKLM has the normal wpc.dll entry.
 #[cfg(windows)]
-fn check_host_registry() -> Option<Finding> {
+fn check_host_registry() -> Vec<Finding> {
     use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, KEY_WOW64_32KEY, KEY_WOW64_64KEY};
     let key = format!("Software\\Classes\\CLSID\\{CLSID}\\InprocServer32");
     // The 32-bit launcher could also have written the key into the WOW6432Node view.
-    let views = [
-        (KEY_WOW64_64KEY, "HKCU\\Software\\Classes\\CLSID"),
-        (KEY_WOW64_32KEY, "HKCU\\Software\\Classes\\WOW6432Node\\CLSID"),
-    ];
-    let lines: Vec<String> = views
-        .into_iter()
-        .filter_map(|(view, label)| {
-            let value = locate::reg_string(HKEY_CURRENT_USER, &key, None, view)?;
-            Some(format!("{label}\\{CLSID}\\InprocServer32 (Default) = {}", value.as_deref().unwrap_or("(value not set)")))
-        })
-        .collect();
-    if lines.is_empty() {
-        return None;
+    let mut installed = Vec::new();
+    let mut leftover = Vec::new();
+    for (view, copy) in [KEY_WOW64_64KEY, KEY_WOW64_32KEY].into_iter().zip(CLSID_KEYS) {
+        let Some(value) = locate::reg_string(HKEY_CURRENT_USER, &key, None, view) else {
+            continue;
+        };
+        let line = format!("{copy}\\InprocServer32 (Default) = {}", value.as_deref().unwrap_or("(value not set)"));
+        let bucket = if value.is_some_and(|v| !v.trim().is_empty()) { &mut installed } else { &mut leftover };
+        bucket.push((line, copy));
     }
-    Some(
-        Finding::new(
-            Severity::Critical,
-            "Registry persistence found (HKCU CLSID hijack)",
-            format!("The key {CLSID}\\InprocServer32 exists under HKCU (see below). The malware registers it so Google Chrome loads its DLL. The HKLM copy that points to wpc.dll is part of Windows and is normal."),
-        )
-        .evidence(lines),
-    )
+    let detail = format!("The key {CLSID}\\InprocServer32 exists under HKCU (see below).");
+    [(true, installed), (false, leftover)]
+        .into_iter()
+        .filter(|(_, keys)| !keys.is_empty())
+        .map(|(dll, keys)| {
+            let copy = keys.iter().map(|(_, k)| *k).collect::<Vec<_>>().join("\n");
+            clsid_finding(dll, &detail).evidence(keys.into_iter().map(|(line, _)| line)).copy(copy)
+        })
+        .collect()
 }
 
 // -------------------------------------------------- C4: Wine prefix registry
 
 fn check_prefix(prefix: &Path) -> Vec<Finding> {
+    let mut out = Vec::new();
+    if let Some(drive_c) = find_ci(prefix, &["drive_c"]) {
+        let apps = ["Program Files", "Program Files (x86)"]
+            .iter()
+            .filter_map(|pf| find_ci(&drive_c, &[pf, "Google", "Chrome", "Application"]))
+            .collect();
+        check_legacy(apps, &mut out);
+    }
+    // user.reg is HKCU. system.reg (HKLM) has a normal copy pointing to wpc.dll.
     let Some(user_reg) = find_ci(prefix, &["user.reg"]) else {
-        return Vec::new();
+        return out;
     };
     let Some(bytes) = read_small(&user_reg) else {
-        return Vec::new();
+        return out;
     };
-    // user.reg is HKCU. system.reg (HKLM) has a normal copy pointing to wpc.dll.
     let evidence = clsid_keys(&String::from_utf8_lossy(&bytes));
     if evidence.is_empty() {
-        return Vec::new();
+        return out;
     }
-    vec![
-        Finding::new(
-            Severity::Critical,
-            "Registry persistence found (HKCU CLSID hijack)",
-            format!("user.reg (the HKCU hive of this Wine prefix) registers {CLSID}, the COM class the malware hijacks so Google Chrome loads its DLL. The HKLM copy in system.reg that points to wpc.dll is normal; this HKCU copy is not."),
-        )
-        .at(&user_reg)
-        .evidence(evidence)
-        .time(mtime(&user_reg)),
-    ]
+    let installed = evidence.iter().any(|l| l.strip_prefix("@=").is_some_and(|v| v.trim() != "\"\""));
+    let detail = format!("user.reg, the HKCU hive of this Wine prefix, holds the key {CLSID}.");
+    out.push(clsid_finding(installed, &detail).at(&user_reg).copy(CLSID_KEYS[0]).evidence(evidence).time(mtime(&user_reg)));
+    out
 }
 
 /// Section headers for the CLSID and their default (`@=`) values.
@@ -760,6 +1017,7 @@ fn check_processes() -> Vec<Finding> {
     evidence.sort();
     vec![
         Finding::new(
+            FindingKind::LauncherRunning,
             Severity::Critical,
             "The NIKKE launcher is running now",
             "Close the launcher immediately (end the process if it does not close) and disconnect from the network. While it runs, the attacker can send commands to this computer.",
@@ -780,6 +1038,104 @@ fn is_launcher_process(name: &str, cmd: &[OsString]) -> bool {
     name.to_ascii_lowercase().starts_with("nikke_launcher")
         || first.as_deref() == Some("nikke_launcher.exe")
         || (wine && cmd[1..].iter().any(|arg| base(arg) == "nikke_launcher.exe"))
+}
+
+/// Programs that have the malware's DLL loaded. Toolhelp snapshots only read
+/// the process and module lists; processes that deny access are skipped.
+#[cfg(windows)]
+fn check_loaded_dlls() -> Vec<Finding> {
+    use windows_sys::Win32::Foundation::{CloseHandle, ERROR_BAD_LENGTH, GetLastError, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, MODULEENTRY32W, Module32FirstW, Module32NextW, PROCESSENTRY32W, Process32FirstW,
+        Process32NextW, TH32CS_SNAPMODULE, TH32CS_SNAPMODULE32, TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, KEY_WOW64_32KEY, KEY_WOW64_64KEY};
+    let key = format!("Software\\Classes\\CLSID\\{CLSID}\\InprocServer32");
+    let registered: Vec<String> = [KEY_WOW64_64KEY, KEY_WOW64_32KEY]
+        .into_iter()
+        .filter_map(|view| locate::reg_string(HKEY_CURRENT_USER, &key, None, view).flatten())
+        .filter(|v| !v.trim().is_empty())
+        .collect();
+    let wide = |s: &[u16]| String::from_utf16_lossy(&s[..s.iter().position(|&c| c == 0).unwrap_or(s.len())]);
+    let me = std::process::id();
+    let mut evidence = Vec::new();
+    let mut first_dll = None;
+    // SAFETY: the entry structs are zeroed with dwSize set, as the API requires,
+    // and live across the First/Next calls. Each snapshot handle is closed once.
+    unsafe {
+        let procs = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if procs == INVALID_HANDLE_VALUE {
+            return Vec::new();
+        }
+        let mut pe = PROCESSENTRY32W { dwSize: size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        let mut more = Process32FirstW(procs, &mut pe) != 0;
+        while more {
+            let pid = pe.th32ProcessID;
+            if pid != 0 && pid != me {
+                // ERROR_BAD_LENGTH: the module list changed during the snapshot; the documented fix is to retry.
+                let mut snap = INVALID_HANDLE_VALUE;
+                for _ in 0..3 {
+                    snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+                    if snap != INVALID_HANDLE_VALUE || GetLastError() != ERROR_BAD_LENGTH {
+                        break;
+                    }
+                }
+                if snap != INVALID_HANDLE_VALUE {
+                    let mut me32 = MODULEENTRY32W { dwSize: size_of::<MODULEENTRY32W>() as u32, ..Default::default() };
+                    let mut modules = Vec::new();
+                    let mut next = Module32FirstW(snap, &mut me32) != 0;
+                    while next {
+                        modules.push(wide(&me32.szExePath));
+                        next = Module32NextW(snap, &mut me32) != 0;
+                    }
+                    CloseHandle(snap);
+                    // The first module is the program itself.
+                    if let Some(dll) = modules.iter().find(|m| is_persistence_dll(m, &registered)) {
+                        let exe = modules.first().cloned().unwrap_or_default();
+                        evidence.push(format!("PID {pid}: {} ({exe}) has {dll} loaded", wide(&pe.szExeFile)));
+                        first_dll.get_or_insert_with(|| PathBuf::from(dll));
+                    }
+                }
+            }
+            more = Process32NextW(procs, &mut pe) != 0;
+        }
+        CloseHandle(procs);
+    }
+    let Some(dll) = first_dll else {
+        return Vec::new();
+    };
+    evidence.sort();
+    vec![
+        Finding::new(
+            FindingKind::DllLoaded,
+            Severity::Critical,
+            "The persistence DLL is loaded now",
+            "These programs have the malware's platform_experience_helper.dll loaded. Windows keeps the file locked until they exit, and Chrome loads it again at its next start while the HKCU key is there. Delete the registry key, restart Windows, then delete the DLL's folder.",
+        )
+        .open(&dll)
+        .evidence(capped(evidence)),
+    ]
+}
+
+/// A module path that is the malware's DLL: platform_experience_helper.dll in a
+/// PlatformExperienceHelper folder or in a 64-hex subfolder of one (Chrome's own
+/// helper there is an .exe), or the DLL that the HKCU CLSID key names.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn is_persistence_dll(path: &str, registered: &[String]) -> bool {
+    let unquoted = |p: &str| p.trim().trim_matches('"').to_string();
+    if registered.iter().any(|r| unquoted(r).eq_ignore_ascii_case(&unquoted(path))) {
+        return true;
+    }
+    let lower = path.to_ascii_lowercase();
+    let mut parts = lower.rsplit(['\\', '/']);
+    if parts.next() != Some("platform_experience_helper.dll") {
+        return false;
+    }
+    match parts.next() {
+        Some("platformexperiencehelper") => true,
+        Some(dir) if is_sha256(dir) => parts.next() == Some("platformexperiencehelper"),
+        _ => false,
+    }
 }
 
 // ------------------------------------------------------------- helpers
@@ -804,6 +1160,32 @@ fn read_small(path: &Path) -> Option<Vec<u8>> {
         return None;
     }
     fs::read(path).ok()
+}
+
+/// Calls `f` on each line of a file of any size, without its line end. Lines
+/// longer than MAX_LINE are cut, so a file without line breaks cannot fill memory.
+fn each_line(path: &Path, mut f: impl FnMut(&[u8])) -> io::Result<()> {
+    let mut reader = io::BufReader::new(fs::File::open(path)?);
+    let mut line = Vec::new();
+    loop {
+        let buf = reader.fill_buf()?;
+        if buf.is_empty() {
+            break;
+        }
+        let newline = buf.iter().position(|&b| b == b'\n');
+        let part = &buf[..newline.unwrap_or(buf.len())];
+        line.extend_from_slice(&part[..part.len().min(MAX_LINE.saturating_sub(line.len()))]);
+        let used = newline.map_or(buf.len(), |n| n + 1);
+        reader.consume(used);
+        if newline.is_some() {
+            f(line.strip_suffix(b"\r").unwrap_or(&line));
+            line.clear();
+        }
+    }
+    if !line.is_empty() {
+        f(line.strip_suffix(b"\r").unwrap_or(&line));
+    }
+    Ok(())
 }
 
 /// Regular files under `dir`, without following symlinks (not even `dir` itself).
@@ -869,7 +1251,7 @@ fn clip(line: &str) -> String {
 
 /// "[2026-11-03 01:47:35.556]..." (tinyget logs) to "2026-11-03 01:47:35 (local time)".
 /// Log lines carry the clock of the computer that ran the launcher, not UTC.
-fn log_time(line: &str) -> Option<String> {
+pub(crate) fn log_time(line: &str) -> Option<String> {
     let start = line.find('[')? + 1;
     let s = line.get(start..start + 19)?;
     let ok = s.bytes().enumerate().all(|(i, c)| match i {
@@ -882,7 +1264,7 @@ fn log_time(line: &str) -> Option<String> {
 }
 
 /// "[1103/014736.593:INFO..." (CEF debug.log, no year) to "11-03 01:47:36 (local time, ...)".
-fn cef_time(line: &str) -> Option<String> {
+pub(crate) fn cef_time(line: &str) -> Option<String> {
     let start = line.find('[')? + 1;
     let s = line.get(start..start + 11)?;
     let b = s.as_bytes();
@@ -1366,5 +1748,182 @@ mod tests {
         let r = run("test".into(), d, false, Instant::now(), &progress);
         assert_eq!(progress.checks_done.load(Relaxed), 0);
         assert!(r.groups.is_empty());
+    }
+
+    const DATA: &str = "pfx/drive_c/users/steamuser/AppData/Roaming/nikke_launcher/tbs_cache";
+
+    fn transport_security(hosts: &[&str]) -> String {
+        let entries: Vec<String> = hosts
+            .iter()
+            .map(|h| format!(r#"{{"expiry":1825202857.5,"host":"{}","mode":"force-https","sts_include_subdomains":false,"sts_observed":1793666857.588157}}"#, hsts::key(h)))
+            .collect();
+        format!(r#"{{"expect_ct":[],"sts":[{}],"version":2}}"#, entries.join(","))
+    }
+
+    #[test]
+    fn agent_server_in_network_state_is_critical() {
+        let fx = Fixture::new("agentserver");
+        fx.file(&format!("{DATA}/TransportSecurity"), transport_security(&["insightjs.com", "analytics.insightjs.com"]).as_bytes());
+        fx.file(
+            &format!("{DATA}/Network Persistent State"),
+            br#"{"net":{"http_server_properties":{"servers":[{"server":"https://insightjs.com"},{"server":"https://analytics.insightjs.com"}]}}}"#,
+        );
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Infected);
+        let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentServerContacted).expect("server");
+        assert_eq!((f.severity, f.title.as_str()), (Severity::Critical, "The launcher contacted the agent server"));
+        assert_eq!(f.evidence.len(), 2, "{:?}", f.evidence);
+        assert!(f.evidence.iter().any(|e| e.contains("HSTS entry for analytics.insightjs.com, last received 2026-11-03 00:47:37 UTC")));
+        assert!(f.evidence.iter().any(|e| e.contains("https://analytics.insightjs.com")));
+        assert_eq!(f.time.as_deref(), Some("2026-11-03 00:47:37 UTC"));
+        // Both files went to the critical finding, none to the warning.
+        assert!(!has(&r, Severity::Warning, "The launcher connected to insightjs.com"));
+    }
+
+    #[test]
+    fn out_of_range_times_do_not_stop_the_scan() {
+        let fx = Fixture::new("hugetime");
+        let ts = transport_security(&["analytics.insightjs.com"]).replace("1793666857.588157", "18446744073709551615.0");
+        fx.file(&format!("{DATA}/TransportSecurity"), ts.as_bytes());
+        fx.file("NIKKE/Launcher/nikke_launcher.exe", b"MZ");
+        fx.file(
+            "NIKKE/Launcher/log/tinyget/tinyget.mem.log",
+            b"[2026-11-03 01:47:35.891][7][TRACE][x]x\t[CURL]Header out: GET /comm/assets/insight.bundle HTTP/1.1\n[2026-11-03 01:47:36.013][7][TRACE][x]x\t[CURL]Header in: ETag: \"ffffffffffffffff-3214f\"\n",
+        );
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Infected);
+        let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentServerContacted).expect("server");
+        assert!(f.evidence[0].contains("HSTS entry for analytics.insightjs.com") && !f.evidence[0].contains("last received"), "{:?}", f.evidence);
+        assert_eq!(r.builds.len(), 1);
+        assert_eq!(r.builds[0].uploaded, None);
+    }
+
+    #[test]
+    fn loader_host_alone_is_a_warning() {
+        let fx = Fixture::new("loaderhost");
+        fx.file(&format!("{DATA}/TransportSecurity"), transport_security(&["insightjs.com", "www.google.com"]).as_bytes());
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Exposed);
+        let f = findings(&r).into_iter().find(|f| f.title == "The launcher connected to insightjs.com").expect("warning");
+        assert_eq!(f.kind, FindingKind::LauncherContacted);
+        assert!(f.evidence[0].contains("HSTS entry for insightjs.com,"), "{:?}", f.evidence);
+    }
+
+    #[test]
+    fn registry_leftover_is_critical() {
+        for value in ["@=\"\"\n", ""] {
+            let fx = Fixture::new("leftover");
+            fx.dir("pfx/drive_c/users/steamuser");
+            fx.file("pfx/user.reg", format!("WINE REGISTRY Version 2\n\n{CLSID_KEY}{value}").as_bytes());
+            let r = fx.scan();
+            assert_eq!(r.verdict, Verdict::Infected);
+            let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::RegistryLeftover).expect("leftover");
+            assert_eq!(f.severity, Severity::Critical);
+            assert_eq!(f.copy_text.as_deref(), Some(CLSID_KEYS[0]));
+            assert!(!findings(&r).iter().any(|f| f.kind == FindingKind::RegistryKey));
+        }
+    }
+
+    #[test]
+    fn legacy_dll_in_chrome_application() {
+        let fx = Fixture::new("legacy");
+        let pf = "pfx/drive_c/Program Files/Google/Chrome/Application/PlatformExperienceHelper";
+        fx.file(&format!("{pf}/platform_experience_helper.exe"), b"MZ");
+        fx.dir("pfx/drive_c/users/steamuser");
+        let r = fx.scan();
+        assert!(findings(&r).is_empty(), "{:?}", findings(&r));
+        fx.file(&format!("{pf}/old-clsid.txt"), b"{x}");
+        fx.file(
+            "pfx/drive_c/users/steamuser/AppData/Local/Google/Chrome/Application/PlatformExperienceHelper/platform_experience_helper.dll.old",
+            b"MZ",
+        );
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Infected);
+        let legacy: Vec<&Finding> = findings(&r).into_iter().filter(|f| f.kind == FindingKind::LegacyDll).collect();
+        assert_eq!(legacy.len(), 2);
+        assert!(legacy.iter().all(|f| f.severity == Severity::Critical && f.evidence.len() == 1));
+        assert!(legacy.iter().any(|f| f.open_path.as_ref().is_some_and(|p| p.ends_with("old-clsid.txt"))));
+    }
+
+    #[test]
+    fn other_browsers_helper_folder() {
+        let fx = Fixture::new("edge");
+        let hash = "ab".repeat(32);
+        let dll = format!("pfx/drive_c/users/steamuser/AppData/Local/Microsoft/Edge/User Data/PlatformExperienceHelper/{hash}/platform_experience_helper.dll");
+        let dll = fx.file(&dll, b"MZ");
+        let r = fx.scan();
+        let f = findings(&r).into_iter().find(|f| f.title == "Edge persistence is installed").expect("edge");
+        assert_eq!((f.kind, f.severity), (FindingKind::ChromeDll, Severity::Critical));
+        assert_eq!(f.open_path.as_deref(), Some(dll.as_path()));
+        assert_eq!(r.verdict, Verdict::Infected);
+    }
+
+    #[test]
+    fn runs_and_builds() {
+        let fx = Fixture::new("runs");
+        fx.file("NIKKE/Launcher/nikke_launcher.exe", b"MZ");
+        // An earlier run whose debug.log lines are gone is still found through its tinyget log.
+        let resumed = b"[1103/120000.001:INFO:CONSOLE(1)] \"resuming 3c4c9b75-09e5-4619-99ee-97c1dc3c0373\", source:  (1)\r\n";
+        fx.file("NIKKE/Launcher/intl_service/debug.log", &[DEBUG_LOG, resumed].concat());
+        fx.file("NIKKE/Launcher/log/tinyget/tinyget.20261103-014725-874.log", TINYGET_LOG);
+        fx.file(
+            "NIKKE/Launcher/log/tinyget/tinyget.20261102-183405-583.log",
+            b"[2026-11-02 18:34:10.000][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261102-183410-000.log\n",
+        );
+        fx.file(
+            "NIKKE/Launcher/log/tinyget/tinyget.mem.log",
+            b"\x86\x96\x00\x00[2026-11-03 01:47:35.891][1492][TRACE][http_curl.cpp(502)]x\t[CURL]Header out: GET /comm/assets/insight.bundle HTTP/1.1\n.\n[2026-11-03 01:47:36.013][1492][TRACE][http_curl.cpp(499)]x\t[CURL]Header in: ETag: \"6ae90538-3214f\"\n",
+        );
+        let r = fx.scan();
+        let kinds: Vec<RunKind> = r.runs.iter().map(|run| run.kind).collect();
+        assert_eq!(
+            kinds,
+            [RunKind::Downloaded, RunKind::Adopted, RunKind::Started, RunKind::Resumed, RunKind::Downloaded]
+        );
+        assert_eq!(r.runs[2].host.as_deref(), Some("TESTHOST"));
+        assert_eq!(r.runs[4].file.as_deref(), Some("tinyget.20261102-183410-000.log"));
+        assert_eq!(r.runs[4].time.as_deref(), Some("2026-11-02 18:34:10 (local time)"));
+        assert_eq!(r.builds.len(), 1);
+        assert!(r.builds[0].known);
+        assert_eq!(r.builds[0].uploaded.as_deref(), Some("2026-11-02 21:48:40 UTC"));
+        let ran = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentRan).expect("A1");
+        assert_eq!(ran.evidence.len(), 5);
+    }
+
+    #[test]
+    fn exposure_needs_nikke() {
+        let fx = Fixture::new("exposure");
+        fx.file("pfx/drive_c/users/steamuser/.aws/credentials", b"");
+        assert!(fx.scan().exposure.is_none());
+        fx.dir("pfx/drive_c/users/steamuser/AppData/Roaming/nikke_launcher");
+        let e = fx.scan().exposure.expect("exposure");
+        assert_eq!(e.checked.len(), 1);
+        assert_eq!(e.secrets.len(), 1);
+    }
+
+    #[test]
+    fn persistence_dll_paths() {
+        let hash = "0f".repeat(32);
+        let user = format!("C:\\Users\\Bob\\AppData\\Local\\Google\\Chrome\\User Data\\PlatformExperienceHelper\\{hash}\\platform_experience_helper.dll");
+        assert!(is_persistence_dll(&user, &[]));
+        assert!(is_persistence_dll(&user.to_uppercase(), &[]));
+        assert!(is_persistence_dll("C:\\Program Files\\Google\\Chrome\\Application\\PlatformExperienceHelper\\platform_experience_helper.dll", &[]));
+        assert!(!is_persistence_dll("C:\\Program Files\\Google\\Chrome\\Application\\PlatformExperienceHelper\\platform_experience_helper.exe", &[]));
+        assert!(!is_persistence_dll("C:\\Windows\\System32\\wpc.dll", &[]));
+        assert!(!is_persistence_dll("C:\\x\\abc\\platform_experience_helper.dll", &[]));
+        assert!(is_persistence_dll("C:\\x\\y.dll", &["\"c:\\x\\y.dll\"".into()]));
+    }
+
+    #[test]
+    fn long_lines_are_cut() {
+        let fx = Fixture::new("lines");
+        let mut text = vec![b'a'; MAX_LINE * 2 + 10];
+        text.extend_from_slice(b"\r\nshort\r\nlast");
+        let path = fx.file("f.log", &text);
+        let mut lines = Vec::new();
+        each_line(&path, |l| lines.push(l.to_vec())).unwrap();
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[0].len(), MAX_LINE);
+        assert_eq!((lines[1].as_slice(), lines[2].as_slice()), (&b"short"[..], &b"last"[..]));
     }
 }
