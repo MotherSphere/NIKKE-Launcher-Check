@@ -67,7 +67,7 @@ A victim who inspected the DLL without running it reported this (it was not chec
 - It reads password fields in web pages, catches wallet recovery phrases passed through `JSON.stringify` and `JSON.parse`, and names MetaMask, Phantom, Binance and SubWallet.
 - It sends to `https://analytics.insightjs.com/px/<32 hex>`, where the 32 hex characters were that machine's agent ID. The DLL seems to be built per victim, so its hash is not a shared indicator: look for the path and the registry key.
 - Microsoft Defender Offline (signatures 1.463.110.0) did not detect it.
-- It stays locked until Windows restarts, even with Chrome closed. [What to do](what-to-do.md#remove-the-chrome-persistence-on-windows) gives the order of the steps.
+- It stays locked until Windows restarts, even with Chrome closed. [What to do](what-to-do.md#remove-the-dll-persistence) gives the order of the steps.
 
 The agent's cleanup code also deletes `service_util.dll` and a copy of `platform_experience_helper.dll` in Chrome's own `Application\PlatformExperienceHelper` folder, which probably come from an earlier version.
 

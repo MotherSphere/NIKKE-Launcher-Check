@@ -1,12 +1,12 @@
 # NIKKE Launcher Check
 
-NIKKE Launcher Check (`nikke-check`) looks for the traces left by the November 2026 compromise of the NIKKE PC launcher: the script loaded from insightjs.com, the remote-access agent that script downloaded, and the files the agent adds on Windows so that Google Chrome loads it. It only reads files: it does not change, move or delete anything, and it makes no network connections. It also checks whether your hosts file blocks the malicious domains, but it never edits that file.
+NIKKE Launcher Check (`nikke-check`) looks for the traces left by the November 2026 compromise of the NIKKE PC launcher: the script loaded from insightjs.com, the remote-access agent that script downloaded, and the DLL and registry key the agent adds on Windows so that Google Chrome loads it. It only reads files: it does not change, move or delete anything, and it makes no network connections. The only file it writes is a report you save yourself with "Save report...". It also checks whether your hosts file blocks the malicious domains, but it never edits that file.
 
 It runs on Windows, on Linux (Proton, Steam Deck, Lutris, Heroic, Bottles, Faugus) and on macOS, where NIKKE runs through Wine-based tools such as CrossOver, Whisky and Wineskin.
 
 <p>
   <img src="docs/images/home.png" width="49%" alt="The start screen, with the Scan this computer and Scan a folder... buttons">
-  <img src="docs/images/result.png" width="49%" alt="The result screen showing the Infected verdict and the first steps to take">
+  <img src="docs/images/result.png" width="49%" alt="The What happened tab of an Infected result, with the verdict and the four answers">
 </p>
 
 ## Download
@@ -50,7 +50,11 @@ xattr -d com.apple.quarantine nikke-check-macos-arm64
 
 ### In the window
 
-The window opens with two buttons. "Scan this computer" searches the usual install places for your system. "Scan a folder..." scans one folder you pick, such as a game library on another drive. [Using the tool](docs/usage.md) covers the window, the report and the `--cli` mode.
+The window opens with two buttons. "Scan this computer" searches the usual install places for your system. "Scan a folder..." scans one folder you pick, such as a game library on another drive.
+
+The result has three tabs. "What happened" answers four questions: did the malware run, is anything still active, is there something to clean up, and are you protected for next time. "What to do" lists only the steps that match what the scan found, in order, with buttons that open the folder to clean, Task Manager or Registry Editor, or copy a path, a key or a command. The tool never deletes anything itself. "Details" has every finding, the files the agent could read, and the locations checked.
+
+"Save report..." writes the text report to a file you choose, and "Copy report" puts it on the clipboard. Turn on "Hide my info" before you share it: it replaces your computer name, user names, agent ID and home folder in the saved or copied report (`--redact` on the command line). [Using the tool](docs/usage.md) covers the window, the report and the `--cli` mode.
 
 ## Verdicts
 
@@ -58,7 +62,7 @@ The window opens with two buttons. "Scan this computer" searches the usual insta
 |---|---|
 | No traces found | No trace of the malicious script or the agent was found in the NIKKE files this scan located. |
 | Exposed | The launcher loaded the malicious script or contacted insightjs.com, but no sign that the agent ran was found. |
-| Infected | Critical traces were found: the agent was downloaded or ran, it left persistence, or the launcher is running now. Treat this computer as compromised. |
+| Infected | Critical traces were found: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, the agent left persistence, or the launcher is running now. Treat this computer as compromised. |
 | NIKKE not found | No NIKKE install or launcher data was found in the places this scan checked. |
 
 Finding nothing is not proof that the computer is clean. [What it checks](docs/checks.md) lists the traces behind each verdict, and [Using the tool](docs/usage.md#command-line) has the `--cli` exit codes.
@@ -69,15 +73,15 @@ If the result is Infected, start with these steps:
 
 1. Close the NIKKE launcher now (on Windows, if it does not close, open Task Manager with Ctrl+Shift+Esc and end nikke_launcher.exe) and disconnect this computer from the network.
 2. Do not open the launcher again until Level Infinite confirms a fix.
-3. Click "Copy report" and save the text before you delete anything. Deleting the launcher cache also deletes one of the traces.
+3. Click "Save report..." before you delete anything. Deleting the launcher cache also deletes one of the traces.
 
-Then follow [What to do](docs/what-to-do.md#infected). It covers the launcher cache, blocking the domains, removing what the agent added for Chrome on Windows, and changing your passwords from a clean device (a phone or another computer that never ran the NIKKE launcher).
+Then follow the "What to do" tab, or [What to do](docs/what-to-do.md#infected). It covers the launcher cache, blocking the domains and the attacker's two IP addresses, removing the DLL and its registry key on Windows (the key first, then a restart, then the DLL folder), and changing your passwords from a clean device (a phone or another computer that never ran the NIKKE launcher).
 
 Whatever the result, do not open the NIKKE launcher until Level Infinite confirms a fix. If the result is Exposed and the launcher was open on or after October 24, 2026, also change your passwords from a clean device. [What to do](docs/what-to-do.md#exposed) has the steps.
 
 ## Documentation
 
-- [Using the tool](docs/usage.md): checking the download, the window, the report, the command line and its exit codes.
+- [Using the tool](docs/usage.md): checking the download, the window and its tabs, saving and redacting the report, the command line and its exit codes.
 - [What to do](docs/what-to-do.md): the steps for each verdict, with the paths to clean on each system.
 - [What happened](docs/incident.md): the incident, a timeline and the indicators of compromise.
 - [What it checks](docs/checks.md): every check and its severity, how the verdict is chosen, and the limits.

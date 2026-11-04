@@ -108,30 +108,73 @@ While a scan runs, the window shows:
 
 ### Result screen
 
-The result screen starts with the verdict and its summary, then counts the critical, warning and info findings, and shows the number of items scanned and the duration.
+Above the result are "Copy report", "Save report...", the "Hide my info" switch, "Scan again" (the same scan once more) and "New scan" (back to the start screen). The result itself has three tabs. It opens on "What happened", or on "What to do" when the launcher is running or a program has the malware's DLL loaded.
 
-- "Copy report" puts the text report on the clipboard. "Scan again" runs the same scan again. "New scan" goes back to the start screen.
-- For an Infected or Exposed verdict, the steps under "What to do" come before the findings. For the other verdicts they come after the findings.
-- Findings are grouped by location. Each one has a severity (CRITICAL, WARNING or INFO), a title, an explanation, the path, the time when it is known, and up to 5 lines of evidence quoted from the file.
-- "Protection" shows whether the hosts file blocks each malicious domain. "Copy these lines" copies the lines to add for the domains that are not blocked.
-- "Limits of this check" ends the page, with the link to the full write-up ("Copy link") and the scan statistics.
+#### What happened
 
-If the scan stops with an internal error, the window says so and offers "Scan again". If the error comes back, run `nikke-check --cli` in a terminal to get the report as text.
+The verdict and its summary come first, then four answers, each with a colored reply and the reasons behind it:
+
+- "Did the malware run on this computer?" Yes, No or Cannot tell. With Yes, the agent runs found in the logs follow, one line each: the time, whether the agent was downloaded, started for the first time or started again with its saved ID, the computer name it sent, and the log the line comes from. A "No" turns orange when part of the scan could not be done, such as a `debug.log` that could not be read.
+- "Is anything still active?" The running launcher, a program that has the DLL loaded, the registry key, or the DLL files.
+- "Is there something to clean up?" The DLL folders, the registry key or its empty leftover, the older DLL files, the `k2f` files in Temp, and the launcher cache when it holds traces. With nothing found, it still says to delete `tbs_cache` before the launcher is opened again.
+- "Are you protected for next time?" Each domain in the hosts file, and the two IP addresses, which only a firewall or router can block.
+
+When the download logs keep the headers of the agent download, a "Payload build" card gives the ETag, the upload time it encodes, the size and whether it is one of the 4 known builds. "See what to do" opens the next tab.
+
+#### What to do
+
+The steps that match what the scan found, numbered in the order to do them. Each has a "Done" box to tick; the marks are not saved. Depending on the result, the steps are:
+
+- Scan the folder where NIKKE is installed: first when NIKKE was not found, and right after "Save the report" when launcher data was found but not the install, because `debug.log` in the install can change the result.
+- Close the launcher, or the programs that have the DLL loaded. On Windows, "Open Task Manager" starts Task Manager. On Linux and macOS, the step gives a `pkill` command.
+- Save the report before you delete anything ("Save report..." and "Copy report").
+- Remove the DLL, or delete the registry key when no DLL was found: "Copy key path", "Open Registry Editor", the restart when Windows needs one, and "Open folder" for the 64-hex folder. In a Wine prefix it gives a `wine regedit` command for the prefix, and a `protontricks` command for a Steam prefix.
+- Clear the launcher cache, with "Open folder" at each `tbs_cache`.
+- Change your passwords from another device. The list names the browsers with saved logins, the wallet extensions and the secret files found, and "Copy this list" copies it.
+- Block the domains: on Windows "Copy hosts path" and "Copy these lines" for Notepad, on Linux and macOS a command that adds the lines to `/etc/hosts`. Then a firewall command for the two IP addresses (PowerShell on Windows, `ufw` on Linux).
+- Do not open the launcher until Level Infinite confirms a fix.
+
+"Open folder" opens the file manager with the file or folder selected: Explorer on Windows, Finder on macOS, and on Linux the file manager that answers the freedesktop `FileManager1` D-Bus call, or `xdg-open` on the parent folder. If the file was deleted since the scan, the nearest folder that still exists opens. These buttons only open windows and change nothing.
+
+[What to do](what-to-do.md) explains each step.
+
+#### Details
+
+- Counts of critical, warning and info findings, the items scanned and the duration, then the "Checked:" line.
+- "Your data the malware could reach": the browser profiles with saved logins, the wallet extensions and the secret files found in the checked home folders and profiles, each with "Open folder". The scan only checks that these files exist and never opens them.
+- The findings, grouped: "Proof the malware ran", "Things to clean up", "Signs of exposure", "Information" (closed until you click "Show") and "What this scan could not check". Each finding has a severity (CRITICAL, WARNING or INFO), a title, an explanation, what it means, where it was found, the path and the time when they are known, and the buttons "Open folder", "Copy path" or "Copy key path". "Show technical details" shows up to 5 lines of evidence quoted from the file.
+- "Protection": whether the hosts file blocks each domain, with "Copy these lines" for the ones that are not blocked.
+- "Limits of this check", the write-up link ("Copy link" and "Open link"), the locations checked and the scan statistics.
+
+If the scan stops with an internal error, the window says so and offers "Scan again". If the error comes back, run `nikke-check --cli` in a terminal to get the report as text (on Windows, see [Windows console](#windows-console)).
 
 ## The report
 
-"Copy report" and `--cli` give the same text report. Its parts, in order:
+"Copy report", "Save report..." and `--cli` give the same text report. Its parts, in order:
 
 1. The tool name and version, `Scan of:` (what was scanned) and `Started:` (the start time in UTC).
 2. `VERDICT:` and the summary of the verdict.
-3. `Locations checked:`, with each location found tagged `[NIKKE install]`, `[Launcher data]`, `[Wine prefix]` or `[User profile]`.
-4. `FINDINGS`, grouped by location. Each finding is tagged `[CRITICAL]`, `[WARNING]` or `[INFO]` and can have a `Path:` line, a `Time:` line and evidence lines that start with `|`.
-5. `PROTECTION`: which domains the hosts file blocks, and the lines to add for the others.
-6. `WHAT TO DO`: the steps for the verdict, the same as in [What to do](what-to-do.md).
+3. `WHAT HAPPENED`: the four answers with their reasons, the agent runs and the payload builds.
+4. `WHAT TO DO`: the numbered steps, with the paths, registry keys and commands the window shows, and an `Open:` line for each folder to open.
+5. `DETAILS`: `Locations checked:` with each location tagged `[NIKKE install]`, `[Launcher data]`, `[Wine prefix]` or `[User profile]`, the data the malware could reach, and the findings in the same groups as the window. Each finding is tagged `[CRITICAL]`, `[WARNING]` or `[INFO]` and can have `Path:`, `Open:`, `Time:` and `Registry key:` lines and evidence lines that start with `|`.
+6. `PROTECTION`: which domains the hosts file blocks, the lines to add for the others, and the two IP addresses.
 7. `LIMITS OF THIS CHECK` and the link to the write-up.
 8. `Scan stats:`: entries visited, folders, permission errors, network drives skipped and the time taken. When the entry limit was reached, this line says that some folders were not visited.
 
-Save the report before you clean anything, because deleting `tbs_cache` also deletes the `k2f.agent.state` trace. The report holds paths on your computer, which often include your user name, and an Infected report can quote the computer name the agent logged. Read it before you post it in public.
+Save the report before you clean anything, because deleting `tbs_cache` also deletes the `k2f.agent.state` trace.
+
+### Save and share the report
+
+"Save report..." opens a save dialog with the name `nikke-check-report-<date>.txt`. That file is the only one the tool writes, and only where you choose. "Copy report" puts the same text on the clipboard.
+
+The report holds paths on your computer, which often include your user name, and an Infected report can quote the computer name and the agent ID the agent logged. Turn on "Hide my info" before you copy or save a report you plan to share, or add `--redact` on the command line. It replaces, in the report only:
+
+- your home folder with `<home>`,
+- your user names, and the user folder names of the profiles found, with `<user>` when they appear as a folder name in a path,
+- this computer's name and the name each agent run sent with `<computer>`,
+- the agent IDs from the logs with `<agent-id>`, and any other UUID except the CLSID with `<id>`.
+
+The window keeps showing everything, so a screenshot of the window is not redacted. Read the report before you post it in public.
 
 ## Command line
 
@@ -140,6 +183,8 @@ nikke-check                  Open the window
 nikke-check PATH             Open the window and scan this folder
 nikke-check --cli            Scan this computer and print a report
 nikke-check --cli PATH...    Scan only these folders and print a report
+nikke-check --cli --redact   Replace the computer name, user names, agent IDs
+                             and home folder in the report (any --cli form)
 nikke-check --help           Show this help
 ```
 
@@ -148,8 +193,11 @@ nikke-check --help           Show this help
 ```
 nikke-check --cli                          # scan this computer
 nikke-check --cli /mnt/Games/NIKKE ~/.wine # scan only these folders
+nikke-check --cli --redact > report.txt    # scan this computer, save a report to share
 nikke-check /mnt/Games/NIKKE               # open the window and scan this folder
 ```
+
+`--redact` goes after `--cli`, before or after the folders.
 
 The report goes to standard output. On Linux and macOS, `nikke-check --cli > nikke-report.txt` saves it to a file.
 
@@ -163,7 +211,7 @@ Exit codes with `--cli`:
 | 3 | No NIKKE install or launcher data found |
 | 4 | Invalid arguments: an unknown option, or with `--cli` a path that is not a folder or a folder that cannot be read |
 
-An unknown option such as `--foo` also exits with code 4 without `--cli`. `nikke-check PATH` does not check the path before the window opens. If PATH is not a folder, the window opens and says "Only folders can be scanned. Drop the folder that holds the file." If the window cannot open, the program prints `Could not open the window:` with the reason and exits with code 1.
+An unknown option such as `--foo` also exits with code 4 without `--cli`. `nikke-check PATH` does not check the path before the window opens. If PATH is not a folder, the window opens and says "Only folders can be scanned. Drop the folder that holds the file." If the window cannot open, the program prints `Could not open the window:` with the reason and exits with code 1. On Windows, where there is no console to print to, an error box shows the reason and the PowerShell command that gives the report without the window (see [Windows console](#windows-console)).
 
 ### Windows console
 
@@ -180,4 +228,10 @@ In PowerShell, pipe the output so that PowerShell waits:
 
 ```
 .\nikke-check-windows-x86_64.exe --cli | Out-Host; $LASTEXITCODE
+```
+
+If the browser saved the file as `nikke-check-windows-x86_64 (1).exe`, because an older copy was already in the folder, put the name in quotes after `&`. The Windows error box and the window give the command in this form:
+
+```
+& '.\nikke-check-windows-x86_64 (1).exe' --cli | Out-Host
 ```
