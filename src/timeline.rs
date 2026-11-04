@@ -8,9 +8,17 @@ use std::time::{Duration, UNIX_EPOCH};
 use crate::scan::{cef_time, log_time, utc};
 
 /// The ETags of the builds of insight.bundle seen so far (nginx: hex mtime and
-/// hex size, 0x3214f = 205,135 bytes), uploaded Nov 1 18:08:55, Nov 2 17:48:47,
-/// Nov 2 21:48:40, Nov 3 12:31:04 and Nov 3 14:56:40 GMT.
-pub const KNOWN_BUILDS: [&str; 5] = ["6ae78037-3214f", "6ae8ccff-3214f", "6ae90538-3214f", "6ae9d408-3214f", "6ae9f628-3214f"];
+/// hex size, 0x3214f = 205,135 bytes), uploaded Oct 31 15:38:43, Nov 1 01:06:14,
+/// Nov 1 18:08:55, Nov 2 17:48:47, Nov 2 21:48:40, Nov 3 12:31:04 and Nov 3 14:56:40 GMT.
+pub const KNOWN_BUILDS: [&str; 7] = [
+    "6ae60b83-3214f",
+    "6ae69086-3214f",
+    "6ae78037-3214f",
+    "6ae8ccff-3214f",
+    "6ae90538-3214f",
+    "6ae9d408-3214f",
+    "6ae9f628-3214f",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunKind {
@@ -94,6 +102,45 @@ pub fn tinyget_download(line: &str, source: &Path) -> Option<AgentRun> {
         file: Some(base_name(path)),
         source: source.to_path_buf(),
     })
+}
+
+/// The insight.bundle downloads in a tinyget log that finished. The launcher logs
+/// AddTask first and OnDownloadResult later under the same task ID. A failed
+/// attempt (server down, curl_error=7, result=2, total=0) is not a download.
+pub fn tinyget_downloads(text: &str, source: &Path) -> Vec<AgentRun> {
+    let mut out = Vec::new();
+    let mut pending: HashMap<&str, AgentRun> = HashMap::new();
+    for line in text.lines() {
+        if let Some(run) = tinyget_download(line, source) {
+            if let Some(id) = field(line, "task_id=") {
+                pending.insert(id, run);
+            }
+        } else if line.contains("OnDownloadResult")
+            && line.contains("insight.bundle")
+            && let Some(run) = field(line, "task=").and_then(|id| pending.remove(id))
+            && finished(line)
+        {
+            out.push(run);
+        }
+    }
+    out
+}
+
+/// A line that shows an insight.bundle download completing, even when the buffer
+/// of tinyget.mem.log no longer holds its AddTask line.
+pub fn bundle_downloaded(text: &str) -> bool {
+    text.lines().any(|l| {
+        l.contains("insight.bundle") && (l.contains("curl perform success") || (l.contains("OnDownloadResult") && finished(l)))
+    })
+}
+
+fn finished(line: &str) -> bool {
+    field(line, "result=") == Some("0") && field(line, "total=").is_some_and(|t| t != "0")
+}
+
+/// The value after `key` in a tinyget line, up to the next separator.
+fn field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
+    line.split_once(key)?.1.split([',', ' ', ';', '\t']).next()
 }
 
 fn base_name(path: &str) -> String {
@@ -181,6 +228,19 @@ mod tests {
     }
 
     #[test]
+    fn only_finished_downloads_count() {
+        let add = "[2026-11-03 01:47:35.556][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, task_id=2147483648, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261103-014735-553.log";
+        let ok = "[2026-11-03 01:47:36.147][1492][ERROR][download_task.cpp(519)]tiny_downloader::DownloadTask::OnDownloadResult\tOnDownloadResult, task=2147483648, result=0, error_code=0, strategy=0, total=205135, err_msg=, url=https://analytics.insightjs.com/comm/assets/insight.bundle";
+        let failed = "[2026-11-03 20:41:59.613][1492][ERROR][download_task.cpp(519)]tiny_downloader::DownloadTask::OnDownloadResult\tOnDownloadResult, task=2147483648, result=2, error_code=7, strategy=0, total=0, err_msg=, url=https://analytics.insightjs.com/comm/assets/insight.bundle";
+        let src = Path::new("t.log");
+        assert_eq!(tinyget_downloads(&format!("{add}\n{ok}\n"), src).len(), 1);
+        assert!(tinyget_downloads(&format!("{add}\n{failed}\n"), src).is_empty());
+        // The second session's failure does not undo the first one's download.
+        assert_eq!(tinyget_downloads(&format!("{add}\n{ok}\n{add}\n{failed}\n"), src).len(), 1);
+        assert!(bundle_downloaded(ok) && !bundle_downloaded(&format!("{add}\n{failed}")));
+    }
+
+    #[test]
     fn builds_from_curl_headers() {
         let text = "\
 [2026-11-03 01:47:35.891][1492][TRACE][http_curl.cpp(502)]x\t[CURL]Header out: GET /comm/assets/insight.bundle HTTP/1.1
@@ -213,7 +273,15 @@ mod tests {
             .collect();
         assert_eq!(
             uploaded,
-            ["2026-11-01 18:08:55 UTC", "2026-11-02 17:48:47 UTC", "2026-11-02 21:48:40 UTC", "2026-11-03 12:31:04 UTC", "2026-11-03 14:56:40 UTC"]
+            [
+                "2026-10-31 15:38:43 UTC",
+                "2026-11-01 01:06:14 UTC",
+                "2026-11-01 18:08:55 UTC",
+                "2026-11-02 17:48:47 UTC",
+                "2026-11-02 21:48:40 UTC",
+                "2026-11-03 12:31:04 UTC",
+                "2026-11-03 14:56:40 UTC"
+            ]
         );
     }
 }

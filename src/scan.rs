@@ -473,7 +473,7 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                     )
                     .at(&path)
                     .evidence([format!(
-                        "LuaJIT bytecode header (1B 4C 4A), {} bytes. The known agent is 205,135 bytes.",
+                        "LuaJIT bytecode header (1B 4C 4A), {} bytes. The known builds are 205,135 bytes, and an Oct 23 build saved as k2f.lua was 165,108 bytes.",
                         bytes.len()
                     )])
                     .time(mtime(&path)),
@@ -492,7 +492,7 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                 continue;
             }
             let text = String::from_utf8_lossy(&bytes);
-            downloads.extend(text.lines().filter_map(|l| timeline::tinyget_download(l, &path)));
+            downloads.extend(timeline::tinyget_downloads(&text, &path));
             for build in timeline::payload_builds(&text, &path) {
                 if !all_builds.iter().any(|b| b.etag == build.etag && b.last_modified == build.last_modified) {
                     all_builds.push(build);
@@ -500,17 +500,23 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
             }
             let lines = snippets(&bytes, &[b"insight.bundle"], MAX_EVIDENCE);
             let time = lines.iter().find_map(|l| log_time(l));
-            out.push(
+            // A request the server never answered (curl_error=7, total=0) is only an attempt.
+            let finding = if timeline::bundle_downloaded(&text) {
                 Finding::new(
                     FindingKind::PayloadDownloaded,
                     Severity::Critical,
                     "The launcher downloaded the malware",
                     format!("{name} records the launcher downloading insight.bundle from analytics.insightjs.com. That file is the remote-access agent."),
                 )
-                .at(&path)
-                .evidence(lines)
-                .time(time),
-            );
+            } else {
+                Finding::new(
+                    FindingKind::LauncherContacted,
+                    Severity::Warning,
+                    "The launcher asked for the malware, but no download finished",
+                    format!("{name} records a request for insight.bundle from analytics.insightjs.com, but no line shows it finishing. A failed request logs curl_error and total=0. The loader asked for the agent, which alone does not show that the agent arrived: debug.log shows whether it ran."),
+                )
+            };
+            out.push(finding.at(&path).evidence(lines).time(time));
         }
     }
     // A tinyget download that debug.log does not record (debug.log deleted or cut) is a run of its own.
@@ -852,7 +858,7 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
                 FindingKind::TempFile,
                 Severity::Critical,
                 "Files left by the malware in Temp",
-                "The agent names its temporary files k2f-bcreds-* (collected browser credentials) and k2f_screen_*.jpg (screenshots).",
+                "The agent names its temporary files k2f-bcreds-* (collected browser credentials), k2f-keyscan-* (an early build) and k2f_screen_* (screenshots, .jpg, or .png in the early build).",
             )
             .at(first)
             .evidence(evidence)
@@ -1391,7 +1397,8 @@ mod tests {
 [1103/014736.625:INFO:CONSOLE(1)] \"agent started as TESTHOST\", source:  (1)\r\n";
 
     const TINYGET_LOG: &[u8] = b"[2026-11-03 01:47:25.874][316][INFO][main.cpp(1)]start\n\
-[2026-11-03 01:47:35.556][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, task_id=2147483648, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261103-014735-553.log\n";
+[2026-11-03 01:47:35.556][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, task_id=2147483648, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261103-014735-553.log\n\
+[2026-11-03 01:47:36.147][1492][ERROR][download_task.cpp(519)]tiny_downloader::DownloadTask::OnDownloadResult\tOnDownloadResult, task=2147483648, result=0, error_code=0, strategy=0, total=205135, err_msg=, url=https://analytics.insightjs.com/comm/assets/insight.bundle\n";
 
     #[test]
     fn loader_only_log_is_a_warning() {
@@ -1435,6 +1442,23 @@ mod tests {
         assert!(dl.detail.contains("tinyget.20261103-014725-874.log"));
         assert!(has(&r, Severity::Critical, "The malware file is still on disk"));
         assert!(findings(&r).iter().all(|f| f.evidence.len() <= 5 && f.evidence.iter().all(|e| e.chars().count() <= 240)));
+    }
+
+    #[test]
+    fn failed_download_is_only_an_attempt() {
+        let fx = Fixture::new("attempt");
+        fx.file("NIKKE/Launcher/nikke_launcher.exe", b"MZ");
+        fx.file("NIKKE/Launcher/intl_service/debug.log", b"[1103/204159.001:INFO:CONSOLE(1)] \"page loaded\"\n");
+        fx.file(
+            "NIKKE/Launcher/log/tinyget/tinyget.20261103-204150-000.log",
+            b"[2026-11-03 20:41:59.453][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, task_id=2147483648, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=C:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261103-204159-450.log\n\
+[2026-11-03 20:41:59.613][1492][ERROR][download_task.cpp(519)]tiny_downloader::DownloadTask::OnDownloadResult\tOnDownloadResult, task=2147483648, result=2, error_code=7, strategy=0, total=0, err_msg=, url=https://analytics.insightjs.com/comm/assets/insight.bundle\n",
+        );
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Exposed);
+        assert!(has(&r, Severity::Warning, "The launcher asked for the malware, but no download finished"));
+        assert!(!findings(&r).iter().any(|f| f.kind == FindingKind::PayloadDownloaded));
+        assert!(r.runs.is_empty());
     }
 
     #[test]
@@ -1919,7 +1943,8 @@ mod tests {
         fx.file("NIKKE/Launcher/log/tinyget/tinyget.20261103-014725-874.log", TINYGET_LOG);
         fx.file(
             "NIKKE/Launcher/log/tinyget/tinyget.20261102-183405-583.log",
-            b"[2026-11-02 18:34:10.000][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261102-183410-000.log\n",
+            b"[2026-11-02 18:34:10.000][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, task_id=2147483648, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261102-183410-000.log\n\
+[2026-11-02 18:34:10.600][1492][ERROR][download_task.cpp(519)]tiny_downloader::DownloadTask::OnDownloadResult\tOnDownloadResult, task=2147483648, result=0, error_code=0, strategy=0, total=205135, err_msg=, url=https://analytics.insightjs.com/comm/assets/insight.bundle\n",
         );
         fx.file(
             "NIKKE/Launcher/log/tinyget/tinyget.mem.log",

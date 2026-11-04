@@ -29,7 +29,7 @@ The modified `vue-bucket.min.js` (135,273 bytes, SHA-256 `3aaafbd612f04501a6fdb0
 | Oct 24, 01:16 | A reported start on a Linux machine under Proton, where the payload was saved as `Launcher/log/tinyget/k2f.lua`. A Windows machine logged a start at 01:43 the same day. |
 | Oct 28, 15:46:09 | `FeedList.feb647c9.js` is cleaned at the origin. |
 | Oct 24 to Nov 3 | More reported starts. The agent was served on some launches only: one machine got it on 3 of about 19 launches since September 27. |
-| Nov 1 18:08:55, Nov 2 17:48:47, Nov 2 21:48:40, Nov 3 12:31:04, Nov 3 14:56:40 | Upload times of five different builds of `insight.bundle`, all 205,135 bytes, from the server's `Last-Modified` and `ETag` headers (ETags `6ae78037`, `6ae8ccff`, `6ae90538`, `6ae9d408` and `6ae9f628`, each followed by `-3214f`). Agents started before Nov 1, so older builds exist whose headers nobody has posted. |
+| Oct 31 15:38:43 to Nov 3 14:56:40 | Upload times of seven different builds of `insight.bundle`, all 205,135 bytes, from the server's `Last-Modified` and `ETag` headers: `6ae60b83` (Oct 31 15:38:43), `6ae69086` (Nov 1 01:06:14), `6ae78037` (Nov 1 18:08:55), `6ae8ccff` (Nov 2 17:48:47), `6ae90538` (Nov 2 21:48:40), `6ae9d408` (Nov 3 12:31:04) and `6ae9f628` (Nov 3 14:56:40), each followed by `-3214f`. The Oct 23 agent came from an earlier, smaller build (165,108 bytes, reported). |
 | Nov 3, 17:04:28 | Level Infinite replaces `aegis-fix.min.js`. |
 | Nov 3, 17:13:36 | `vue-bucket.min.js` is replaced. |
 | Nov 3, 17:21:31 | Level Infinite replaces `images.7fec4c32.js`. |
