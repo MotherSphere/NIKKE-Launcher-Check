@@ -77,7 +77,7 @@ Finding nothing is not proof that the computer is clean. [What it checks](docs/c
 
 If the result is Infected, start with these steps:
 
-1. Close the NIKKE launcher now (on Windows, if it does not close, open Task Manager with Ctrl+Shift+Esc and end nikke_launcher.exe) and disconnect this computer from the network.
+1. Close the NIKKE launcher now (on Windows, if it does not close, open Task Manager with Ctrl+Shift+Esc and end nikke_launcher.exe, or nikke_launcher_google.exe for the Google Play Games build) and disconnect this computer from the network.
 2. Click "Save report..." before you delete anything. Deleting the launcher cache also deletes one of the traces.
 3. Before you open the launcher again, delete its cache folder, `tbs_cache`. Level Infinite confirmed a fix on November 4, 2026, but the cache can still hold the modified files, and the launcher would load them again.
 

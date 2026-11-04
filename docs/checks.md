@@ -12,7 +12,7 @@ A finding quotes at most 5 evidence lines, each cut to 240 characters. Folder an
 
 ## NIKKE install
 
-An install is a folder that holds `Launcher/nikke_launcher.exe` or `Launcher/intl_service/debug.log`.
+An install is a folder that holds `Launcher/nikke_launcher.exe`, `Launcher/nikke_launcher_google.exe` (the Google Play Games build, installed in `C:\NIKKE_GOOGLE`) or `Launcher/intl_service/debug.log`.
 
 `Launcher/intl_service/debug.log` is read line by line, whatever its size. A line longer than 64 KiB is cut.
 
@@ -89,7 +89,7 @@ The older persistence files are also looked for in `drive_c/Program Files` and `
 
 ## Running programs
 
-A running launcher is critical when the same scan found a sign of the agent: the agent ran or was downloaded, its file or its saved state is on disk, the launcher contacted the agent server, or the persistence, its leftover, the loaded DLL or the `k2f` files in Temp exist. The steps then start with closing the launcher. Without such a sign, a clean or freshly reinstalled launcher is running, and the tool lists it as info ("The NIKKE launcher is running"), with no step. The tool looks for a process named `nikke_launcher.exe` (Linux shows `nikke_launcher.`, because it cuts process names to 15 bytes), a process whose first command-line argument is a path to `nikke_launcher.exe` (Wine sets it to the Windows path), or a `wine`, `wine64`, `wine-preloader` or `wine64-preloader` process started on `nikke_launcher.exe`. Programs that only name the file, such as `sha256sum` or an editor, do not count. The report lists the process ID and command line of each match.
+A running launcher is critical when the same scan found a sign of the agent: the agent ran or was downloaded, its file or its saved state is on disk, the launcher contacted the agent server, or the persistence, its leftover, the loaded DLL or the `k2f` files in Temp exist. The steps then start with closing the launcher. Without such a sign, a clean or freshly reinstalled launcher is running, and the tool lists it as info ("The NIKKE launcher is running"), with no step. The tool looks for a process whose name starts with `nikke_launcher`, such as `nikke_launcher.exe` or `nikke_launcher_google.exe` (Linux shows `nikke_launcher.` and `nikke_launcher_`, because it cuts process names to 15 bytes), a process whose first command-line argument is a path to one of these two files (Wine sets it to the Windows path), or a `wine`, `wine64`, `wine-preloader` or `wine64-preloader` process started on one of them. Programs that only name the file, such as `sha256sum` or an editor, do not count. The report lists the process ID and command line of each match.
 
 On Windows, after the locations, the tool lists the modules of every running process it is allowed to open (Toolhelp snapshots; processes that deny access are skipped). A module at `PlatformExperienceHelper\<64 hex>\platform_experience_helper.dll`, at `PlatformExperienceHelper\platform_experience_helper.dll`, or at the path the HKCU key names is critical ("The persistence DLL is loaded now"). Windows keeps a loaded DLL locked, so the DLL step then asks for a restart before the files are deleted. The report lists the process ID, the program and the DLL of each match.
 

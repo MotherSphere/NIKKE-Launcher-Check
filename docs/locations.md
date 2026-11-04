@@ -20,7 +20,7 @@ The tool also reads the install path the launcher records, which covers an insta
 - `HKCU\Software\Classes\nikkelauncher\DefaultIcon`
 - `GameInstallPath` under `Software\Microsoft\Windows\CurrentVersion\Uninstall\nikke_launcher`, in HKCU, and in both the 64-bit and 32-bit views of HKLM
 
-A recorded path counts only if it still holds `Launcher/nikke_launcher.exe` or `Launcher/intl_service/debug.log`, since an install can be moved after it was recorded.
+A recorded path counts only if it still holds `Launcher/nikke_launcher.exe`, `Launcher/nikke_launcher_google.exe` or `Launcher/intl_service/debug.log`, since an install can be moved after it was recorded.
 
 Empty card readers and optical drives do not make Windows show "There is no disk in the drive" boxes during the scan: the tool turns those boxes off for its own process.
 
@@ -72,7 +72,7 @@ Any `drive_c` folder found along the way also counts as a Wine prefix, on every 
 - checks whether the folder that holds the prefix is an install, since installs often keep their prefix inside (`NIKKE/prefix` next to `NIKKE/Launcher`)
 - reads the install path the launcher writes into `user.reg` (App Paths, Uninstall and the `nikkelauncher` URL protocol) and into `url_protocol.reg` in the launcher data, and follows its drive letter through the prefix's `dosdevices` link
 
-A recorded path counts only if it still holds `Launcher/nikke_launcher.exe` or `Launcher/intl_service/debug.log`, since an install can be moved after it was recorded.
+A recorded path counts only if it still holds `Launcher/nikke_launcher.exe`, `Launcher/nikke_launcher_google.exe` or `Launcher/intl_service/debug.log`, since an install can be moved after it was recorded.
 
 ## Folder scans
 

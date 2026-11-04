@@ -1123,16 +1123,17 @@ fn launcher_running(evidence: Vec<String>, agent: bool) -> Finding {
 
 /// The launcher itself, not a program that only names its file (sha256sum, an
 /// editor, a disassembler). Linux truncates process names to 15 bytes
-/// ("nikke_launcher."), and Wine sets argv[0] to the Windows path of the .exe.
+/// ("nikke_launcher.", "nikke_launcher_"), and Wine sets argv[0] to the Windows path of the .exe.
 fn is_launcher_process(name: &str, cmd: &[OsString]) -> bool {
     let base = |arg: &OsString| arg.to_string_lossy().rsplit(['/', '\\']).next().unwrap_or_default().to_ascii_lowercase();
     let first = cmd.first().map(base);
+    let exe = |b: &str| locate::LAUNCHER_EXES.contains(&b);
     let wine = first
         .as_deref()
         .is_some_and(|b| matches!(b, "wine" | "wine64" | "wine-preloader" | "wine64-preloader"));
     name.to_ascii_lowercase().starts_with("nikke_launcher")
-        || first.as_deref() == Some("nikke_launcher.exe")
-        || (wine && cmd[1..].iter().any(|arg| base(arg) == "nikke_launcher.exe"))
+        || first.as_deref().is_some_and(exe)
+        || (wine && cmd[1..].iter().any(|arg| exe(&base(arg))))
 }
 
 /// Programs that have the malware's DLL loaded. Toolhelp snapshots only read
@@ -1598,6 +1599,17 @@ mod tests {
     }
 
     #[test]
+    fn google_play_games_install() {
+        let fx = Fixture::new("google");
+        fx.file("NIKKE_GOOGLE/Launcher/nikke_launcher_google.exe", b"MZ");
+        let r = fx.scan();
+        let installs: Vec<_> = r.targets.iter().filter(|t| t.kind == TargetKind::InstallDir).collect();
+        assert_eq!(installs.len(), 1, "{:?}", r.targets);
+        assert!(installs[0].path.ends_with("NIKKE_GOOGLE"));
+        assert!(locate::is_install_dir(&fx.0.join("NIKKE_GOOGLE")));
+    }
+
+    #[test]
     fn empty_dir_is_not_found() {
         let fx = Fixture::new("empty");
         assert_eq!(fx.scan().verdict, Verdict::NotFound);
@@ -1811,6 +1823,12 @@ mod tests {
         assert!(is_launcher_process("wine64-preloader", &args(&["/usr/bin/wine64", "/g/NIKKE/Launcher/nikke_launcher.exe"])));
         assert!(!is_launcher_process("python3", &args(&["python3", "-c", "pass", "/tmp/x/Launcher/nikke_launcher.exe"])));
         assert!(!is_launcher_process("sha256sum", &args(&["sha256sum", "nikke_launcher.exe"])));
+        // The Google Play Games build.
+        assert!(is_launcher_process("nikke_launcher_google.exe", &args(&["C:\\NIKKE_GOOGLE\\Launcher\\nikke_launcher_google.exe"])));
+        assert!(is_launcher_process("nikke_launcher_", &args(&[])));
+        assert!(is_launcher_process("x", &args(&["C:\\NIKKE_GOOGLE\\Launcher\\nikke_launcher_google.exe"])));
+        assert!(is_launcher_process("wine-preloader", &args(&["/usr/bin/wine", "C:\\NIKKE_GOOGLE\\Launcher\\nikke_launcher_google.exe"])));
+        assert!(!is_launcher_process("sha256sum", &args(&["sha256sum", "nikke_launcher_google.exe"])));
     }
 
     #[test]

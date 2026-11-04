@@ -395,7 +395,8 @@ fn close_step(r: &ScanResult, lang: Lang) -> Step {
     let mut programs = Vec::new();
     if any(r, &[K::LauncherRunning]) {
         parts.push(text(lang, "step.close.launcher"));
-        programs.push("nikke_launcher.exe".to_string());
+        // The Google Play Games build runs nikke_launcher_google.exe.
+        programs.extend(crate::locate::LAUNCHER_EXES.map(String::from));
     }
     let mut explorer = false;
     for f in of(r, &[K::DllLoaded]) {
@@ -422,7 +423,7 @@ fn close_step(r: &ScanResult, lang: Lang) -> Step {
             parts.push(Part::Actions(vec![Action::TaskManager]));
         }
     } else {
-        let cmd = "pkill -f nikke_launcher.exe";
+        let cmd = r"pkill -f 'nikke_launcher(_google)?\.exe'";
         parts.push(text(lang, "step.close.pkill"));
         parts.push(Part::Code(cmd.into()));
         parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
@@ -1161,6 +1162,10 @@ mod tests {
         assert!(act_now(&infected));
         assert_eq!(titles(&infected)[0], "Close the launcher");
         assert_eq!(answers(&infected, EN)[1].reply, "Yes");
+        // The Google Play Games build runs under another name.
+        let close = format!("{:?}", steps(&infected, EN)[0].parts);
+        assert!(close.contains("Programs to end: nikke_launcher.exe, nikke_launcher_google.exe."), "{close}");
+        assert!(cfg!(windows) || close.contains(r"pkill -f 'nikke_launcher(_google)?\\.exe'"), "{close}");
     }
 
     #[test]

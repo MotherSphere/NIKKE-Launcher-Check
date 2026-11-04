@@ -85,6 +85,10 @@ impl Progress {
 /// Google Play Games build (issue #11); the malware only reads the first two.
 pub const LAUNCHER_DATA_NAMES: [&str; 3] = ["nikke_launcher", "nikke_launcher_hmt", "nikke_launcher_google"];
 
+/// Launcher program names in `<install>/Launcher`. The Google Play Games build installs
+/// `C:\NIKKE_GOOGLE\Launcher\nikke_launcher_google.exe` (issue #11).
+pub const LAUNCHER_EXES: [&str; 2] = ["nikke_launcher.exe", "nikke_launcher_google.exe"];
+
 /// Folder names never entered by a discovery walk.
 const SKIP_NAMES: [&str; 8] = [
     "node_modules",
@@ -533,11 +537,11 @@ fn is_launcher_data(path: &Path) -> bool {
     named && name_is(path.parent(), "Roaming")
 }
 
-/// `<install>/Launcher/nikke_launcher.exe` or `<install>/Launcher/intl_service/debug.log`.
+/// `<install>/Launcher/<one of LAUNCHER_EXES>` or `<install>/Launcher/intl_service/debug.log`.
 fn install_dir_for_file(path: &Path) -> Option<PathBuf> {
     let name = path.file_name()?;
     let parent = path.parent()?;
-    if eq(name, "nikke_launcher.exe") && name_is(Some(parent), "Launcher") {
+    if LAUNCHER_EXES.iter().any(|exe| eq(name, exe)) && name_is(Some(parent), "Launcher") {
         return parent.parent().map(Path::to_path_buf);
     }
     if eq(name, "debug.log") && name_is(Some(parent), "intl_service") {
@@ -553,7 +557,7 @@ pub fn is_install_dir(dir: &Path) -> bool {
     let Some(launcher) = find_ci(dir, &["Launcher"]) else {
         return false;
     };
-    find_ci(&launcher, &["nikke_launcher.exe"]).is_some()
+    LAUNCHER_EXES.iter().any(|exe| find_ci(&launcher, &[exe]).is_some())
         || find_ci(&launcher, &["intl_service", "debug.log"]).is_some()
 }
 
@@ -612,7 +616,7 @@ fn install_dirs_in_reg(text: &str) -> Vec<String> {
 fn install_dir_in_value(value: &str) -> Option<String> {
     // ASCII lowercasing keeps byte offsets, so they index `value` too.
     let lower = value.to_ascii_lowercase();
-    let end = lower.find("\\launcher\\nikke_launcher.exe")?;
+    let end = LAUNCHER_EXES.iter().find_map(|exe| lower.find(&format!("\\launcher\\{exe}")))?;
     let start = lower[..end].rfind(":\\")?.checked_sub(1)?;
     lower.as_bytes()[start]
         .is_ascii_alphabetic()
@@ -1043,6 +1047,10 @@ mod tests {
             Some(PathBuf::from("/g/NIKKE"))
         );
         assert_eq!(install_dir_for_file(Path::new("/g/other/debug.log")), None);
+        assert_eq!(
+            install_dir_for_file(Path::new("/c/NIKKE_GOOGLE/Launcher/nikke_launcher_google.exe")),
+            Some(PathBuf::from("/c/NIKKE_GOOGLE"))
+        );
     }
 
     #[test]
@@ -1061,6 +1069,10 @@ mod tests {
         bytes.extend(export.encode_utf16().flat_map(u16::to_le_bytes));
         assert_eq!(install_dirs_in_reg(&reg_text(&bytes)), vec!["D:\\Games\\Level Infinite\\NIKKE"]);
         assert_eq!(install_dir_in_value("nikke_launcher.exe"), None);
+        assert_eq!(
+            install_dir_in_value("\"C:\\NIKKE_GOOGLE\\Launcher\\nikke_launcher_google.exe\" \"%1\""),
+            Some("C:\\NIKKE_GOOGLE".to_string())
+        );
     }
 
     #[test]
