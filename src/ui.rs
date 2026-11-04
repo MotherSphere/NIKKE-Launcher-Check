@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use iced::futures::channel::oneshot;
 use iced::theme::Palette;
 use iced::widget::{
-    Column, button, canvas, checkbox, column, container, grid, responsive, row, scrollable, space, stack, text, toggler,
+    Column, button, canvas, checkbox, column, container, grid, image, responsive, row, scrollable, space, stack, text, toggler,
 };
 use iced::{
     Alignment, Background, Color, Element, Fill, Font, Length, Point, Radians, Rectangle, Renderer, Shrink, Size,
@@ -493,7 +493,7 @@ impl App {
         .spacing(16)
         .height(Shrink);
 
-        column![hero, options].spacing(16).into()
+        column![helper(HOME_HINT), hero, options].spacing(16).into()
     }
 
     fn failed(&self) -> Element<'_, Message> {
@@ -575,7 +575,7 @@ impl App {
     }
 
     fn todo<'a>(&'a self, steps: &'a [Step]) -> Element<'a, Message> {
-        let mut col = Column::new().spacing(14).push(
+        let mut col = Column::new().spacing(14).push(helper(TODO_HINT)).push(
             text("These steps come from what this scan found, in the order to do them. The Done marks are not saved.")
                 .color(MUTED),
         );
@@ -1022,6 +1022,29 @@ fn mono_box<'a>(content: String) -> Element<'a, Message> {
         .width(Length::Fill)
         .style(|_| surface(CODE, 4))
         .into()
+}
+
+const HOME_HINT: &str = "Hi, I'm MotherSphere. Start with the full scan. It only reads files: it deletes nothing and sends nothing over the network.";
+const TODO_HINT: &str = "Do the steps one at a time, in order. The buttons open the right folder or tool for you, but you delete the files yourself. This program never deletes anything.";
+
+/// Decoded once, so iced keeps one texture for every frame.
+static MOTHERSPHERE: std::sync::LazyLock<image::Handle> =
+    std::sync::LazyLock::new(|| image::Handle::from_bytes(include_bytes!("../assets/mothersphere.png").as_slice()));
+
+/// MotherSphere pointing at a speech bubble. Below 560 px of width only the bubble is left.
+fn helper(say: &'static str) -> Element<'static, Message> {
+    responsive(move |size| {
+        let bubble = container(text(say).size(16).wrapping(text::Wrapping::WordOrGlyph))
+            .padding([14, 18])
+            .width(Fill)
+            .style(|_| surface(CARD, 12).border(border::rounded(12).color(INFO).width(1)));
+        if size.width < 560.0 {
+            return bubble.into();
+        }
+        row![image(MOTHERSPHERE.clone()).width(130), bubble].spacing(16).align_y(Alignment::Center).into()
+    })
+    .height(Shrink)
+    .into()
 }
 
 fn card<'a>(content: impl Into<Element<'a, Message>>) -> container::Container<'a, Message> {

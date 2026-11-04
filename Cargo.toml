@@ -11,8 +11,10 @@ name = "nikke-check"
 path = "src/main.rs"
 
 [dependencies]
-# canvas: the scan ring and the icons, drawn in code (no image or font files).
-iced = { version = "0.14", features = ["canvas"] }
+# canvas: the scan ring and the icons, drawn in code (no font files).
+# image-without-codecs plus image's png feature: the helper picture, with the PNG decoder only.
+iced = { version = "0.14", features = ["canvas", "image-without-codecs"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 rfd = "0.17"
 walkdir = "2"
 # Process list only, for the "launcher is running now" check.
