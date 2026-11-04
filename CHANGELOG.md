@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.0...v0.5.1) (2026-11-04)
+
+
+### Fixes
+
+* **scan:** check the Google Play Games launcher data folder, nikke_launcher_google ([8aee685](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/8aee685f7504c6e9339b5e86631429f7f15ec03c))
+
 ## [0.5.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.4.1...v0.5.0) (2026-11-04)
 
 
