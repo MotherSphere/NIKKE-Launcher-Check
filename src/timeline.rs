@@ -9,8 +9,8 @@ use crate::scan::{cef_time, log_time, utc};
 
 /// The ETags of the builds of insight.bundle seen so far (nginx: hex mtime and
 /// hex size, 0x3214f = 205,135 bytes), uploaded Nov 1 18:08:55, Nov 2 17:48:47,
-/// Nov 2 21:48:40 and Nov 3 14:56:40 GMT.
-pub const KNOWN_BUILDS: [&str; 4] = ["6ae78037-3214f", "6ae8ccff-3214f", "6ae90538-3214f", "6ae9f628-3214f"];
+/// Nov 2 21:48:40, Nov 3 12:31:04 and Nov 3 14:56:40 GMT.
+pub const KNOWN_BUILDS: [&str; 5] = ["6ae78037-3214f", "6ae8ccff-3214f", "6ae90538-3214f", "6ae9d408-3214f", "6ae9f628-3214f"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunKind {
@@ -213,7 +213,7 @@ mod tests {
             .collect();
         assert_eq!(
             uploaded,
-            ["2026-11-01 18:08:55 UTC", "2026-11-02 17:48:47 UTC", "2026-11-02 21:48:40 UTC", "2026-11-03 14:56:40 UTC"]
+            ["2026-11-01 18:08:55 UTC", "2026-11-02 17:48:47 UTC", "2026-11-02 21:48:40 UTC", "2026-11-03 12:31:04 UTC", "2026-11-03 14:56:40 UTC"]
         );
     }
 }

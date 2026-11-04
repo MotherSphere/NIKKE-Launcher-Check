@@ -10,7 +10,7 @@ use crate::scan::{ATTACKER_IPS, Finding, FindingKind, Group, HostsStatus, ScanRe
 pub const APP_NAME: &str = "NIKKE Launcher Check";
 pub const GIST_URL: &str = "https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5";
 
-pub const ABOUT: &str = "On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 24, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.";
+pub const ABOUT: &str = "On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.";
 
 pub const READ_ONLY: &str = "Read-only. No network access.";
 

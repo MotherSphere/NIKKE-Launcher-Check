@@ -33,7 +33,7 @@ The launcher loaded the malicious script or contacted insightjs.com, but no sign
 4. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
 5. Do not open the NIKKE launcher until Level Infinite confirms a fix.
 
-The agent was served from October 24, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, treat this computer as infected and follow these steps. The window lists them between the cache and the blocking steps, with the browsers, wallets and credential files it found:
+The agent was served from October 23, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, treat this computer as infected and follow these steps. The window lists them between the cache and the blocking steps, with the browsers, wallets and credential files it found:
 
 1. From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers.
 2. Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.
@@ -46,7 +46,7 @@ The agent was served from October 24, 2026 at the latest, and only on some launc
 No trace of the malicious script or the agent was found in the NIKKE files this scan located. Finding nothing is not proof that the computer is clean.
 
 1. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. See [Delete the launcher cache](#delete-the-launcher-cache).
-2. If the launcher was open on or after October 24, 2026, change your NIKKE / Level Infinite password from a clean device anyway.
+2. If the launcher was open on or after October 23, 2026, change your NIKKE / Level Infinite password from a clean device anyway.
 3. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
 4. Do not open the NIKKE launcher until Level Infinite confirms a fix.
 

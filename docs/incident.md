@@ -2,7 +2,7 @@
 
 All times on this page are GMT, in 2026. The full analysis is in the write-up: https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5
 
-On September 27, four JavaScript files on Level Infinite's CDN (playerinfinite.com, served from Tencent COS) were modified to load `https://insightjs.com/l.js`. The NIKKE PC launcher shows its pages in an embedded Chromium (CEF), so it ran that script. From October 24 at the latest, and only on some launches, the script used the launcher's JavaScript bridge to download a remote-access agent. It is not known how the attacker got write access to the CDN, or whether they still have it. No official statement from Level Infinite is known.
+On September 27, four JavaScript files on Level Infinite's CDN (playerinfinite.com, served from Tencent COS) were modified to load `https://insightjs.com/l.js`. The NIKKE PC launcher shows its pages in an embedded Chromium (CEF), so it ran that script. From October 23 at the latest, and only on some launches, the script used the launcher's JavaScript bridge to download a remote-access agent. It is not known how the attacker got write access to the CDN, or whether they still have it. No official statement from Level Infinite is known.
 
 ## The modified CDN files
 
@@ -25,10 +25,11 @@ The modified `vue-bucket.min.js` (135,273 bytes, SHA-256 `3aaafbd612f04501a6fdb0
 |---|---|
 | Sep 27, 01:59 | insightjs.com is registered through PublicDomainRegistry, with 1984 ehf name servers. |
 | Sep 27, 06:41 to 06:42 | The four CDN files are modified. |
-| Oct 24, 01:16 | Earliest reported start of the agent, on a Linux machine under Proton, where the payload was saved as `Launcher/log/tinyget/k2f.lua`. A Windows machine logged a start at 01:43 the same day. |
+| Oct 23, 16:40 | Earliest reported start of the agent, about an hour after a new certificate for analytics.insightjs.com (15:37). |
+| Oct 24, 01:16 | A reported start on a Linux machine under Proton, where the payload was saved as `Launcher/log/tinyget/k2f.lua`. A Windows machine logged a start at 01:43 the same day. |
 | Oct 28, 15:46:09 | `FeedList.feb647c9.js` is cleaned at the origin. |
 | Oct 24 to Nov 3 | More reported starts. The agent was served on some launches only: one machine got it on 3 of about 19 launches since September 27. |
-| Nov 1 18:08:55, Nov 2 17:48:47, Nov 2 21:48:40, Nov 3 14:56:40 | Upload times of four different builds of `insight.bundle`, all 205,135 bytes, from the server's `Last-Modified` and `ETag` headers (ETags `6ae78037`, `6ae8ccff`, `6ae90538` and `6ae9f628`, each followed by `-3214f`). |
+| Nov 1 18:08:55, Nov 2 17:48:47, Nov 2 21:48:40, Nov 3 12:31:04, Nov 3 14:56:40 | Upload times of five different builds of `insight.bundle`, all 205,135 bytes, from the server's `Last-Modified` and `ETag` headers (ETags `6ae78037`, `6ae8ccff`, `6ae90538`, `6ae9d408` and `6ae9f628`, each followed by `-3214f`). Agents started before Nov 1, so older builds exist whose headers nobody has posted. |
 | Nov 3, 17:04:28 | Level Infinite replaces `aegis-fix.min.js`. |
 | Nov 3, 17:13:36 | `vue-bucket.min.js` is replaced. |
 | Nov 3, 17:21:31 | Level Infinite replaces `images.7fec4c32.js`. |
@@ -43,7 +44,7 @@ The code added to each CDN file hides the `l.js` URL in a `Uint32Array` and name
 
 ## The agent
 
-The Lua agent has no network code of its own: every check-in and upload goes through `l.js` in the launcher's embedded browser (`tbs_browser.exe` on Windows). From October 24 at the latest, and only on some launches, `l.js` used the launcher's JavaScript bridge to download `https://analytics.insightjs.com/comm/assets/insight.bundle` from 89.127.233.127, a VPS at 1984 ehf in Iceland. The launcher saved it in `Launcher/log/tinyget/` under a `tinyget` log name, or as `k2f.lua` on the earliest reported runs.
+The Lua agent has no network code of its own: every check-in and upload goes through `l.js` in the launcher's embedded browser (`tbs_browser.exe` on Windows). From October 23 at the latest, and only on some launches, `l.js` used the launcher's JavaScript bridge to download `https://analytics.insightjs.com/comm/assets/insight.bundle` from 89.127.233.127, a VPS at 1984 ehf in Iceland. The launcher saved it in `Launcher/log/tinyget/` under a `tinyget` log name, or as `k2f.lua` on the earliest reported runs.
 
 `insight.bundle` is LuaJIT bytecode, 205,135 bytes. The copy fetched on November 3 at 16:22 has SHA-256 `cc0ad05bfe85940a6067b3a72c182d3953339129206634141926d5d0b35973ec`. Victims ran other builds of the same size, so this hash does not match every infection. It is a remote-access agent with these commands: `exec`, `ls`, `cd`, `cat`, `download`, `file_chunk`, `screens`, `creds`, `keyscan`, `browserscan`, `chrome_scan`, `wallet_files`, `whoami`, `sysinfo`, `host_facts`, `chrome_install`, `chrome_cleanup`, `chrome_uninstall` and `payload_cleanup`.
 

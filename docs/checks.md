@@ -33,7 +33,7 @@ Every file under `Launcher/log/`, up to 8 levels down and 64 MiB, is read too. T
 These lines do not change the verdict. They make up the agent runs and the payload build of the first answer.
 
 - Runs come from the `debug.log` lines `lua downloaded to log\tinyget\<name>` (the download, saved as `tinyget.<time>.log`, or `k2f.lua` on early runs), `adopted <id>` (the first start, when the agent creates its ID), `resuming <id>` (a later start) and `agent started as <host>` (the computer name the agent sends). A `tinyget` log that records an `AddTask` download of `insight.bundle` adds a download that `debug.log` does not have, for example after `debug.log` was deleted.
-- `tinyget.mem.log` keeps the response headers of the `insight.bundle` download. The launcher rewrites this fixed-size file from the start at each launch, so its end can hold an older session. The ETag that nginx sends is `"<mtime in hex>-<size in hex>"`, so it gives the upload time and the size of the build. The 4 known builds are 205,135 bytes (`-3214f`): `6ae78037` (Nov 1 18:08:55 GMT), `6ae8ccff` (Nov 2 17:48:47), `6ae90538` (Nov 2 21:48:40) and `6ae9f628` (Nov 3 14:56:40). Another ETag is reported as not one of the known builds.
+- `tinyget.mem.log` keeps the response headers of the `insight.bundle` download. The launcher rewrites this fixed-size file from the start at each launch, so its end can hold an older session. The ETag that nginx sends is `"<mtime in hex>-<size in hex>"`, so it gives the upload time and the size of the build. The 5 known builds are 205,135 bytes (`-3214f`): `6ae78037` (Nov 1 18:08:55 GMT), `6ae8ccff` (Nov 2 17:48:47), `6ae90538` (Nov 2 21:48:40), `6ae9d408` (Nov 3 12:31:04) and `6ae9f628` (Nov 3 14:56:40). Another ETag is reported as not one of the known builds.
 
 ## Launcher data
 
@@ -116,7 +116,7 @@ Times taken from log lines are the local time of the computer that ran the launc
 
 The most severe finding sets the verdict, so a critical finding gives Infected even when no NIKKE install was found, for example Chrome persistence in a profile or `k2f` files in Temp. Info findings never change the verdict. Exit code 4 means invalid arguments: an unknown option, or with `--cli` a path that is not a folder or a folder that cannot be read.
 
-The window and the report list the steps for each verdict. An Exposed result also lists the account steps of an infected computer, for the case where the launcher was open on or after October 24, 2026. [What to do](what-to-do.md) has all the steps.
+The window and the report list the steps for each verdict. An Exposed result also lists the account steps of an infected computer, for the case where the launcher was open on or after October 23, 2026. [What to do](what-to-do.md) has all the steps.
 
 ## Limits
 

@@ -8,7 +8,7 @@ use crate::exposure::Exposure;
 use crate::locate::TargetKind;
 use crate::report;
 use crate::scan::{self, ATTACKER_IPS, CLSID, Finding, FindingKind as K, ScanResult, Verdict};
-use crate::timeline::{AgentRun, PayloadBuild, RunKind};
+use crate::timeline::{AgentRun, KNOWN_BUILDS, PayloadBuild, RunKind};
 
 /// How an answer reads for the user.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,7 +100,7 @@ fn did_it_run(r: &ScanResult) -> Answer {
     }
     if loader {
         lines.push("The launcher loaded the malicious script, but no trace of the agent was found.".into());
-        lines.push("The agent was sent only on some launches, from October 24, 2026 at the latest. If the launcher was open on or after that date, act as if it ran.".into());
+        lines.push("The agent was sent only on some launches, from October 23, 2026 at the latest. If the launcher was open on or after that date, act as if it ran.".into());
     } else {
         lines.push("No trace of the malicious script or the agent was found.".into());
     }
@@ -213,7 +213,7 @@ fn protected(r: &ScanResult) -> Answer {
     answer(Q, reply, tone, lines)
 }
 
-/// "6ae90538-3214f, uploaded ..., 205,135 bytes, one of the 4 known builds."
+/// "6ae90538-3214f, uploaded ..., 205,135 bytes, one of the 5 known builds."
 pub fn build_line(b: &PayloadBuild) -> String {
     let mut s = b.etag.clone().unwrap_or_else(|| "No ETag".into());
     match (&b.uploaded, &b.last_modified) {
@@ -224,10 +224,10 @@ pub fn build_line(b: &PayloadBuild) -> String {
     if let Some(size) = b.size {
         s += &format!(", {} bytes", report::thousands(size));
     }
-    s += if b.known {
-        ", one of the 4 known builds."
+    s += &if b.known {
+        format!(", one of the {} known builds.", KNOWN_BUILDS.len())
     } else {
-        ". It is not one of the 4 known builds."
+        format!(". It is not one of the {} known builds.", KNOWN_BUILDS.len())
     };
     if let Some(t) = &b.time {
         s += &format!(" The launcher received it {t}.");
@@ -672,11 +672,11 @@ pub fn home_note(r: &ScanResult) -> Option<&'static str> {
 fn password_step(r: &ScanResult) -> Step {
     let intro = match r.verdict {
         Verdict::Infected => "Use a phone or another computer that never ran the NIKKE launcher. While the agent ran, its commands could read this computer's files and browser data. Change or replace these:",
-        Verdict::Exposed => "The agent was sent from October 24, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, act as if it ran: from a phone or another computer that never ran the launcher, change or replace these:",
+        Verdict::Exposed => "The agent was sent from October 23, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, act as if it ran: from a phone or another computer that never ran the launcher, change or replace these:",
         _ => {
             return step(
-                "Change your NIKKE password if the launcher was open on or after October 24",
-                vec![text("If the launcher was open on or after October 24, 2026, change your NIKKE / Level Infinite password anyway, from a phone or another computer that never ran the launcher.")],
+                "Change your NIKKE password if the launcher was open on or after October 23",
+                vec![text("If the launcher was open on or after October 23, 2026, change your NIKKE / Level Infinite password anyway, from a phone or another computer that never ran the launcher.")],
             );
         }
     };
@@ -924,7 +924,7 @@ mod tests {
             titles(&clean_scan),
             [
                 "Clear the launcher cache",
-                "Change your NIKKE password if the launcher was open on or after October 24",
+                "Change your NIKKE password if the launcher was open on or after October 23",
                 "Block the domains",
                 "Do not open the launcher until Level Infinite confirms a fix",
             ]
