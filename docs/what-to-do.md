@@ -29,17 +29,18 @@ The launcher loaded the malicious script or contacted insightjs.com, but no sign
 
 1. Save the report before you delete anything. Deleting `tbs_cache` also deletes the traces the scan found in it.
 2. If the scan found launcher data but not the NIKKE install folder, scan the install folder: "Scan a folder..." in the window, or `nikke-check --cli <folder>`. Its `debug.log` can show that the agent ran, which changes the result to Infected. Do this before the other steps.
-3. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. It can still hold the malicious script from before the fix. See [Delete the launcher cache](#delete-the-launcher-cache).
-4. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
-5. Do not open the NIKKE launcher until Level Infinite confirms a fix.
+3. After a quick scan, also run the full scan ("Full scan" in the window, or `nikke-check --cli --full`): an older install more than 5 folder levels deep can hold the same proof.
+4. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. It can still hold the malicious script from before the fix. See [Delete the launcher cache](#delete-the-launcher-cache).
+5. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
+6. Do not open the NIKKE launcher until Level Infinite confirms a fix.
 
 The agent was served from October 23, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, treat this computer as infected and follow these steps. The window lists them between the cache and the blocking steps, with the browsers, wallets and credential files it found:
 
-1. From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers.
-2. Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.
-3. Revoke API tokens and SSH keys that were stored on this computer.
-4. If you hold cryptocurrency, move it to a wallet with a new seed phrase created on a clean device.
-5. On Linux and macOS (Proton, umu, Wine, CrossOver, Whisky), the remote commands could read your whole home folder and the environment variables of the launcher process, not only the Wine prefix. See [Why the home folder is exposed under Wine](#why-the-home-folder-is-exposed-under-wine).
+7. From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers.
+8. Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.
+9. Revoke API tokens and SSH keys that were stored on this computer.
+10. If you hold cryptocurrency, move it to a wallet with a new seed phrase created on a clean device.
+11. On Linux and macOS (Proton, umu, Wine, CrossOver, Whisky), the remote commands could read your whole home folder and the environment variables of the launcher process, not only the Wine prefix. See [Why the home folder is exposed under Wine](#why-the-home-folder-is-exposed-under-wine).
 
 ## No traces found
 
@@ -50,13 +51,13 @@ No trace of the malicious script or the agent was found in the NIKKE files this 
 3. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
 4. Do not open the NIKKE launcher until Level Infinite confirms a fix.
 
-When only launcher data was found, the window first asks you to scan the install folder, as in step 2 of [Exposed](#exposed).
+When only launcher data was found, the window first asks you to scan the install folder, as in step 2 of [Exposed](#exposed). After any quick scan it also offers the full scan, which opens folders more than 5 levels deep, where an older install can still hold the agent's log lines.
 
 ## NIKKE not found
 
 No NIKKE install or launcher data was found in the places this scan checked.
 
-1. If NIKKE is installed somewhere unusual, scan that folder: "Scan a folder..." in the window, or `nikke-check --cli <folder>`.
+1. If NIKKE is installed somewhere unusual, scan that folder: "Scan a folder..." in the window, or `nikke-check --cli <folder>`. If you do not know where it is, run the full scan: "Full scan" in the window, or `nikke-check --cli --full`.
 2. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
 3. Do not open the NIKKE launcher until Level Infinite confirms a fix.
 

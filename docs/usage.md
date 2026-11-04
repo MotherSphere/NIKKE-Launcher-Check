@@ -82,10 +82,11 @@ Start `nikke-check` with no arguments to open the window. The bar at the top sho
 
 ### Start screen
 
-The start screen describes the incident in a few lines and has two parts, "Full scan" and "Folder scan", each with its button.
+The start screen describes the incident in a few lines and has two parts, "Computer scan" and "Folder scan".
 
-- "Scan this computer" searches the places listed in [Where it looks](locations.md). A full scan can take a few minutes.
-- "Scan a folder..." opens a folder dialog, then scans that folder and everything under it, including any Wine prefix inside. Use it when NIKKE is installed somewhere unusual, or on a network drive, which "Scan this computer" skips.
+- "Scan this computer" runs the quick scan of the places listed in [Where it looks](locations.md): the install paths the launcher records, the usual Wine prefix folders, and every folder up to 5 levels deep. It usually takes seconds.
+- "Full scan" opens every folder on every local drive. Use it when the quick scan finds no install and you do not know where NIKKE is. It can take a long time on large drives. After a quick scan that finds no proof of the agent, "What to do" offers the same button.
+- "Scan a folder..." opens a folder dialog, then scans that folder and everything under it, including any Wine prefix inside. Use it when NIKKE is installed somewhere unusual, or on a network drive, which both computer scans skip.
 
 There are three other ways to start a folder scan:
 
@@ -114,7 +115,7 @@ Above the result are "Copy report", "Save report...", the "Hide my info" switch,
 
 The verdict and its summary come first, then four answers, each with a colored reply and the reasons behind it:
 
-- "Did the malware run on this computer?" Yes, No or Cannot tell. With Yes, the agent runs found in the logs follow, one line each: the time, whether the agent was downloaded, started for the first time or started again with its saved ID, the computer name it sent, and the log the line comes from. A "No" turns orange when part of the scan could not be done, such as a `debug.log` that could not be read.
+- "Did the malware run on this computer?" Yes, No or Cannot tell. With Yes, the agent runs found in the logs follow, one line each: the time, whether the agent was downloaded, started for the first time or started again with its saved ID, the computer name it sent, and the log the line comes from. A "No" turns orange when part of the scan could not be done, such as a `debug.log` that could not be read, and after a quick scan, which does not open folders more than 5 levels deep.
 - "Is anything still active?" The running launcher, a program that has the DLL loaded, the registry key, or the DLL files.
 - "Is there something to clean up?" The DLL folders, the registry key or its empty leftover, the older DLL files, the `k2f` files in Temp, and the launcher cache when it holds traces. With nothing found, it still says to delete `tbs_cache` before the launcher is opened again.
 - "Are you protected for next time?" Each domain in the hosts file, and the two IP addresses, which only a firewall or router can block.
@@ -125,7 +126,8 @@ When the download logs keep the headers of the agent download, a "Payload build"
 
 The steps that match what the scan found, numbered in the order to do them. Each has a "Done" box to tick; the marks are not saved. Depending on the result, the steps are:
 
-- Scan the folder where NIKKE is installed: first when NIKKE was not found, and right after "Save the report" when launcher data was found but not the install, because `debug.log` in the install can change the result.
+- Scan the folder where NIKKE is installed: first when NIKKE was not found, and right after "Save the report" when launcher data was found but not the install, because `debug.log` in the install can change the result. After a quick scan this step also has the "Full scan" button.
+- Run the full scan: after a quick scan that found the install but no proof of the agent (No traces found or Exposed), since an older copy more than 5 levels deep can still hold the agent's log lines.
 - Close the launcher, or the programs that have the DLL loaded. On Windows, "Open Task Manager" starts Task Manager. On Linux and macOS, the step gives a `pkill` command.
 - Save the report before you delete anything ("Save report..." and "Copy report").
 - Remove the DLL, or delete the registry key when no DLL was found: "Copy key path", "Open Registry Editor", the restart when Windows needs one, and "Open folder" for the 64-hex folder. In a Wine prefix it gives a `wine regedit` command for the prefix, and a `protontricks` command for a Steam prefix.
@@ -181,8 +183,9 @@ The window keeps showing everything, so a screenshot of the window is not redact
 ```
 nikke-check                  Open the window
 nikke-check PATH             Open the window and scan this folder
-nikke-check --cli            Scan this computer and print a report
-nikke-check --cli PATH...    Scan only these folders and print a report
+nikke-check --cli            Quick scan of this computer, printed as a report
+nikke-check --cli --full     Full scan: open every folder on every local drive
+nikke-check --cli PATH...    Scan only these folders, in full, and print a report
 nikke-check --cli --redact   Replace the computer name, user names, agent IDs
                              and home folder in the report (any --cli form)
 nikke-check --help           Show this help
@@ -191,13 +194,14 @@ nikke-check --help           Show this help
 `-h` is the same as `--help`. Examples:
 
 ```
-nikke-check --cli                          # scan this computer
+nikke-check --cli                          # quick scan of this computer
+nikke-check --cli --full                   # open every folder on every local drive
 nikke-check --cli /mnt/Games/NIKKE ~/.wine # scan only these folders
 nikke-check --cli --redact > report.txt    # scan this computer, save a report to share
 nikke-check /mnt/Games/NIKKE               # open the window and scan this folder
 ```
 
-`--redact` goes after `--cli`, before or after the folders.
+`--redact` and `--full` go after `--cli`, before or after the folders. A folder scan always opens every folder, so `--full` changes nothing there.
 
 The report goes to standard output. On Linux and macOS, `nikke-check --cli > nikke-report.txt` saves it to a file.
 

@@ -50,7 +50,7 @@ xattr -d com.apple.quarantine nikke-check-macos-arm64
 
 ### In the window
 
-The window opens with two buttons. "Scan this computer" searches the usual install places for your system. "Scan a folder..." scans one folder you pick, such as a game library on another drive.
+The window opens with three buttons. "Scan this computer" is a quick scan: the install paths the launcher records, the usual Wine prefix folders, and every folder up to 5 levels deep, usually in seconds. "Full scan" opens every folder on every local drive, for an install the quick scan misses. "Scan a folder..." scans one folder you pick, such as a game library on another drive.
 
 The result has three tabs. "What happened" answers four questions: did the malware run, is anything still active, is there something to clean up, and are you protected for next time. "What to do" lists only the steps that match what the scan found, in order, with buttons that open the folder to clean, Task Manager or Registry Editor, or copy a path, a key or a command. The tool never deletes anything itself. "Details" has every finding, the files the agent could read, and the locations checked.
 
