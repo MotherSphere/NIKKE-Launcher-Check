@@ -145,6 +145,7 @@ pub fn run_line(run: &AgentRun, lang: Lang) -> String {
             Some(host) => msg("run.started_as").arg("host", host.as_str()),
             None => msg("run.started"),
         },
+        RunKind::Failed => msg("run.failed"),
     };
     let line = match run.source.file_name() {
         Some(n) => msg("run.line_from").arg("file", n.to_string_lossy().into_owned()),

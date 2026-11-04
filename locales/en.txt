@@ -178,6 +178,7 @@ run.adopted = the agent started for the first time on this computer and created 
 run.resumed = the agent started again with the ID it saved
 run.started = the agent sent the computer name to the attacker
 run.started_as = the agent sent the computer name {host} to the attacker
+run.failed = the agent's startup failed
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = No ETag
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = debug.log could not be read
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log exists, but this scan was not allowed to open it, so it could not check whether the agent ran. Scan again as a user who can read it.
 finding.agent_ran.title = The malware agent ran
 finding.agent_ran.detail = debug.log shows the remote-access agent starting inside the launcher (k2f_chan registered). While the launcher was open, the attacker could run commands on this computer.
+finding.agent_failed.title = The malware agent loaded, but its startup failed
+finding.agent_failed.detail = debug.log shows the remote-access agent loading inside the launcher (k2f_chan registered), then a startup error (startup failed) on every launch. No line shows the attacker's server taking over (adopted, resuming or agent started as), so the operator most likely never had a session. This cannot be confirmed, because the agent code did run on this computer, so the steps for an infected computer still apply.
 finding.payload_file.title = The malware file is still on disk
 finding.payload_file.detail = This file in the launcher's log folder is LuaJIT bytecode. The launcher saved the downloaded agent (insight.bundle) under a tinyget log name.
 finding.downloaded.title = The launcher downloaded the malware

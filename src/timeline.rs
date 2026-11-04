@@ -31,6 +31,8 @@ pub enum RunKind {
     Resumed,
     /// "agent started as <host>": the agent sent the computer name.
     Started,
+    /// "startup failed: <error>" after k2f_chan: the agent stopped before the server gave it an ID.
+    Failed,
 }
 
 /// One logged step of an agent run.
@@ -67,11 +69,12 @@ pub struct PayloadBuild {
     pub source: PathBuf,
 }
 
-const DEBUG_EVENTS: [(&str, RunKind); 4] = [
+const DEBUG_EVENTS: [(&str, RunKind); 5] = [
     ("\"lua downloaded to ", RunKind::Downloaded),
     ("\"adopted ", RunKind::Adopted),
     ("\"resuming ", RunKind::Resumed),
     ("\"agent started as ", RunKind::Started),
+    ("\"startup failed", RunKind::Failed),
 ];
 
 /// The agent step logged on a debug.log line (a CEF console message), if any.
@@ -85,6 +88,7 @@ pub fn debug_event(line: &str, source: &Path) -> Option<AgentRun> {
         RunKind::Downloaded => run.file = Some(base_name(&value)),
         RunKind::Adopted | RunKind::Resumed => run.agent_id = Some(value),
         RunKind::Started => run.host = Some(value),
+        RunKind::Failed => {}
     }
     Some(run)
 }
@@ -215,6 +219,8 @@ mod tests {
         assert_eq!((s.kind, s.host.as_deref()), (RunKind::Started, Some("COLONY")));
         let k = ev(r#"[1024/011601.000:INFO:CONSOLE(1)] "lua downloaded to log\tinyget\k2f.lua", source:  (1)"#);
         assert_eq!(k.file.as_deref(), Some("k2f.lua"));
+        let f = ev(r#"[1103/014736.600:INFO:CONSOLE(1)] "startup failed: EIO: invalid UTF-8 in string", source:  (1)"#);
+        assert_eq!(f.kind, RunKind::Failed);
         assert!(debug_event(r#"[1103/014735.001:INFO:CONSOLE(1)] "page loaded", source:  (1)"#, src).is_none());
         assert!(debug_event("the user adopted a cat", src).is_none());
     }

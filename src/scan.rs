@@ -408,7 +408,10 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
 // ---------------------------------------------------------------- A: install
 
 /// Needles of the agent's debug.log lines quoted in "The malware agent ran".
-const AGENT_LINES: [&[u8]; 5] = [b"k2f_chan", b"adopted ", b"resuming ", b"agent started as", b"lua downloaded to"];
+const AGENT_LINES: [&[u8]; 6] =
+    [b"k2f_chan", b"adopted ", b"resuming ", b"agent started as", b"lua downloaded to", b"startup failed"];
+/// Lines that show the attacker's server took over a run: it gave the agent its ID.
+const AGENT_STARTED: [&[u8]; 3] = [b"adopted ", b"resuming ", b"agent started as"];
 const MENTIONS: [&[u8]; 1] = [b"insightjs"];
 /// Names that only the agent stage puts in a log. A line that names insightjs without
 /// them is the loader alone, for example the insightjs.org fallback script failing to run.
@@ -435,8 +438,22 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
         None => msg("finding.install_found.debug_missing"),
         Some(path) => {
             let (mut ran, mut server, mut agent, mut mentions) = (false, false, Vec::new(), Vec::new());
+            // A run starts at k2f_chan and ends at its first "startup failed" or AGENT_STARTED line.
+            // `further`: a run reached an AGENT_STARTED line, or ended with neither line and may have gone on.
+            let (mut open, mut further) = (false, false);
             let read = each_line(path, |line| {
-                ran |= contains(line, b"k2f_chan");
+                let mut failed = false;
+                if contains(line, b"k2f_chan") {
+                    ran = true;
+                    further |= open;
+                    open = true;
+                } else if AGENT_STARTED.iter().any(|n| contains(line, n)) {
+                    further = true;
+                    open = false;
+                } else if open && contains(line, b"startup failed") {
+                    failed = true;
+                    open = false;
+                }
                 server |= AGENT_SERVER.iter().any(|n| contains(line, n));
                 for (lines, needles) in [(&mut agent, &AGENT_LINES[..]), (&mut mentions, &MENTIONS[..])] {
                     if lines.len() < MAX_EVIDENCE {
@@ -447,8 +464,11 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                         }
                     }
                 }
-                runs.extend(timeline::debug_event(&String::from_utf8_lossy(line), path));
+                // A "startup failed" outside a run is some other program's message.
+                let event = timeline::debug_event(&String::from_utf8_lossy(line), path);
+                runs.extend(event.filter(|run| run.kind != RunKind::Failed || failed));
             });
+            further |= open;
             if read.is_err() {
                 out.push(
                     Finding::new(
@@ -463,13 +483,13 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
             } else {
                 if ran {
                     let time = agent.iter().find_map(|l| cef_time(l));
+                    let (title, detail) = if further {
+                        ("finding.agent_ran.title", "finding.agent_ran.detail")
+                    } else {
+                        ("finding.agent_failed.title", "finding.agent_failed.detail")
+                    };
                     out.push(
-                        Finding::new(
-                            FindingKind::AgentRan,
-                            Severity::Critical,
-                            msg("finding.agent_ran.title"),
-                            msg("finding.agent_ran.detail"),
-                        )
+                        Finding::new(FindingKind::AgentRan, Severity::Critical, msg(title), msg(detail))
                         .at(path)
                         .evidence(agent)
                         .time(time),
@@ -1490,6 +1510,36 @@ mod tests {
         assert!(dl.detail.en().contains("tinyget.20261103-014725-874.log"));
         assert!(has(&r, Severity::Critical, "The malware file is still on disk"));
         assert!(findings(&r).iter().all(|f| f.evidence.len() <= 5 && f.evidence_lines(Lang::En).iter().all(|e| e.chars().count() <= 240)));
+    }
+
+    /// A launch where sysinfo fails on a user name that is not valid UTF-8 (issues #16, #21).
+    const FAILED_RUN: &[u8] = b"[1104/093012.101:INFO:CONSOLE(1)] \"lua downloaded to log\\tinyget\\tinyget.20261104-093011-020.log\", source:  (1)\r\n\
+[1104/093012.130:INFO:CONSOLE(1)] \"k2f_chan registered\", source:  (1)\r\n\
+[1104/093012.162:INFO:CONSOLE(1)] \"startup failed: EIO: invalid UTF-8 in string\", source:  (1)\r\n";
+
+    #[test]
+    fn failed_agent_startup() {
+        let fx = Fixture::new("startfail");
+        fx.file("NIKKE/Launcher/nikke_launcher.exe", b"MZ");
+        // A "startup failed" before any k2f_chan line is not the agent's.
+        let other = b"[1104/090000.001:INFO:CONSOLE(1)] \"startup failed: widget\", source:  (1)\r\n";
+        fx.file("NIKKE/Launcher/intl_service/debug.log", &[other, FAILED_RUN, FAILED_RUN].concat());
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Infected);
+        let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentRan).expect("A1");
+        assert_eq!((f.severity, f.title.en().as_str()), (Severity::Critical, "The malware agent loaded, but its startup failed"));
+        assert!(f.evidence_lines(Lang::En).iter().any(|l| l.contains("startup failed: EIO: invalid UTF-8 in string")));
+        let kinds: Vec<RunKind> = r.runs.iter().map(|run| run.kind).collect();
+        assert_eq!(kinds, [RunKind::Downloaded, RunKind::Failed, RunKind::Downloaded, RunKind::Failed]);
+
+        // One launch that went further, or that logged neither line, keeps "The malware agent ran".
+        let unfinished = b"[1104/100000.001:INFO:CONSOLE(1)] \"k2f_chan registered\", source:  (1)\r\n";
+        for log in [[FAILED_RUN, DEBUG_LOG].concat(), [DEBUG_LOG, FAILED_RUN].concat(), [FAILED_RUN, unfinished].concat()] {
+            fx.file("NIKKE/Launcher/intl_service/debug.log", &log);
+            let r = fx.scan();
+            let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentRan).expect("A1");
+            assert_eq!((f.severity, f.title.en().as_str()), (Severity::Critical, "The malware agent ran"));
+        }
     }
 
     #[test]
