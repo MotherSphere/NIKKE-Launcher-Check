@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.4.0...v0.4.1) (2026-11-04)
+
+
+### Fixes
+
+* **scan:** count an agent download only when it finished, and know two more builds ([51926a2](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/51926a2944e6a0c7bd696f5f1691c2475c5f64c0))
+* **scan:** read compressed LevelDB tables when looking for the agent state ([8a823d5](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/8a823d59e4d32358173197e64ea0b209650feb32))
+
 ## [0.4.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.3.0...v0.4.0) (2026-11-04)
 
 
