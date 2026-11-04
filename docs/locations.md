@@ -1,6 +1,6 @@
 # Where it looks
 
-"Scan this computer" and "Full scan" (or `nikke-check --cli` with no folder, and `nikke-check --cli --full`) search the places below for NIKKE installs, launcher data folders, user profiles and Wine prefixes. "Scan a folder..." and `nikke-check --cli PATH...` search only the folders given; see [Folder scans](#folder-scans). [What it checks](checks.md) describes what is read in each location.
+"Scan this computer" and "Full scan" (or `nikke-check --cli` with no folder, and `nikke-check --cli --full`) search the places below for NIKKE installs, launcher data folders, user profiles and Wine prefixes. In each user profile they also look for the launcher's login browser profile, `AppData/Local/CEF/User Data`. "Scan a folder..." and `nikke-check --cli PATH...` search only the folders given; see [Folder scans](#folder-scans). [What it checks](checks.md) describes what is read in each location.
 
 ## Quick scan and full scan
 
@@ -12,7 +12,7 @@
 
 - Every fixed and removable drive from `A:\` to `Z:\`: 5 levels deep in a quick scan, every folder in a full scan. Only `\Windows` is left out: it holds system files, not NIKKE or the traces this tool looks for. Mapped network drives and CD drives are not walked, and the report lists the network drives it skipped. Junctions and symbolic links are never followed, so a drive mounted in a folder (Disk Management, "Mount in the following empty NTFS folder") instead of on a letter is not walked. Scan that folder with "Scan a folder...".
 - `%APPDATA%\nikke_launcher` and `%APPDATA%\nikke_launcher_hmt`.
-- The `%USERPROFILE%` profile.
+- The `%USERPROFILE%` profile, and the launcher's login browser profile in it, `%LOCALAPPDATA%\CEF\User Data`.
 
 The tool also reads the install path the launcher records, which covers an install on a network drive that the walk leaves out:
 
@@ -67,7 +67,7 @@ When a folder cannot be read, the report names it. On macOS this usually means T
 
 Any `drive_c` folder found along the way also counts as a Wine prefix, on every system. In each prefix the tool:
 
-- checks every user folder in `drive_c/users` except `Public`, and the launcher data in its `AppData/Roaming`. A user folder that is a symbolic link is skipped: Proton links your login name to `steamuser`, which is the same profile.
+- checks every user folder in `drive_c/users` except `Public`, the launcher data in its `AppData/Roaming`, and the launcher's login browser profile in its `AppData/Local/CEF/User Data`. A user folder that is a symbolic link is skipped: Proton links your login name to `steamuser`, which is the same profile.
 - searches all of `drive_c` for an install, skipping `drive_c/windows`
 - checks whether the folder that holds the prefix is an install, since installs often keep their prefix inside (`NIKKE/prefix` next to `NIKKE/Launcher`)
 - reads the install path the launcher writes into `user.reg` (App Paths, Uninstall and the `nikkelauncher` URL protocol) and into `url_protocol.reg` in the launcher data, and follows its drive letter through the prefix's `dosdevices` link

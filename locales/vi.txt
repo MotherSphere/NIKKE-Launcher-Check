@@ -25,7 +25,7 @@ cli.error_box = Không mở được cửa sổ:\n{error}\n\nĐể xem báo cáo
 
 # Thanh trên cùng, màn hình bắt đầu và phần đầu báo cáo.
 report.read_only = Chỉ đọc. Không truy cập mạng.
-report.about = Ngày 27/9/2026, bốn tệp trên CDN của Level Infinite bị sửa để nạp một script từ insightjs.com bên trong launcher NIKKE trên PC. Chậm nhất là từ ngày 23/10/2026, script đó đã tải về một agent truy cập từ xa (insight.bundle) có thể chạy lệnh, đọc tệp, chụp màn hình và thu thập dữ liệu trình duyệt. Ba trong bốn tệp đã được thay thế vào ngày 3/11. Tệp thứ tư đã được làm sạch vào ngày 28/10, nhưng một số máy chủ CDN vẫn phân phối bản cũ vào ngày 3/11. Công cụ này tìm các dấu vết mà trình tải (loader) và agent để lại trên ổ đĩa.
+report.about = Ngày 27/9/2026, bốn tệp trên CDN của Level Infinite bị sửa để nạp một script từ insightjs.com bên trong launcher NIKKE trên PC. Chậm nhất là từ ngày 23/10/2026, script đó đã tải về một agent truy cập từ xa (insight.bundle) có thể chạy lệnh, đọc tệp, chụp màn hình và thu thập dữ liệu trình duyệt. Ba trong bốn tệp đã được thay thế vào ngày 3/11. Tệp thứ tư đã được làm sạch vào ngày 28/10, nhưng một số máy chủ CDN vẫn phân phối bản cũ vào ngày 3/11. Ngày 4/11, Level Infinite đã xác nhận bản sửa lỗi. Công cụ này tìm các dấu vết mà trình tải (loader) và agent để lại trên ổ đĩa.
 # Phạm vi đã quét ("Phạm vi quét: ...", "Đang quét ...").
 report.scope.computer = máy tính này
 report.scope.quick = máy tính này (quét nhanh)
@@ -33,7 +33,7 @@ report.scope.full = máy tính này (quét toàn bộ)
 
 # Kết luận: một tiêu đề, rồi một câu.
 verdict.infected.title = Đã nhiễm
-verdict.infected.summary = Đã tìm thấy dấu vết nghiêm trọng: agent đã được tải về hoặc đã chạy, đã để lại cơ chế duy trì (persistence), hoặc launcher đang chạy ngay lúc này. Hãy coi máy tính này là đã bị xâm phạm.
+verdict.infected.summary = Đã tìm thấy dấu vết nghiêm trọng: agent đã được tải về hoặc đã chạy, hoặc đã để lại cơ chế duy trì (persistence). Hãy coi máy tính này là đã bị xâm phạm.
 verdict.exposed.title = Bị phơi nhiễm
 verdict.exposed.summary = Launcher đã nạp script độc hại hoặc đã kết nối tới insightjs.com, nhưng không tìm thấy dấu hiệu nào cho thấy agent đã chạy.
 verdict.no_traces.title = Không tìm thấy dấu vết
@@ -51,6 +51,7 @@ kind.install = Bản cài đặt NIKKE
 kind.launcher_data = Dữ liệu launcher
 kind.wine_prefix = Prefix Wine
 kind.user_profile = Hồ sơ người dùng
+kind.login_profile = Hồ sơ trình duyệt đăng nhập của launcher
 # Các nhóm phát hiện không gắn với thư mục nào.
 group.running = Chương trình đang chạy
 group.coverage = Phạm vi quét
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = {n} prefix Wine
 report.checked.wine_prefix_other = {n} prefix Wine
 report.checked.user_profile_one = {n} hồ sơ người dùng
 report.checked.user_profile_other = {n} hồ sơ người dùng
+report.checked.login_profile_one = {n} hồ sơ trình duyệt đăng nhập của launcher
+report.checked.login_profile_other = {n} hồ sơ trình duyệt đăng nhập của launcher
 report.checked.nothing = không có gì để kiểm tra
 
 # "Thống kê lượt quét: ...". {skipped} là một trong hai văn bản "bỏ qua" bên dưới, hoặc để trống.
@@ -149,6 +152,7 @@ answer.active.launcher = Launcher NIKKE đang chạy. Trong khi launcher chạy,
 answer.active.dll_loaded = DLL của phần mềm độc hại hiện đang được nạp trong {programs}.
 answer.active.registry = Khóa sổ đăng ký khiến trình duyệt nạp DLL của phần mềm độc hại hiện đang được thiết lập.
 answer.active.none = Launcher không chạy, và không có DLL nào được cài đặt hay được thiết lập để nạp.
+answer.active.launcher_clean = Launcher NIKKE đang chạy, nhưng không có gì trong lượt quét này cho thấy agent. Không có DLL nào được cài đặt hay được thiết lập để nạp.
 answer.clean.question = Có gì cần dọn dẹp không?
 answer.clean.dll_folder = Thư mục DLL của {browser}: {path}
 answer.clean.registry = Khóa sổ đăng ký HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
@@ -156,7 +160,8 @@ answer.clean.leftover = Khóa sổ đăng ký HKCU {E77CC89B-7401-4C04-8CED-149D
 answer.clean.legacy = Các tệp DLL cũ hơn trong {path}
 answer.clean.temp = Các tệp k2f trong {path}
 answer.clean.cache = Bộ nhớ đệm của launcher, nơi chứa dấu vết của phần mềm độc hại: {path}
-answer.clean.none_cache = Không tìm thấy tệp nào do phần mềm độc hại để lại. Dù vậy, hãy xóa bộ nhớ đệm của launcher (tbs_cache) trước khi mở lại launcher: nó vẫn có thể chứa script độc hại từ trước khi có bản sửa lỗi.
+answer.clean.login_profile = Hồ sơ trình duyệt đăng nhập của launcher, nơi chứa dấu vết của phần mềm độc hại: {path}
+answer.clean.none_cache = Không tìm thấy tệp nào do phần mềm độc hại để lại. Dù vậy, hãy xóa bộ nhớ đệm của launcher (tbs_cache) trước khi mở lại launcher: nó vẫn có thể chứa các tệp đã bị sửa từ trước khi có bản sửa lỗi.
 answer.clean.none = Không tìm thấy thứ gì do phần mềm độc hại để lại.
 answer.protected.question = Bạn đã được bảo vệ cho lần sau chưa?
 answer.protected.not_checked = Tệp hosts chưa được kiểm tra.
@@ -245,8 +250,9 @@ step.dll.drive_key = Hãy khởi động bản Windows đó và xóa khóa sổ 
 step.dll.scan_again = Sau đó hãy quét lại: các phát hiện này sẽ không còn nữa.
 step.dll.defender = Microsoft Defender đã không phát hiện DLL này trên một máy tính bị nhiễm, nên kết quả quét virus sạch không chứng tỏ DLL đã bị xóa.
 step.cache.title = Xóa bộ nhớ đệm của launcher
-step.cache.intro = Trước tiên, hãy đóng launcher. Sau đó xóa thư mục tbs_cache, bộ nhớ đệm của trình duyệt tích hợp trong launcher. Thư mục này vẫn có thể chứa script độc hại từ trước khi có bản sửa lỗi, và launcher sẽ nạp lại script đó.
+step.cache.intro = Trước tiên, hãy đóng launcher. Sau đó, trước khi mở lại launcher, hãy xóa thư mục tbs_cache, bộ nhớ đệm của trình duyệt tích hợp trong launcher. Thư mục này vẫn có thể chứa các tệp đã bị sửa từ trước khi có bản sửa lỗi, và launcher sẽ nạp lại chúng. Để giữ lại bằng chứng, hãy sao chép thư mục sang nơi khác trước.
 step.cache.none = Lượt quét này không tìm thấy thư mục dữ liệu launcher. Trên Windows, thư mục này là %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt với launcher HMT), còn trong prefix Proton hoặc Wine là drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache.
+step.cache.login = Hồ sơ trình duyệt đăng nhập của launcher bên dưới cũng chứa dấu vết của phần mềm độc hại. Hãy xóa cả hồ sơ này. Launcher sẽ tạo một hồ sơ mới, và bạn sẽ phải đăng nhập lại vào launcher.
 step.password.title = Đổi mật khẩu từ một thiết bị khác
 step.password.intro_infected = Hãy dùng điện thoại hoặc một máy tính khác chưa từng chạy launcher NIKKE. Trong lúc agent chạy, các lệnh của nó có thể đọc tệp và dữ liệu trình duyệt trên máy tính này. Hãy đổi hoặc thay thế những thứ sau:
 step.password.intro_exposed = Agent được gửi đi chậm nhất là từ ngày 23/10/2026, và chỉ trong một số lần khởi chạy. Nếu launcher đã được mở vào hoặc sau ngày đó, hãy coi như agent đã chạy: từ điện thoại hoặc một máy tính khác chưa từng chạy launcher, hãy đổi hoặc thay thế những thứ sau:
@@ -277,9 +283,15 @@ step.block.scan_again = Sau đó hãy quét lại: phần Bảo vệ, trong Chi 
 step.block.ips = Tệp hosts không chặn được địa chỉ IP. Hãy chặn 89.127.233.127 và 89.126.250.172 trong tường lửa hoặc router của bạn.
 step.block.firewall = Để thêm quy tắc tường lửa Windows, hãy bấm chuột phải vào nút Bắt đầu, chọn Terminal (Quản trị viên) hoặc Windows PowerShell (Quản trị viên), rồi chạy:
 step.block.macos = Trên macOS, hãy chặn chúng trong phần cài đặt của router.
-step.block.ufw = Nếu dùng ufw, hãy chạy lệnh này. Các quy tắc không chặn gì khi ufw đang tắt: sudo ufw status phải hiển thị "Status: active", và sudo ufw enable sẽ bật ufw. Nếu không dùng ufw, hãy chặn chúng trong phần cài đặt của router.
-step.wait.title = Không mở launcher cho đến khi Level Infinite xác nhận đã có bản sửa lỗi
-step.wait.servers = Một số máy chủ của Level Infinite vẫn gửi tệp độc hại vào ngày 3/11/2026. Một lần khởi chạy trước khi có bản sửa lỗi có thể nạp lại script.
+step.block.ufw = Máy đã cài ufw. Hãy chạy lệnh này. Các quy tắc không chặn gì khi ufw đang tắt: sudo ufw status phải hiển thị "Status: active", và sudo ufw enable sẽ bật ufw.
+step.block.firewalld = Máy đã cài firewalld. Hãy chạy lệnh này. Lệnh sẽ thêm một chính sách (policy) từ chối các kết nối từ máy tính này tới cả hai địa chỉ, và chính sách này vẫn còn sau khi khởi động lại.
+step.block.firewalld_check = Để kiểm tra chính sách, hãy chạy:
+step.block.nft = Máy đã cài nftables. Hãy chạy lệnh này. Các quy tắc chỉ tồn tại đến lần khởi động lại tiếp theo, trừ khi bạn lưu chúng vào /etc/nftables.conf.
+step.block.no_firewall = Không tìm thấy công cụ tường lửa nào (firewall-cmd, ufw hoặc nft). Hãy chặn chúng trong phần cài đặt của router.
+step.wait.title = Trước khi mở lại launcher
+step.wait.fixed = Level Infinite đã xác nhận bản sửa lỗi vào ngày 4/11/2026. Trước khi mở lại launcher, hãy xóa thư mục bộ nhớ đệm tbs_cache của nó: thư mục này vẫn có thể chứa các tệp đã bị sửa, và launcher sẽ nạp lại chúng.
+step.wait.evidence = Để giữ lại bằng chứng, hãy thực hiện các bước kiểm tra trước, hoặc sao chép thư mục sang nơi khác trước khi xóa.
+step.wait.keep_blocked = Hãy tiếp tục chặn các tên miền và địa chỉ IP: hiện vẫn chưa rõ kẻ tấn công đã có quyền ghi vào CDN bằng cách nào.
 step.wait.reinstall = Agent có thể chạy bất kỳ lệnh nào, nên cài lại hệ điều hành là cách an toàn nhất để chắc chắn máy tính này sạch.
 
 # Chi tiết: các nhóm phát hiện.
@@ -384,6 +396,8 @@ finding.data_link.detail = Thư mục này liên kết tới {target}; đích n�
 finding.data_link.unknown_target = một đích không xác định
 finding.agent_state.title = Agent của phần mềm độc hại đã để lại dấu vết trong dữ liệu launcher
 finding.agent_state.detail = k2f_chan (tên kênh cầu nối của agent) hoặc k2f.agent.state (ID mà agent lưu lại) xuất hiện trong {files} thuộc dữ liệu launcher. Điều này cho thấy agent đã chạy.
+finding.login_agent_state.title = Agent của phần mềm độc hại đã để lại dấu vết trong hồ sơ trình duyệt đăng nhập của launcher
+finding.login_agent_state.detail = k2f_chan (tên kênh cầu nối của agent) hoặc k2f.agent.state (ID mà agent lưu lại) xuất hiện trong {files} thuộc hồ sơ trình duyệt đăng nhập của launcher (CEF\\User Data). Điều này cho thấy agent đã chạy.
 finding.agent_server.title = Launcher đã kết nối tới máy chủ agent
 finding.agent_server.detail = analytics.insightjs.com được ghi trong {files} trạng thái mạng. Máy chủ đó gửi agent (insight.bundle) và nhận các tín hiệu báo danh (check-in) của nó. Một lần khởi chạy mà trình tải chạy nhưng không có agent chỉ ghi lại insightjs.com.
 finding.loader_cached.title = Launcher đã nạp script độc hại
@@ -392,6 +406,8 @@ finding.network_state.title = Launcher đã kết nối tới insightjs.com
 finding.network_state.detail = insightjs.com được ghi trong {files} trạng thái mạng, nên trình duyệt tích hợp của launcher đã kết nối tới tên miền đó.
 finding.data_mention.title = Dữ liệu launcher có nhắc tới insightjs.com
 finding.data_mention.detail = insightjs.com xuất hiện trong {files} thuộc dữ liệu launcher.
+finding.login_mention.title = Hồ sơ trình duyệt đăng nhập của launcher có nhắc tới insightjs.com
+finding.login_mention.detail = insightjs.com xuất hiện trong {files} thuộc hồ sơ trình duyệt đăng nhập của launcher (CEF\\User Data).
 finding.data_clean.title = Không có dấu vết trong dữ liệu launcher
 finding.data_clean.detail = Đã kiểm tra {files}.
 # {browser} là tên một trình duyệt, chẳng hạn Chrome hoặc Edge.
@@ -418,6 +434,8 @@ finding.registry.where_windows = Khóa {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\I
 finding.registry.where_wine = user.reg, hive HKCU của prefix Wine này, chứa khóa {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
 finding.launcher_running.title = Launcher NIKKE đang chạy
 finding.launcher_running.detail = Hãy đóng launcher ngay lập tức (kết thúc tiến trình nếu nó không đóng) và ngắt kết nối mạng. Trong khi launcher chạy, kẻ tấn công có thể gửi lệnh tới máy tính này.
+finding.launcher_running_clean.title = Launcher NIKKE đang chạy
+finding.launcher_running_clean.detail = Launcher hiện đang chạy, và không có gì trong lượt quét này cho thấy agent. Mục này chỉ được liệt kê để tham khảo.
 finding.dll_loaded.title = DLL duy trì hiện đang được nạp
 finding.dll_loaded.detail = Các chương trình này đang nạp platform_experience_helper.dll của phần mềm độc hại. Windows không cho xóa tệp cho đến khi các chương trình này thoát, và Chrome sẽ nạp lại tệp ở lần khởi động tiếp theo nếu khóa HKCU vẫn còn. Hãy xóa khóa sổ đăng ký, khởi động lại Windows, rồi xóa thư mục của DLL.
 
@@ -454,6 +472,8 @@ ui.button.stop = Dừng quét
 ui.button.copy_report = Sao chép báo cáo
 ui.button.save_report = Lưu báo cáo...
 ui.button.see_todo = Xem những việc cần làm
+# Nút lớn bên dưới kết luận. Một kết quả luôn có nhiều hơn một bước.
+ui.button.see_todo_count = Xem những việc cần làm ({n} bước)
 ui.button.open_folder = Mở thư mục
 ui.button.task_manager = Mở Trình quản lý Tác vụ
 ui.button.registry_editor = Mở Trình soạn thảo Sổ đăng ký
@@ -512,6 +532,10 @@ ui.happened.payload_build = Bản dựng payload
 ui.happened.agent_runs = Các lần agent chạy trong nhật ký
 ui.todo.hint = Hãy làm từng bước một, theo thứ tự. Các nút sẽ mở đúng thư mục hoặc công cụ cho bạn, nhưng bạn tự xóa tệp. Chương trình này không bao giờ xóa gì.
 ui.todo.note = Các bước này dựa trên những gì lượt quét tìm thấy, theo thứ tự cần làm. Các dấu "Đã xong" không được lưu lại.
+# Hiển thị khi cửa sổ bị đóng trước khi mở tab Cần làm gì, với kết quả Đã nhiễm hoặc Bị phơi nhiễm.
+ui.close.title = Bạn chưa xem các bước
+ui.close.text = Các bước trong "Cần làm gì" cho bạn biết cần dọn dẹp những gì và cần đổi những mật khẩu nào.
+ui.close.anyway = Vẫn đóng
 ui.tile.critical = Nghiêm trọng
 ui.tile.warnings = Cảnh báo
 ui.tile.info = Thông tin

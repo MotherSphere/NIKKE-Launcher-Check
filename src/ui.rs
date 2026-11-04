@@ -15,8 +15,8 @@ use std::time::{Duration, Instant};
 use iced::futures::channel::oneshot;
 use iced::theme::Palette;
 use iced::widget::{
-    Column, button, canvas, checkbox, column, container, grid, image, pick_list, responsive, row, scrollable, space, stack, text,
-    toggler,
+    Column, button, canvas, center, checkbox, column, container, grid, image, opaque, pick_list, responsive, row, scrollable, space,
+    stack, text, toggler,
 };
 use iced::{
     Alignment, Background, Color, Element, Fill, Font, Length, Point, Radians, Rectangle, Renderer, Shrink, Size,
@@ -41,6 +41,8 @@ pub fn run(folder: Option<PathBuf>, lang: Lang) -> iced::Result {
             size: Size::new(1040.0, 780.0),
             min_size: Some(Size::new(720.0, 560.0)),
             icon: window::icon::from_rgba(icon_rgba(), ICON_PX, ICON_PX).ok(),
+            // The window asks first when the steps of an infected result were not opened.
+            exit_on_close_request: false,
             ..window::Settings::default()
         })
         .run()
@@ -136,6 +138,10 @@ struct App {
     evidence: HashSet<(usize, usize)>,
     /// The Information section of Details is open.
     info_open: bool,
+    /// The What to do tab was shown for this result.
+    todo_seen: bool,
+    /// The window was asked to close before the steps were seen: the warning shows.
+    close_warning: bool,
 }
 
 /// What a copy button puts on the clipboard.
@@ -170,6 +176,8 @@ enum Message {
     Open(Target),
     Opened(Option<Result<(), Text>>),
     Lang(Lang),
+    CloseRequested,
+    Exit,
 }
 
 /// Runs `job` on its own thread and delivers the result as a message.
@@ -207,6 +215,8 @@ impl App {
             checked: HashSet::new(),
             evidence: HashSet::new(),
             info_open: false,
+            todo_seen: false,
+            close_warning: false,
         };
         // Same path as a drop on the window, so a file gets the "only folders" notice.
         let task = match folder {
@@ -225,11 +235,12 @@ impl App {
             iced::Event::Window(window::Event::FileDropped(path)) => Some(Message::Dropped(path)),
             _ => None,
         });
+        let close = window::close_requests().map(|_| Message::CloseRequested);
         if self.scanning() {
             // Frames only while scanning: an idle window does not redraw.
-            Subscription::batch([drops, window::frames().map(Message::Tick)])
+            Subscription::batch([drops, close, window::frames().map(Message::Tick)])
         } else {
-            drops
+            Subscription::batch([drops, close])
         }
     }
 
@@ -239,6 +250,11 @@ impl App {
 
     fn busy(&self) -> bool {
         self.scanning() || self.picking
+    }
+
+    /// An infected or exposed result whose steps were never shown.
+    fn steps_unseen(&self) -> bool {
+        !self.todo_seen && matches!(&self.phase, Phase::Done(d) if matches!(d.result.verdict, Verdict::Infected | Verdict::Exposed))
     }
 
     fn start(&mut self, request: Request) -> Task<Message> {
@@ -334,6 +350,8 @@ impl App {
                 self.checked.clear();
                 self.evidence.clear();
                 self.info_open = false;
+                self.todo_seen = self.tab == Tab::Todo;
+                self.close_warning = false;
                 Task::none()
             }
             Message::Copy(what) => {
@@ -360,6 +378,10 @@ impl App {
             }
             Message::Tab(tab) => {
                 self.tab = tab;
+                if tab == Tab::Todo {
+                    self.todo_seen = true;
+                    self.close_warning = false;
+                }
                 Task::none()
             }
             Message::StepDone(i, done) => {
@@ -437,6 +459,11 @@ impl App {
                 }
                 Task::none()
             }
+            Message::CloseRequested if self.steps_unseen() => {
+                self.close_warning = true;
+                Task::none()
+            }
+            Message::CloseRequested | Message::Exit => iced::exit(),
         }
     }
 
@@ -466,7 +493,29 @@ impl App {
             );
         }
         page = page.push(body);
-        column![top_bar(self.lang), scrollable(container(page).padding(24).center_x(Fill)).height(Fill), bottom_bar(self.lang)].into()
+        let window = column![top_bar(self.lang), scrollable(container(page).padding(24).center_x(Fill)).height(Fill), bottom_bar(self.lang)];
+        if !self.close_warning {
+            return window.into();
+        }
+        let dialog = container(
+            column![
+                text(self.t("ui.close.title")).size(22).font(bold()).wrapping(text::Wrapping::WordOrGlyph),
+                text(self.t("ui.close.text")).wrapping(text::Wrapping::WordOrGlyph),
+                row![
+                    action(self.t("ui.button.see_todo"), Some(Message::Tab(Tab::Todo)), true),
+                    action(self.t("ui.close.anyway"), Some(Message::Exit), false),
+                ]
+                .spacing(12)
+                .wrap()
+                .vertical_spacing(12),
+            ]
+            .spacing(14),
+        )
+        .padding(24)
+        .max_width(520)
+        .style(|_| surface(CARD, 12).border(border::rounded(12).color(LINE).width(1)));
+        let shade = center(opaque(dialog)).padding(24).style(|_| surface(Color { a: 0.75, ..Color::BLACK }, 0));
+        stack![window, opaque(shade)].into()
     }
 
     fn home(&self) -> Element<'_, Message> {
@@ -550,17 +599,27 @@ impl App {
         .align_y(Alignment::Center)
         .wrap()
         .vertical_spacing(12);
-        let tabs = row(Tab::ALL.map(|t| tab_button(t, t == self.tab, self.lang))).spacing(8).wrap().vertical_spacing(8);
+        let tabs = row(Tab::ALL.map(|t| {
+            let label = match t {
+                Tab::Todo => msg("ui.details.section_count").arg("title", t.label(self.lang)).arg("n", d.steps.len().to_string()).render(self.lang),
+                _ => t.label(self.lang).to_string(),
+            };
+            tab_button(t, label, t == self.tab)
+        }))
+        .spacing(8)
+        .wrap()
+        .vertical_spacing(8);
         let hidden = self.hide.then(|| text(self.t("ui.hide_info_note")).size(13).color(MUTED));
         let body = match self.tab {
-            Tab::Happened => self.happened(&d.result),
+            Tab::Happened => self.happened(d),
             Tab::Todo => self.todo(&d.steps),
             Tab::Details => self.details(&d.result),
         };
         column![actions].push(hidden).push(tabs).push(body).spacing(16).into()
     }
 
-    fn happened<'a>(&'a self, r: &'a ScanResult) -> Element<'a, Message> {
+    fn happened<'a>(&'a self, d: &'a Done) -> Element<'a, Message> {
+        let r = &d.result;
         let color = verdict_color(r.verdict);
         let hero = container(
             row![
@@ -579,7 +638,23 @@ impl App {
         .width(Fill)
         .style(move |_| container::Style { border: border::rounded(12), ..filled(color) });
 
-        let mut col = Column::new().spacing(14).push(hero);
+        // Right under the verdict, in its color: the steps are what to do next.
+        let see = msg("ui.button.see_todo_count").arg("n", d.steps.len().to_string()).render(self.lang);
+        let see = button(text(see).size(20).font(bold()).width(Fill).align_x(Alignment::Center).wrapping(text::Wrapping::WordOrGlyph))
+            .padding([14, 24])
+            .width(Fill)
+            .style(move |_, status| {
+                let pressed = matches!(status, button::Status::Hovered | button::Status::Pressed);
+                let shade = |c: f32| if pressed { c * 0.82 } else { c };
+                button::Style {
+                    background: Some(Background::Color(Color { r: shade(color.r), g: shade(color.g), b: shade(color.b), a: 1.0 })),
+                    text_color: Color::WHITE,
+                    border: border::rounded(10),
+                    ..button::Style::default()
+                }
+            })
+            .on_press(Message::Tab(Tab::Todo));
+        let mut col = Column::new().spacing(14).push(hero).push(see);
         for a in guide::answers(r, self.lang) {
             col = col.push(answer_card(a, self.lang));
         }
@@ -590,7 +665,7 @@ impl App {
             }
             col = col.push(card(c));
         }
-        col.push(action(self.t("ui.button.see_todo"), Some(Message::Tab(Tab::Todo)), true)).into()
+        col.into()
     }
 
     fn todo<'a>(&'a self, steps: &'a [Step]) -> Element<'a, Message> {
@@ -886,8 +961,8 @@ fn switch_style(theme: &Theme, status: toggler::Status) -> toggler::Style {
 }
 
 /// A result tab; the active one has the accent border and bold text.
-fn tab_button<'a>(tab: Tab, active: bool, lang: Lang) -> Element<'a, Message> {
-    button(text(tab.label(lang)).font(if active { bold() } else { Font::DEFAULT }))
+fn tab_button<'a>(tab: Tab, label: String, active: bool) -> Element<'a, Message> {
+    button(text(label).font(if active { bold() } else { Font::DEFAULT }))
         .padding([8, 18])
         .style(move |_, status| {
             let hover = matches!(status, button::Status::Hovered | button::Status::Pressed);
@@ -1466,6 +1541,27 @@ mod tests {
         let _ = app.update(Message::Hide(true));
         let hidden = app.report_text().unwrap();
         assert!(!hidden.contains("COLONY") && !hidden.contains("steamuser"), "{hidden}");
+
+        // Closing before the steps were seen shows the warning; opening them removes it.
+        let _ = app.update(Message::Finished(0, Some(d_result(&app))));
+        assert_eq!(app.tab, Tab::Happened);
+        let _ = app.update(Message::CloseRequested);
+        assert!(app.close_warning);
+        let _ = app.view();
+        let _ = app.update(Message::Tab(Tab::Todo));
+        assert!(!app.close_warning && !app.steps_unseen());
+        // A result without traces closes at once.
+        let Phase::Done(d) = &app.phase else { panic!("no result") };
+        let mut clean = (*d.result).clone();
+        clean.verdict = Verdict::NoTraces;
+        let _ = app.update(Message::Finished(0, Some(Arc::new(clean))));
+        let _ = app.update(Message::CloseRequested);
+        assert!(!app.close_warning);
+    }
+
+    fn d_result(app: &App) -> Arc<ScanResult> {
+        let Phase::Done(d) = &app.phase else { panic!("no result") };
+        d.result.clone()
     }
 
     #[test]

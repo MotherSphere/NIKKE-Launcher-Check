@@ -6,14 +6,14 @@ A clean device, in the steps below, is a phone or another computer that never ra
 
 ## Infected
 
-Critical traces were found: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, the agent left persistence, or the launcher is running now. While the launcher was open, the attacker could run commands on this computer.
+Critical traces were found: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, or the agent left persistence. While the launcher was open, the attacker could run commands on this computer.
 
 Steps 5 to 8 are done from a clean device, so you can start them right away while this computer stays offline.
 
 1. Close the launcher now and disconnect this computer from the network. If the launcher does not close: on Windows, open Task Manager (Ctrl+Shift+Esc) and end nikke_launcher.exe. On Linux, run `pkill -f nikke_launcher.exe` in a terminal. On Windows, the scan also lists the programs that have the malware's DLL loaded. Close them, but do not end explorer.exe, which runs the taskbar and the desktop: the restart in step 3 unloads the DLL from every program.
 2. Save the report before you delete anything: click "Save report..." (or "Copy report" and paste it into a text file). Deleting `tbs_cache` also deletes the `k2f.agent.state` trace. Turn on "Hide my info" before you share the report.
 3. If the report lists a DLL or registry finding, remove the persistence. On Windows the order is: delete the registry key, restart Windows, then delete the DLL folder. See [Remove the DLL persistence](#remove-the-dll-persistence).
-4. Before you open the launcher again, delete its cache folder, `tbs_cache`, in the launcher data folder. It can still hold the malicious script from before the fix. See [Delete the launcher cache](#delete-the-launcher-cache).
+4. Before you open the launcher again, delete its cache folder, `tbs_cache`, in the launcher data folder. It can still hold the modified files from before the fix, and the launcher would load them again. See [Delete the launcher cache](#delete-the-launcher-cache).
 5. From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers. The window names the browser profiles that have saved logins.
 6. Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.
 7. Revoke the API tokens and SSH keys stored on this computer, and replace them. The window lists the credential files it found, such as `~/.ssh/id_ed25519` or `~/.config/gh/hosts.yml`, but other files can hold tokens too.
@@ -21,7 +21,7 @@ Steps 5 to 8 are done from a clean device, so you can start them right away whil
 9. On Linux and macOS (Proton, umu, Wine, CrossOver, Whisky), the remote commands could read your whole home folder and the environment variables of the launcher process, not only the Wine prefix. See [Why the home folder is exposed under Wine](#why-the-home-folder-is-exposed-under-wine).
 10. Block insightjs.com, analytics.insightjs.com and insightjs.org in your hosts file, and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
 11. If the scan found launcher data but not the NIKKE install folder, scan the install folder too: "Scan a folder..." in the window, or `nikke-check --cli <folder>`. Its `debug.log` shows when the agent ran.
-12. Do not open the NIKKE launcher until Level Infinite confirms a fix. Reinstalling the operating system is the safest way to be sure the computer is clean, because the agent could run any command.
+12. Level Infinite confirmed a fix on November 4, 2026. Keep the domains and the IP addresses blocked anyway: it is still unknown how the attacker got write access to the CDN. Reinstalling the operating system is the safest way to be sure the computer is clean, because the agent could run any command.
 
 ## Exposed
 
@@ -30,9 +30,9 @@ The launcher loaded the malicious script or contacted insightjs.com, but no sign
 1. Save the report before you delete anything. Deleting `tbs_cache` also deletes the traces the scan found in it.
 2. If the scan found launcher data but not the NIKKE install folder, scan the install folder: "Scan a folder..." in the window, or `nikke-check --cli <folder>`. Its `debug.log` can show that the agent ran, which changes the result to Infected. Do this before the other steps.
 3. After a quick scan, also run the full scan ("Full scan" in the window, or `nikke-check --cli --full`): an older install more than 5 folder levels deep can hold the same proof.
-4. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. It can still hold the malicious script from before the fix. See [Delete the launcher cache](#delete-the-launcher-cache).
+4. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. It can still hold the modified files from before the fix. See [Delete the launcher cache](#delete-the-launcher-cache).
 5. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
-6. Do not open the NIKKE launcher until Level Infinite confirms a fix.
+6. Level Infinite confirmed a fix on November 4, 2026. Keep the domains and the IP addresses blocked anyway: it is still unknown how the attacker got write access to the CDN.
 
 The agent was served from October 23, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, treat this computer as infected and follow these steps. The window lists them between the cache and the blocking steps, with the browsers, wallets and credential files it found:
 
@@ -49,7 +49,7 @@ No trace of the malicious script or the agent was found in the NIKKE files this 
 1. Before you open the launcher again, delete `tbs_cache` in the launcher data folder. See [Delete the launcher cache](#delete-the-launcher-cache).
 2. If the launcher was open on or after October 23, 2026, change your NIKKE / Level Infinite password from a clean device anyway.
 3. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
-4. Do not open the NIKKE launcher until Level Infinite confirms a fix.
+4. Level Infinite confirmed a fix on November 4, 2026. Keep the domains and the IP addresses blocked anyway: it is still unknown how the attacker got write access to the CDN.
 
 When only launcher data was found, the window first asks you to scan the install folder, as in step 2 of [Exposed](#exposed). After any quick scan it also offers the full scan, which opens folders more than 5 levels deep, where an older install can still hold the agent's log lines.
 
@@ -59,13 +59,15 @@ No NIKKE install or launcher data was found in the places this scan checked.
 
 1. If NIKKE is installed somewhere unusual, scan that folder: "Scan a folder..." in the window, or `nikke-check --cli <folder>`. If you do not know where it is, run the full scan: "Full scan" in the window, or `nikke-check --cli --full`.
 2. Block the three domains in your hosts file and the IP addresses 89.127.233.127 and 89.126.250.172 in your firewall or router. See [Block the domains and the IP addresses](#block-the-domains-and-the-ip-addresses).
-3. Do not open the NIKKE launcher until Level Infinite confirms a fix.
+3. Level Infinite confirmed a fix on November 4, 2026. If you have the launcher, delete its cache folder `tbs_cache` before you open it again, and keep the domains and the IP addresses blocked: it is still unknown how the attacker got write access to the CDN.
 
 ## Delete the launcher cache
 
 `tbs_cache` is the cache of the launcher's built-in browser. It sits in the launcher data folder, `nikke_launcher` (or `nikke_launcher_hmt`). The report lists every launcher data folder it found under `Locations checked`, tagged `[Launcher data]`, with its full path.
 
-Save the report first. `tbs_cache/Local Storage/leveldb` holds the `k2f.agent.state` trace, and it is gone once the folder is deleted.
+Save the report first. `tbs_cache/Local Storage/leveldb` holds the `k2f.agent.state` trace, and it is gone once the folder is deleted. To keep the evidence itself, copy the folder somewhere else before you delete it.
+
+When the launcher's login browser profile, `AppData/Local/CEF/User Data`, holds traces too, the step lists it. Delete it as well. The launcher creates a new one, and you will have to sign in to the launcher again.
 
 - Windows: `%APPDATA%\nikke_launcher\tbs_cache`. Paste `%APPDATA%\nikke_launcher` into the Explorer address bar to open the folder.
 - Linux with Steam and Proton: `<Steam library>/steamapps/compatdata/<game ID>/pfx/drive_c/users/steamuser/AppData/Roaming/nikke_launcher/tbs_cache`.
@@ -98,13 +100,25 @@ The hosts file cannot block an IP address. Block 89.127.233.127, which sent the 
 New-NetFirewallRule -DisplayName "Block NIKKE malware servers" -Direction Outbound -RemoteAddress 89.127.233.127,89.126.250.172 -Action Block
 ```
 
-On Linux with ufw, the command is:
+On Linux, the window gives the command for the firewall tool it finds: firewalld first, then ufw, then nftables. With firewalld (`firewall-cmd`), this adds a policy that rejects traffic from this computer to both addresses and keeps it after a restart:
+
+```
+sudo firewall-cmd --permanent --new-policy nikke-block && sudo firewall-cmd --permanent --policy nikke-block --add-ingress-zone HOST && sudo firewall-cmd --permanent --policy nikke-block --add-egress-zone ANY && sudo firewall-cmd --permanent --policy nikke-block --add-rich-rule='rule family="ipv4" destination address="89.127.233.127" reject' && sudo firewall-cmd --permanent --policy nikke-block --add-rich-rule='rule family="ipv4" destination address="89.126.250.172" reject' && sudo firewall-cmd --reload
+```
+
+`sudo firewall-cmd --policy nikke-block --list-all` shows the policy. With ufw:
 
 ```
 sudo ufw deny out to 89.127.233.127 && sudo ufw deny out to 89.126.250.172
 ```
 
-ufw records the rules even while it is off, and then blocks nothing. Check that `sudo ufw status` shows `Status: active`; `sudo ufw enable` turns it on. On macOS, and on Linux without ufw, block the addresses in your router's settings.
+ufw records the rules even while it is off, and then blocks nothing. Check that `sudo ufw status` shows `Status: active`; `sudo ufw enable` turns it on. With nftables only (`nft`):
+
+```
+sudo nft add table inet nikke_block && sudo nft add chain inet nikke_block output '{ type filter hook output priority 0; }' && sudo nft add rule inet nikke_block output ip daddr '{ 89.127.233.127, 89.126.250.172 }' reject
+```
+
+These nftables rules last until the next restart, unless you save them to `/etc/nftables.conf`. On macOS, and on Linux without any of these tools, block the addresses in your router's settings.
 
 ## Remove the DLL persistence
 

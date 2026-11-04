@@ -2,7 +2,7 @@
 
 All times on this page are GMT, in 2026. The full analysis is in the write-up: https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5
 
-On September 27, four JavaScript files on Level Infinite's CDN (playerinfinite.com, served from Tencent COS) were modified to load `https://insightjs.com/l.js`. The NIKKE PC launcher shows its pages in an embedded Chromium (CEF), so it ran that script. From October 23 at the latest, and only on some launches, the script used the launcher's JavaScript bridge to download a remote-access agent. It is not known how the attacker got write access to the CDN, or whether they still have it. No official statement from Level Infinite is known.
+On September 27, four JavaScript files on Level Infinite's CDN (playerinfinite.com, served from Tencent COS) were modified to load `https://insightjs.com/l.js`. The NIKKE PC launcher shows its pages in an embedded Chromium (CEF), so it ran that script. From October 23 at the latest, and only on some launches, the script used the launcher's JavaScript bridge to download a remote-access agent. On November 4, Level Infinite confirmed a fix in a statement on X. It is still not known how the attacker got write access to the CDN.
 
 ## The modified CDN files
 
@@ -37,6 +37,7 @@ The modified `vue-bucket.min.js` (135,273 bytes, SHA-256 `3aaafbd612f04501a6fdb0
 | Nov 3, 17:55 | A third party registers insightjs.org, the loader's fallback domain. It now shows a warning page in four languages. |
 | Nov 3, 18:31 | 89.127.233.127, the server that sent the agent, does not answer (the connection times out). |
 | Nov 3, 20:23 | 43.175.144.148 and 43.175.145.181 still serve the modified `FeedList.feb647c9.js`. |
+| Nov 4 | Level Infinite confirms a fix in a statement on X. |
 
 ## The loader
 

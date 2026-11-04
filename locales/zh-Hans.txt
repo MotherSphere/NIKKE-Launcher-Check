@@ -25,7 +25,7 @@ cli.error_box = 窗口无法打开：\n{error}\n\n要在不打开窗口的情况
 
 # 顶栏、开始界面和报告抬头。
 report.read_only = 只读，不访问网络。
-report.about = 2026年9月27日，Level Infinite CDN 上的四个文件被篡改，让 NIKKE PC 启动器加载来自 insightjs.com 的脚本。最晚从2026年10月23日起，该脚本会下载一个远程控制程序（insight.bundle），它可以执行命令、读取文件、截屏和收集浏览器数据。其中三个文件已于11月3日被替换。第四个文件已于10月28日清理，但11月3日仍有部分 CDN 服务器提供旧版本。本工具查找加载器和远程控制程序在磁盘上留下的痕迹。
+report.about = 2026年9月27日，Level Infinite CDN 上的四个文件被篡改，让 NIKKE PC 启动器加载来自 insightjs.com 的脚本。最晚从2026年10月23日起，该脚本会下载一个远程控制程序（insight.bundle），它可以执行命令、读取文件、截屏和收集浏览器数据。其中三个文件已于11月3日被替换。第四个文件已于10月28日清理，但11月3日仍有部分 CDN 服务器提供旧版本。Level Infinite 已于11月4日确认修复。本工具查找加载器和远程控制程序在磁盘上留下的痕迹。
 # 扫描的对象（“扫描范围：...”“正在扫描：...”）。
 report.scope.computer = 这台电脑
 report.scope.quick = 这台电脑（快速扫描）
@@ -33,7 +33,7 @@ report.scope.full = 这台电脑（完整扫描）
 
 # 结论：一个标题，加一句话。
 verdict.infected.title = 已感染
-verdict.infected.summary = 发现了严重痕迹：远程控制程序曾被下载或运行过、留下了持久化机制，或者启动器正在运行。请把这台电脑视为已被入侵。
+verdict.infected.summary = 发现了严重痕迹：远程控制程序曾被下载或运行过，或者留下了持久化机制。请把这台电脑视为已被入侵。
 verdict.exposed.title = 已暴露
 verdict.exposed.summary = 启动器加载过恶意脚本或连接过 insightjs.com，但没有发现远程控制程序运行过的迹象。
 verdict.no_traces.title = 未发现痕迹
@@ -51,6 +51,7 @@ kind.install = NIKKE 安装文件夹
 kind.launcher_data = 启动器数据
 kind.wine_prefix = Wine 前缀
 kind.user_profile = 用户配置文件
+kind.login_profile = 启动器的登录浏览器配置文件
 # 没有文件夹的发现项分组。
 group.running = 正在运行的程序
 group.coverage = 扫描覆盖范围
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = {n} 个 Wine 前缀
 report.checked.wine_prefix_other = {n} 个 Wine 前缀
 report.checked.user_profile_one = {n} 个用户配置文件
 report.checked.user_profile_other = {n} 个用户配置文件
+report.checked.login_profile_one = {n} 个启动器登录浏览器配置文件
+report.checked.login_profile_other = {n} 个启动器登录浏览器配置文件
 report.checked.nothing = 没有可检查的内容
 
 # “扫描统计：...”。{skipped} 是下面两个“跳过”文本之一，或为空。
@@ -149,6 +152,7 @@ answer.active.launcher = NIKKE 启动器正在运行。在它运行期间，攻�
 answer.active.dll_loaded = 恶意软件的 DLL 目前已加载到 {programs} 中。
 answer.active.registry = 让浏览器加载恶意软件 DLL 的注册表项已设置。
 answer.active.none = 启动器没有运行，也没有已安装或被设置为加载的 DLL。
+answer.active.launcher_clean = NIKKE 启动器正在运行，但本次扫描没有发现远程控制程序的任何迹象。没有已安装或被设置为加载的 DLL。
 answer.clean.question = 有需要清理的东西吗？
 answer.clean.dll_folder = {browser} 的 DLL 文件夹：{path}
 answer.clean.registry = HKCU 注册表项 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
@@ -156,7 +160,8 @@ answer.clean.leftover = 空的 HKCU 注册表项 {E77CC89B-7401-4C04-8CED-149DB3
 answer.clean.legacy = {path} 中的旧版 DLL 文件
 answer.clean.temp = {path} 中的 k2f 文件
 answer.clean.cache = 存有恶意软件痕迹的启动器缓存：{path}
-answer.clean.none_cache = 没有发现恶意软件留下的文件。不过，再次打开启动器之前，仍请删除启动器缓存（tbs_cache）：其中可能还存有修复之前的恶意脚本。
+answer.clean.login_profile = 存有恶意软件痕迹的启动器登录浏览器配置文件：{path}
+answer.clean.none_cache = 没有发现恶意软件留下的文件。不过，再次打开启动器之前，仍请删除启动器缓存（tbs_cache）：其中可能还存有修复之前被篡改的文件。
 answer.clean.none = 没有发现恶意软件留下的任何东西。
 answer.protected.question = 是否已为下次做好防护？
 answer.protected.not_checked = 没有检查 hosts 文件。
@@ -245,8 +250,9 @@ step.dll.drive_key = 启动那个 Windows，删除下面的注册表项，如果
 step.dll.scan_again = 之后再扫描一次：这些发现项应该会消失。
 step.dll.defender = 在一台已感染的电脑上，Microsoft Defender 没有检测到这个 DLL，所以杀毒软件扫描结果干净，并不代表它已被清除。
 step.cache.title = 清除启动器缓存
-step.cache.intro = 先关闭启动器。然后删除 tbs_cache 文件夹，它是启动器内置浏览器的缓存。其中可能还存有修复之前的恶意脚本，启动器会再次加载它。
+step.cache.intro = 先关闭启动器。然后，在再次打开它之前，删除 tbs_cache 文件夹，它是启动器内置浏览器的缓存。其中可能还存有修复之前被篡改的文件，启动器会再次加载它们。如果要保留证据，请先把这个文件夹复制到别处。
 step.cache.none = 本次扫描没有找到启动器数据文件夹。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 启动器为 nikke_launcher_hmt）；在 Proton 或 Wine 前缀中，它是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
+step.cache.login = 下面的启动器登录浏览器配置文件中也有恶意软件的痕迹。请把它也删除。启动器会创建一个新的配置文件，你需要重新登录启动器。
 step.password.title = 用另一台设备修改密码
 step.password.intro_infected = 请使用从未运行过 NIKKE 启动器的手机或另一台电脑。远程控制程序运行期间，它的命令可以读取这台电脑上的文件和浏览器数据。请修改或更换以下内容：
 step.password.intro_exposed = 远程控制程序最晚从2026年10月23日开始下发，而且只在部分启动时下发。如果启动器在当天或之后打开过，请按它已经运行过来处理：用从未运行过该启动器的手机或另一台电脑，修改或更换以下内容：
@@ -277,9 +283,15 @@ step.block.scan_again = 之后再扫描一次：“详情”中的“防护”�
 step.block.ips = hosts 文件无法屏蔽 IP 地址。请在防火墙或路由器中屏蔽 89.127.233.127 和 89.126.250.172。
 step.block.firewall = 要添加 Windows 防火墙规则，请右键单击“开始”按钮，选择“终端管理员”或“Windows PowerShell (管理员)”，然后运行：
 step.block.macos = 在 macOS 上，请在路由器的设置中屏蔽它们。
-step.block.ufw = 如果使用 ufw，请运行这条命令。ufw 关闭时，这些规则不会屏蔽任何东西：sudo ufw status 必须显示 "Status: active"，sudo ufw enable 可以开启它。如果没有 ufw，请在路由器的设置中屏蔽它们。
-step.wait.title = 在 Level Infinite 确认修复之前，不要打开启动器
-step.wait.servers = 2026年11月3日，Level Infinite 的部分服务器仍在发送恶意文件。在修复之前启动，可能会再次加载该脚本。
+step.block.ufw = 已安装 ufw。请运行这条命令。ufw 关闭时，这些规则不会屏蔽任何东西：sudo ufw status 必须显示 "Status: active"，sudo ufw enable 可以开启它。
+step.block.firewalld = 已安装 firewalld。请运行这条命令。它会添加一条策略，拒绝从这台电脑到这两个地址的连接，重启后该策略仍然有效。
+step.block.firewalld_check = 要检查这条策略，请运行：
+step.block.nft = 已安装 nftables。请运行这条命令。这些规则在下次重启前有效，除非你把它们保存到 /etc/nftables.conf。
+step.block.no_firewall = 没有找到防火墙工具（firewall-cmd、ufw 或 nft）。请在路由器的设置中屏蔽它们。
+step.wait.title = 再次打开启动器之前
+step.wait.fixed = Level Infinite 已于2026年11月4日确认修复。再次打开启动器之前，请删除它的缓存文件夹 tbs_cache：其中可能还存有被篡改的文件，启动器会再次加载它们。
+step.wait.evidence = 如果要保留证据，请先完成检查，或者在删除之前把这个文件夹复制到别处。
+step.wait.keep_blocked = 请继续屏蔽这些域名和 IP 地址：目前仍不清楚攻击者是如何获得 CDN 写入权限的。
 step.wait.reinstall = 远程控制程序可以执行任何命令，所以重装操作系统是确认这台电脑干净的最稳妥方法。
 
 # “详情”：发现项的分组。
@@ -384,6 +396,8 @@ finding.data_link.detail = 这个文件夹链接到 {target}，该目标不存�
 finding.data_link.unknown_target = 未知目标
 finding.agent_state.title = 恶意远程控制程序在启动器数据中留下了痕迹
 finding.agent_state.detail = k2f_chan（远程控制程序的桥接通道名）或 k2f.agent.state（远程控制程序保存的 ID）出现在启动器数据的 {files}中。这说明远程控制程序运行过。
+finding.login_agent_state.title = 恶意远程控制程序在启动器的登录浏览器配置文件中留下了痕迹
+finding.login_agent_state.detail = k2f_chan（远程控制程序的桥接通道名）或 k2f.agent.state（远程控制程序保存的 ID）出现在启动器登录浏览器配置文件（CEF\\User Data）的 {files}中。这说明远程控制程序运行过。
 finding.agent_server.title = 启动器连接过远程控制程序的服务器
 finding.agent_server.detail = 网络状态数据中有 {files}记录了 analytics.insightjs.com。该服务器负责下发远程控制程序（insight.bundle）并接收它的回连。只运行了加载器、没有下发远程控制程序的启动，只会记录 insightjs.com。
 finding.loader_cached.title = 启动器加载过恶意脚本
@@ -392,6 +406,8 @@ finding.network_state.title = 启动器连接过 insightjs.com
 finding.network_state.detail = 网络状态数据中有 {files}记录了 insightjs.com，说明启动器的内置浏览器连接过它。
 finding.data_mention.title = 启动器数据中提到了 insightjs.com
 finding.data_mention.detail = 启动器数据中有 {files}出现了 insightjs.com。
+finding.login_mention.title = 启动器的登录浏览器配置文件中提到了 insightjs.com
+finding.login_mention.detail = 启动器登录浏览器配置文件（CEF\\User Data）中有 {files}出现了 insightjs.com。
 finding.data_clean.title = 启动器数据中没有痕迹
 finding.data_clean.detail = 已检查 {files}。
 # {browser} 是浏览器名称，例如 Chrome 或 Edge。
@@ -418,6 +434,8 @@ finding.registry.where_windows = HKCU 下存在注册表项 {E77CC89B-7401-4C04-
 finding.registry.where_wine = 这个 Wine 前缀的 HKCU 配置单元 user.reg 中有注册表项 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
 finding.launcher_running.title = NIKKE 启动器正在运行
 finding.launcher_running.detail = 请立即关闭启动器（如果关不掉，就结束它的进程），并断开网络连接。在它运行期间，攻击者可以向这台电脑发送命令。
+finding.launcher_running_clean.title = NIKKE 启动器正在运行
+finding.launcher_running_clean.detail = 启动器现在正在运行，但本次扫描没有发现远程控制程序的任何迹象。列出此项仅供参考。
 finding.dll_loaded.title = 持久化 DLL 当前已加载
 finding.dll_loaded.detail = 这些程序已加载恶意软件的 platform_experience_helper.dll。在它们退出之前，Windows 会一直锁定这个文件；只要 HKCU 注册表项还在，Chrome 下次启动时就会再次加载它。请删除注册表项，重启 Windows，然后删除 DLL 所在的文件夹。
 
@@ -454,6 +472,8 @@ ui.button.stop = 停止扫描
 ui.button.copy_report = 复制报告
 ui.button.save_report = 保存报告...
 ui.button.see_todo = 查看该怎么做
+# 结论下方的大按钮。结果中的步骤总是不止一个。
+ui.button.see_todo_count = 查看该怎么做（{n} 个步骤）
 ui.button.open_folder = 打开文件夹
 ui.button.task_manager = 打开任务管理器
 ui.button.registry_editor = 打开注册表编辑器
@@ -512,6 +532,10 @@ ui.happened.payload_build = 载荷构建版本
 ui.happened.agent_runs = 日志中的远程控制程序运行记录
 ui.todo.hint = 请按顺序一次完成一个步骤。按钮会帮你打开对应的文件夹或工具，但文件需要你自己删除。本程序从不删除任何东西。
 ui.todo.note = 这些步骤根据本次扫描的发现生成，并按操作顺序排列。“已完成”标记不会保存。
+# 在“已感染”或“已暴露”的结果中，还没打开“该怎么做”选项卡就关闭窗口时显示。
+ui.close.title = 你还没有查看这些步骤
+ui.close.text = “该怎么做”中的步骤会告诉你需要清理什么，以及要修改哪些密码。
+ui.close.anyway = 仍然关闭
 ui.tile.critical = 严重
 ui.tile.warnings = 警告
 ui.tile.info = 信息

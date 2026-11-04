@@ -25,7 +25,7 @@ cli.error_box = Jendela tidak dapat dibuka:\n{error}\n\nUntuk mendapatkan lapora
 
 # Top bar, start screen and report header.
 report.read_only = Hanya baca. Tanpa akses jaringan.
-report.about = Pada 27 September 2026, empat file di CDN Level Infinite diubah agar memuat skrip dari insightjs.com di dalam launcher NIKKE untuk PC. Paling lambat mulai 23 Oktober 2026, skrip itu mengunduh agen akses jarak jauh (insight.bundle) yang dapat menjalankan perintah, membaca file, mengambil tangkapan layar, dan mengumpulkan data browser. Tiga file di antaranya diganti pada 3 November. File keempat dibersihkan pada 28 Oktober, tetapi beberapa server CDN masih mengirimkan salinan lamanya pada 3 November. Alat ini mencari jejak yang ditinggalkan loader dan agen di disk.
+report.about = Pada 27 September 2026, empat file di CDN Level Infinite diubah agar memuat skrip dari insightjs.com di dalam launcher NIKKE untuk PC. Paling lambat mulai 23 Oktober 2026, skrip itu mengunduh agen akses jarak jauh (insight.bundle) yang dapat menjalankan perintah, membaca file, mengambil tangkapan layar, dan mengumpulkan data browser. Tiga file di antaranya diganti pada 3 November. File keempat dibersihkan pada 28 Oktober, tetapi beberapa server CDN masih mengirimkan salinan lamanya pada 3 November. Level Infinite mengonfirmasi perbaikan pada 4 November. Alat ini mencari jejak yang ditinggalkan loader dan agen di disk.
 # What was scanned ("Scan of: ...", "Scanning ...").
 report.scope.computer = komputer ini
 report.scope.quick = komputer ini (pemindaian cepat)
@@ -33,7 +33,7 @@ report.scope.full = komputer ini (pemindaian penuh)
 
 # The verdict: a title, then one sentence.
 verdict.infected.title = Terinfeksi
-verdict.infected.summary = Ditemukan jejak kritis: agen sudah diunduh atau berjalan, agen memasang persistensi, atau launcher sedang berjalan sekarang. Anggap komputer ini sudah disusupi.
+verdict.infected.summary = Ditemukan jejak kritis: agen sudah diunduh atau berjalan, atau agen memasang persistensi. Anggap komputer ini sudah disusupi.
 verdict.exposed.title = Terpapar
 verdict.exposed.summary = Launcher memuat skrip berbahaya atau menghubungi insightjs.com, tetapi tidak ditemukan tanda bahwa agen sudah berjalan.
 verdict.no_traces.title = Tidak ada jejak ditemukan
@@ -51,6 +51,7 @@ kind.install = Instalasi NIKKE
 kind.launcher_data = Data launcher
 kind.wine_prefix = Prefiks Wine
 kind.user_profile = Profil pengguna
+kind.login_profile = Profil browser login launcher
 # Groups of findings with no folder.
 group.running = Program yang berjalan
 group.coverage = Cakupan pemindaian
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = {n} prefiks Wine
 report.checked.wine_prefix_other = {n} prefiks Wine
 report.checked.user_profile_one = {n} profil pengguna
 report.checked.user_profile_other = {n} profil pengguna
+report.checked.login_profile_one = {n} profil browser login launcher
+report.checked.login_profile_other = {n} profil browser login launcher
 report.checked.nothing = tidak ada lokasi untuk diperiksa
 
 # "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
@@ -149,6 +152,7 @@ answer.active.launcher = Launcher NIKKE sedang berjalan sekarang. Selama launche
 answer.active.dll_loaded = DLL malware saat ini dimuat di {programs}.
 answer.active.registry = Kunci registri yang membuat browser memuat DLL malware masih terpasang.
 answer.active.none = Launcher tidak berjalan, dan tidak ada DLL yang terpasang atau diatur untuk dimuat.
+answer.active.launcher_clean = Launcher NIKKE sedang berjalan, tetapi tidak ada apa pun dalam pemindaian ini yang menunjukkan agen. Tidak ada DLL yang terpasang atau diatur untuk dimuat.
 answer.clean.question = Apakah ada yang perlu dibersihkan?
 answer.clean.dll_folder = Folder DLL {browser}: {path}
 answer.clean.registry = Kunci registri HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
@@ -156,7 +160,8 @@ answer.clean.leftover = Kunci registri HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD0
 answer.clean.legacy = File DLL versi lama di {path}
 answer.clean.temp = File k2f di {path}
 answer.clean.cache = Cache launcher, yang menyimpan jejak malware: {path}
-answer.clean.none_cache = Tidak ditemukan file yang ditinggalkan malware. Tetap hapus cache launcher (tbs_cache) sebelum Anda membuka launcher lagi: cache itu masih dapat menyimpan skrip berbahaya dari sebelum perbaikan.
+answer.clean.login_profile = Profil browser login launcher, yang menyimpan jejak malware: {path}
+answer.clean.none_cache = Tidak ditemukan file yang ditinggalkan malware. Tetap hapus cache launcher (tbs_cache) sebelum Anda membuka launcher lagi: cache itu masih dapat menyimpan file yang diubah dari sebelum perbaikan.
 answer.clean.none = Tidak ditemukan sisa apa pun dari malware.
 answer.protected.question = Apakah Anda sudah terlindungi untuk lain kali?
 answer.protected.not_checked = File hosts tidak diperiksa.
@@ -245,8 +250,9 @@ step.dll.drive_key = Jalankan Windows tersebut, lalu hapus kunci registri di baw
 step.dll.scan_again = Setelah itu, pindai lagi: temuan ini seharusnya sudah hilang.
 step.dll.defender = Microsoft Defender tidak mendeteksi DLL ini di satu komputer yang terinfeksi, jadi hasil pemindaian antivirus yang bersih tidak menunjukkan bahwa DLL ini sudah hilang.
 step.cache.title = Bersihkan cache launcher
-step.cache.intro = Tutup launcher terlebih dahulu. Lalu hapus folder tbs_cache, yaitu cache browser bawaan launcher. Folder ini masih dapat menyimpan skrip berbahaya dari sebelum perbaikan, dan launcher akan memuatnya lagi.
+step.cache.intro = Tutup launcher terlebih dahulu. Lalu, sebelum Anda membukanya lagi, hapus folder tbs_cache, yaitu cache browser bawaan launcher. Folder ini masih dapat menyimpan file yang diubah dari sebelum perbaikan, dan launcher akan memuatnya lagi. Untuk menyimpan bukti, salin dulu folder itu ke tempat lain.
 step.cache.none = Pemindaian ini tidak menemukan folder data launcher. Di Windows, lokasinya adalah %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt untuk launcher HMT), atau drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache di dalam prefiks Proton atau Wine.
+step.cache.login = Profil browser login launcher di bawah ini juga menyimpan jejak malware. Hapus juga profil itu. Launcher akan membuat profil baru, dan Anda harus masuk lagi ke launcher.
 step.password.title = Ubah kata sandi Anda dari perangkat lain
 step.password.intro_infected = Gunakan ponsel atau komputer lain yang tidak pernah menjalankan launcher NIKKE. Selama agen berjalan, perintahnya dapat membaca file dan data browser di komputer ini. Ubah atau ganti hal-hal berikut:
 step.password.intro_exposed = Agen dikirim paling lambat mulai 23 Oktober 2026, dan hanya pada beberapa kali launcher dibuka. Jika launcher dibuka pada tanggal itu atau sesudahnya, anggap agen sudah berjalan: dari ponsel atau komputer lain yang tidak pernah menjalankan launcher, ubah atau ganti hal-hal berikut:
@@ -277,9 +283,15 @@ step.block.scan_again = Setelah itu, pindai lagi: bagian Perlindungan di Detail 
 step.block.ips = File hosts tidak dapat memblokir alamat IP. Blokir 89.127.233.127 dan 89.126.250.172 di firewall atau router Anda.
 step.block.firewall = Untuk menambahkan aturan firewall Windows, klik kanan tombol Mulai, pilih Terminal (Admin) atau Windows PowerShell (Admin), lalu jalankan:
 step.block.macos = Di macOS, blokir alamat itu di pengaturan router Anda.
-step.block.ufw = Dengan ufw, jalankan perintah ini. Aturan ini tidak memblokir apa pun selama ufw nonaktif: sudo ufw status harus menampilkan "Status: active", dan sudo ufw enable akan mengaktifkannya. Tanpa ufw, blokir alamat itu di pengaturan router Anda.
-step.wait.title = Jangan buka launcher sampai Level Infinite mengonfirmasi perbaikannya
-step.wait.servers = Beberapa server Level Infinite masih mengirim file berbahaya pada 3 November 2026. Jika launcher dibuka sebelum perbaikan, skrip itu dapat dimuat lagi.
+step.block.ufw = ufw terinstal. Jalankan perintah ini. Aturan ini tidak memblokir apa pun selama ufw nonaktif: sudo ufw status harus menampilkan "Status: active", dan sudo ufw enable akan mengaktifkannya.
+step.block.firewalld = firewalld terinstal. Jalankan perintah ini. Perintah ini menambahkan kebijakan (policy) yang menolak koneksi dari komputer ini ke kedua alamat itu, dan kebijakan tersebut tetap berlaku setelah komputer dimulai ulang.
+step.block.firewalld_check = Untuk memeriksa kebijakan itu, jalankan:
+step.block.nft = nftables terinstal. Jalankan perintah ini. Aturan ini berlaku sampai komputer dimulai ulang, kecuali Anda menyimpannya ke /etc/nftables.conf.
+step.block.no_firewall = Tidak ditemukan alat firewall (firewall-cmd, ufw, atau nft). Blokir alamat itu di pengaturan router Anda.
+step.wait.title = Sebelum Anda membuka launcher lagi
+step.wait.fixed = Level Infinite mengonfirmasi perbaikan pada 4 November 2026. Sebelum Anda membuka launcher lagi, hapus folder cache-nya, tbs_cache: folder itu masih dapat menyimpan file yang diubah, dan launcher akan memuatnya lagi.
+step.wait.evidence = Untuk menyimpan bukti, lakukan pemeriksaan terlebih dahulu, atau salin folder itu ke tempat lain sebelum Anda menghapusnya.
+step.wait.keep_blocked = Tetap blokir domain dan alamat IP tersebut: masih belum diketahui bagaimana penyerang mendapatkan akses tulis ke CDN.
 step.wait.reinstall = Agen dapat menjalankan perintah apa pun, jadi menginstal ulang sistem operasi adalah cara paling aman untuk memastikan komputer ini bersih.
 
 # Details: the groups of findings.
@@ -384,6 +396,8 @@ finding.data_link.detail = Folder ini mengarah ke {target}, yang tidak ada, beru
 finding.data_link.unknown_target = target yang tidak diketahui
 finding.agent_state.title = Agen malware meninggalkan jejak di data launcher
 finding.agent_state.detail = k2f_chan (nama saluran jembatan milik agen) atau k2f.agent.state (ID yang disimpan agen) muncul di {files} dalam data launcher. Ini menunjukkan bahwa agen sudah berjalan.
+finding.login_agent_state.title = Agen malware meninggalkan jejak di profil browser login launcher
+finding.login_agent_state.detail = k2f_chan (nama saluran jembatan milik agen) atau k2f.agent.state (ID yang disimpan agen) muncul di {files} dalam profil browser login launcher (CEF\\User Data). Ini menunjukkan bahwa agen sudah berjalan.
 finding.agent_server.title = Launcher menghubungi server agen
 finding.agent_server.detail = analytics.insightjs.com tercatat di {files} status jaringan. Server itu mengirim agen (insight.bundle) dan menerima laporan rutinnya (check-in). Saat launcher dibuka dan loader berjalan tanpa agen, yang tercatat hanya insightjs.com.
 finding.loader_cached.title = Launcher memuat skrip berbahaya
@@ -392,6 +406,8 @@ finding.network_state.title = Launcher terhubung ke insightjs.com
 finding.network_state.detail = insightjs.com tercatat di {files} status jaringan, jadi browser bawaan launcher pernah menghubunginya.
 finding.data_mention.title = Data launcher menyebut insightjs.com
 finding.data_mention.detail = insightjs.com muncul di {files} dalam data launcher.
+finding.login_mention.title = Profil browser login launcher menyebut insightjs.com
+finding.login_mention.detail = insightjs.com muncul di {files} dalam profil browser login launcher (CEF\\User Data).
 finding.data_clean.title = Tidak ada jejak di data launcher
 finding.data_clean.detail = {files} diperiksa.
 # {browser} is a browser name such as Chrome or Edge.
@@ -418,6 +434,8 @@ finding.registry.where_windows = Kunci {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\I
 finding.registry.where_wine = user.reg, hive HKCU dari prefiks Wine ini, berisi kunci {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
 finding.launcher_running.title = Launcher NIKKE sedang berjalan sekarang
 finding.launcher_running.detail = Segera tutup launcher (akhiri prosesnya jika tidak mau tertutup) dan putuskan koneksi dari jaringan. Selama launcher berjalan, penyerang dapat mengirim perintah ke komputer ini.
+finding.launcher_running_clean.title = Launcher NIKKE sedang berjalan
+finding.launcher_running_clean.detail = Launcher sedang berjalan sekarang, dan tidak ada apa pun dalam pemindaian ini yang menunjukkan agen. Temuan ini dicantumkan sebagai informasi.
 finding.dll_loaded.title = DLL persistensi sedang dimuat sekarang
 finding.dll_loaded.detail = Program-program ini memuat platform_experience_helper.dll milik malware. Windows mengunci file itu sampai program ditutup, dan Chrome memuatnya lagi saat dijalankan berikutnya selama kunci HKCU masih ada. Hapus kunci registri, mulai ulang Windows, lalu hapus folder DLL.
 
@@ -454,6 +472,8 @@ ui.button.stop = Hentikan pemindaian
 ui.button.copy_report = Salin laporan
 ui.button.save_report = Simpan laporan...
 ui.button.see_todo = Lihat yang harus dilakukan
+# The big button under the verdict. A result always has more than one step.
+ui.button.see_todo_count = Lihat yang harus dilakukan ({n} langkah)
 ui.button.open_folder = Buka folder
 ui.button.task_manager = Buka Pengelola Tugas
 ui.button.registry_editor = Buka Editor Registri
@@ -512,6 +532,10 @@ ui.happened.payload_build = Versi file agen
 ui.happened.agent_runs = Aktivitas agen di log
 ui.todo.hint = Lakukan langkah-langkah ini satu per satu, sesuai urutan. Tombol-tombolnya membuka folder atau alat yang tepat untuk Anda, tetapi Anda sendiri yang menghapus file. Program ini tidak pernah menghapus apa pun.
 ui.todo.note = Langkah-langkah ini disusun dari temuan pemindaian ini, sesuai urutan pengerjaannya. Tanda "Selesai" tidak disimpan.
+# Shown when the window is closed before the What to do tab was opened, on an Infected or Exposed result.
+ui.close.title = Anda belum melihat langkah-langkahnya
+ui.close.text = Langkah-langkah di "Yang harus dilakukan" memberi tahu Anda apa yang perlu dibersihkan dan kata sandi mana yang perlu diubah.
+ui.close.anyway = Tetap tutup
 ui.tile.critical = Kritis
 ui.tile.warnings = Peringatan
 ui.tile.info = Info

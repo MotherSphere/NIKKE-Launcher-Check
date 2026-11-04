@@ -25,7 +25,7 @@ cli.error_box = เปิดหน้าต่างไม่ได้:\n{error}
 
 # Top bar, start screen and report header.
 report.read_only = อ่านอย่างเดียว ไม่เชื่อมต่อเครือข่าย
-report.about = เมื่อวันที่ 27 กันยายน 2026 ไฟล์ 4 ไฟล์บน CDN ของ Level Infinite ถูกแก้ไขให้ NIKKE PC launcher โหลดสคริปต์จาก insightjs.com ตั้งแต่วันที่ 23 ตุลาคม 2026 เป็นอย่างช้า สคริปต์นั้นได้ดาวน์โหลดเอเจนต์ควบคุมระยะไกล (insight.bundle) ซึ่งสามารถรันคำสั่ง อ่านไฟล์ จับภาพหน้าจอ และเก็บข้อมูลเบราว์เซอร์ได้ ไฟล์ 3 ไฟล์ถูกแทนที่แล้วเมื่อวันที่ 3 พฤศจิกายน ไฟล์ที่ 4 ถูกล้างแล้วเมื่อวันที่ 28 ตุลาคม แต่เซิร์ฟเวอร์ CDN บางเครื่องยังส่งสำเนาเก่าอยู่ในวันที่ 3 พฤศจิกายน เครื่องมือนี้ค้นหาร่องรอยที่ตัวโหลดและเอเจนต์ทิ้งไว้บนดิสก์
+report.about = เมื่อวันที่ 27 กันยายน 2026 ไฟล์ 4 ไฟล์บน CDN ของ Level Infinite ถูกแก้ไขให้ NIKKE PC launcher โหลดสคริปต์จาก insightjs.com ตั้งแต่วันที่ 23 ตุลาคม 2026 เป็นอย่างช้า สคริปต์นั้นได้ดาวน์โหลดเอเจนต์ควบคุมระยะไกล (insight.bundle) ซึ่งสามารถรันคำสั่ง อ่านไฟล์ จับภาพหน้าจอ และเก็บข้อมูลเบราว์เซอร์ได้ ไฟล์ 3 ไฟล์ถูกแทนที่แล้วเมื่อวันที่ 3 พฤศจิกายน ไฟล์ที่ 4 ถูกล้างแล้วเมื่อวันที่ 28 ตุลาคม แต่เซิร์ฟเวอร์ CDN บางเครื่องยังส่งสำเนาเก่าอยู่ในวันที่ 3 พฤศจิกายน Level Infinite ยืนยันว่าแก้ไขแล้วเมื่อวันที่ 4 พฤศจิกายน เครื่องมือนี้ค้นหาร่องรอยที่ตัวโหลดและเอเจนต์ทิ้งไว้บนดิสก์
 # What was scanned ("Scan of: ...", "Scanning ...").
 report.scope.computer = คอมพิวเตอร์เครื่องนี้
 report.scope.quick = คอมพิวเตอร์เครื่องนี้ (สแกนด่วน)
@@ -33,7 +33,7 @@ report.scope.full = คอมพิวเตอร์เครื่องนี
 
 # The verdict: a title, then one sentence.
 verdict.infected.title = ติดมัลแวร์
-verdict.infected.summary = พบร่องรอยระดับวิกฤต: เอเจนต์ถูกดาวน์โหลดหรือได้ทำงานแล้ว ได้ฝังตัวไว้ในระบบ หรือ launcher กำลังทำงานอยู่ตอนนี้ ให้ถือว่าคอมพิวเตอร์เครื่องนี้ถูกบุกรุกแล้ว
+verdict.infected.summary = พบร่องรอยระดับวิกฤต: เอเจนต์ถูกดาวน์โหลดหรือได้ทำงานแล้ว หรือได้ฝังตัวไว้ในระบบ ให้ถือว่าคอมพิวเตอร์เครื่องนี้ถูกบุกรุกแล้ว
 verdict.exposed.title = มีความเสี่ยง
 verdict.exposed.summary = launcher โหลดสคริปต์อันตรายหรือติดต่อ insightjs.com แต่ไม่พบสัญญาณว่าเอเจนต์ได้ทำงาน
 verdict.no_traces.title = ไม่พบร่องรอย
@@ -51,6 +51,7 @@ kind.install = โฟลเดอร์ติดตั้ง NIKKE
 kind.launcher_data = ข้อมูล launcher
 kind.wine_prefix = Wine prefix
 kind.user_profile = โปรไฟล์ผู้ใช้
+kind.login_profile = โปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher
 # Groups of findings with no folder.
 group.running = โปรแกรมที่กำลังทำงาน
 group.coverage = ขอบเขตการสแกน
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = Wine prefix {n} รายการ
 report.checked.wine_prefix_other = Wine prefix {n} รายการ
 report.checked.user_profile_one = โปรไฟล์ผู้ใช้ {n} โปรไฟล์
 report.checked.user_profile_other = โปรไฟล์ผู้ใช้ {n} โปรไฟล์
+report.checked.login_profile_one = โปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher {n} โปรไฟล์
+report.checked.login_profile_other = โปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher {n} โปรไฟล์
 report.checked.nothing = ไม่มีอะไรให้ตรวจ
 
 # "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
@@ -149,6 +152,7 @@ answer.active.launcher = NIKKE launcher กำลังทำงานอยู�
 answer.active.dll_loaded = ตอนนี้ DLL ของมัลแวร์ถูกโหลดอยู่ใน {programs}
 answer.active.registry = มีการตั้งค่าคีย์รีจิสทรีที่ทำให้เบราว์เซอร์โหลด DLL ของมัลแวร์
 answer.active.none = launcher ไม่ได้ทำงานอยู่ และไม่มี DLL ที่ติดตั้งไว้หรือตั้งค่าให้โหลด
+answer.active.launcher_clean = NIKKE launcher กำลังทำงานอยู่ แต่ไม่มีสิ่งใดในการสแกนนี้แสดงว่ามีเอเจนต์ และไม่มี DLL ที่ติดตั้งไว้หรือตั้งค่าให้โหลด
 answer.clean.question = มีอะไรต้องลบทิ้งหรือไม่?
 answer.clean.dll_folder = โฟลเดอร์ DLL ของ {browser}: {path}
 answer.clean.registry = คีย์รีจิสทรี HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}
@@ -156,7 +160,8 @@ answer.clean.leftover = คีย์รีจิสทรี HKCU {E77CC89B-7401
 answer.clean.legacy = ไฟล์ DLL รุ่นเก่ากว่าใน {path}
 answer.clean.temp = ไฟล์ k2f ใน {path}
 answer.clean.cache = แคชของ launcher ซึ่งมีร่องรอยของมัลแวร์: {path}
-answer.clean.none_cache = ไม่พบไฟล์ที่มัลแวร์ทิ้งไว้ แต่ให้ลบแคชของ launcher (tbs_cache) ก่อนเปิด launcher อีกครั้งอยู่ดี เพราะแคชอาจยังมีสคริปต์อันตรายจากช่วงก่อนการแก้ไข
+answer.clean.login_profile = โปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher ซึ่งมีร่องรอยของมัลแวร์: {path}
+answer.clean.none_cache = ไม่พบไฟล์ที่มัลแวร์ทิ้งไว้ แต่ให้ลบแคชของ launcher (tbs_cache) ก่อนเปิด launcher อีกครั้งอยู่ดี เพราะแคชอาจยังมีไฟล์ที่ถูกดัดแปลงจากช่วงก่อนการแก้ไข
 answer.clean.none = ไม่พบสิ่งที่มัลแวร์ทิ้งไว้
 answer.protected.question = คุณป้องกันไว้สำหรับครั้งหน้าแล้วหรือไม่?
 answer.protected.not_checked = ไม่ได้ตรวจไฟล์ hosts
@@ -245,8 +250,9 @@ step.dll.drive_key = บูตเข้า Windows นั้นแล้วล�
 step.dll.scan_again = สแกนอีกครั้งหลังจากนั้น สิ่งที่พบเหล่านี้ควรหายไป
 step.dll.defender = Microsoft Defender ตรวจไม่พบ DLL นี้บนคอมพิวเตอร์ที่ติดมัลแวร์เครื่องหนึ่ง ดังนั้นผลสแกนแอนติไวรัสที่ไม่พบอะไรไม่ได้แสดงว่า DLL ถูกลบไปแล้ว
 step.cache.title = ล้างแคชของ launcher
-step.cache.intro = ปิด launcher ก่อน แล้วลบโฟลเดอร์ tbs_cache ซึ่งเป็นแคชของเบราว์เซอร์ในตัวของ launcher แคชนี้อาจยังมีสคริปต์อันตรายจากช่วงก่อนการแก้ไข และ launcher จะโหลดสคริปต์นั้นอีกครั้ง
+step.cache.intro = ปิด launcher ก่อน จากนั้นก่อนเปิด launcher อีกครั้ง ให้ลบโฟลเดอร์ tbs_cache ซึ่งเป็นแคชของเบราว์เซอร์ในตัวของ launcher แคชนี้อาจยังมีไฟล์ที่ถูกดัดแปลงจากช่วงก่อนการแก้ไข และ launcher จะโหลดไฟล์เหล่านั้นอีกครั้ง หากต้องการเก็บหลักฐาน ให้คัดลอกโฟลเดอร์ไปไว้ที่อื่นก่อน
 step.cache.none = การสแกนนี้ไม่พบโฟลเดอร์ข้อมูล launcher บน Windows โฟลเดอร์นี้คือ %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt สำหรับ launcher HMT) หรือ drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache ภายใน Proton หรือ Wine prefix
+step.cache.login = โปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher ด้านล่างก็มีร่องรอยของมัลแวร์เช่นกัน ให้ลบโปรไฟล์นี้ด้วย launcher จะสร้างโปรไฟล์นี้ขึ้นใหม่ และคุณต้องล็อกอินเข้า launcher อีกครั้ง
 step.password.title = เปลี่ยนรหัสผ่านจากอุปกรณ์อื่น
 step.password.intro_infected = ใช้โทรศัพท์หรือคอมพิวเตอร์เครื่องอื่นที่ไม่เคยรัน NIKKE launcher ระหว่างที่เอเจนต์ทำงาน คำสั่งของเอเจนต์สามารถอ่านไฟล์และข้อมูลเบราว์เซอร์ของคอมพิวเตอร์เครื่องนี้ได้ ให้เปลี่ยนหรือแทนที่สิ่งเหล่านี้:
 step.password.intro_exposed = เอเจนต์ถูกส่งมาตั้งแต่วันที่ 23 ตุลาคม 2026 เป็นอย่างช้า และส่งมาเฉพาะในการเปิด launcher บางครั้งเท่านั้น หากเปิด launcher ในวันนั้นหรือหลังจากนั้น ให้ถือว่าเอเจนต์ได้ทำงานแล้ว: ใช้โทรศัพท์หรือคอมพิวเตอร์เครื่องอื่นที่ไม่เคยรัน launcher เปลี่ยนหรือแทนที่สิ่งเหล่านี้:
@@ -277,9 +283,15 @@ step.block.scan_again = สแกนอีกครั้งหลังจา�
 step.block.ips = ไฟล์ hosts บล็อกที่อยู่ IP ไม่ได้ ให้บล็อก 89.127.233.127 และ 89.126.250.172 ในไฟร์วอลล์หรือเราเตอร์ของคุณ
 step.block.firewall = หากต้องการเพิ่มกฎไฟร์วอลล์ของ Windows ให้คลิกขวาที่ปุ่มเริ่ม เลือก "เทอร์มินัล (ผู้ดูแลระบบ)" หรือ "Windows PowerShell (ผู้ดูแลระบบ)" แล้วรัน:
 step.block.macos = บน macOS ให้บล็อกในการตั้งค่าของเราเตอร์
-step.block.ufw = หากใช้ ufw ให้รันคำสั่งนี้ กฎเหล่านี้จะไม่บล็อกอะไรเลยขณะที่ ufw ปิดอยู่: sudo ufw status ต้องแสดง "Status: active" และ sudo ufw enable จะเปิด ufw หากไม่มี ufw ให้บล็อกในการตั้งค่าของเราเตอร์
-step.wait.title = อย่าเปิด launcher จนกว่า Level Infinite จะยืนยันว่าแก้ไขแล้ว
-step.wait.servers = เซิร์ฟเวอร์บางเครื่องของ Level Infinite ยังส่งไฟล์อันตรายอยู่ในวันที่ 3 พฤศจิกายน 2026 การเปิด launcher ก่อนการแก้ไขอาจโหลดสคริปต์นั้นอีกครั้ง
+step.block.ufw = เครื่องนี้ติดตั้ง ufw ไว้ ให้รันคำสั่งนี้ กฎเหล่านี้จะไม่บล็อกอะไรเลยขณะที่ ufw ปิดอยู่: sudo ufw status ต้องแสดง "Status: active" และ sudo ufw enable จะเปิด ufw
+step.block.firewalld = เครื่องนี้ติดตั้ง firewalld ไว้ ให้รันคำสั่งนี้ คำสั่งนี้จะเพิ่มนโยบาย (policy) ที่ปฏิเสธการเชื่อมต่อจากคอมพิวเตอร์เครื่องนี้ไปยังที่อยู่ทั้งสอง และนโยบายนี้จะยังคงอยู่หลังรีสตาร์ท
+step.block.firewalld_check = หากต้องการตรวจนโยบายนี้ ให้รัน:
+step.block.nft = เครื่องนี้ติดตั้ง nftables ไว้ ให้รันคำสั่งนี้ กฎเหล่านี้จะมีผลจนถึงการรีสตาร์ทครั้งถัดไป เว้นแต่คุณจะบันทึกกฎไว้ใน /etc/nftables.conf
+step.block.no_firewall = ไม่พบเครื่องมือไฟร์วอลล์ (firewall-cmd, ufw หรือ nft) ให้บล็อกในการตั้งค่าของเราเตอร์
+step.wait.title = ก่อนเปิด launcher อีกครั้ง
+step.wait.fixed = Level Infinite ยืนยันว่าแก้ไขแล้วเมื่อวันที่ 4 พฤศจิกายน 2026 ก่อนเปิด launcher อีกครั้ง ให้ลบโฟลเดอร์แคช tbs_cache ของ launcher เพราะแคชอาจยังมีไฟล์ที่ถูกดัดแปลงอยู่ และ launcher จะโหลดไฟล์เหล่านั้นอีกครั้ง
+step.wait.evidence = หากต้องการเก็บหลักฐาน ให้ทำการตรวจก่อน หรือคัดลอกโฟลเดอร์ไปไว้ที่อื่นก่อนลบ
+step.wait.keep_blocked = บล็อกโดเมนและที่อยู่ IP ไว้ต่อไป เพราะยังไม่ทราบว่าผู้โจมตีได้สิทธิ์เขียนไฟล์บน CDN มาได้อย่างไร
 step.wait.reinstall = เอเจนต์สามารถรันคำสั่งใดก็ได้ การติดตั้งระบบปฏิบัติการใหม่จึงเป็นวิธีที่ปลอดภัยที่สุดในการทำให้มั่นใจว่าคอมพิวเตอร์เครื่องนี้ไม่มีมัลแวร์
 
 # Details: the groups of findings.
@@ -384,6 +396,8 @@ finding.data_link.detail = โฟลเดอร์นี้ลิงก์ไ�
 finding.data_link.unknown_target = ปลายทางที่ไม่ทราบ
 finding.agent_state.title = เอเจนต์ของมัลแวร์ทิ้งร่องรอยไว้ในข้อมูล launcher
 finding.agent_state.detail = พบ k2f_chan (ชื่อช่องทาง bridge ของเอเจนต์) หรือ k2f.agent.state (ID ที่เอเจนต์บันทึกไว้) ในไฟล์ข้อมูล launcher {files} ซึ่งแสดงว่าเอเจนต์ได้ทำงานแล้ว
+finding.login_agent_state.title = เอเจนต์ของมัลแวร์ทิ้งร่องรอยไว้ในโปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher
+finding.login_agent_state.detail = พบ k2f_chan (ชื่อช่องทาง bridge ของเอเจนต์) หรือ k2f.agent.state (ID ที่เอเจนต์บันทึกไว้) ในไฟล์ของโปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher (CEF\\User Data) {files} ซึ่งแสดงว่าเอเจนต์ได้ทำงานแล้ว
 finding.agent_server.title = launcher ติดต่อเซิร์ฟเวอร์ของเอเจนต์
 finding.agent_server.detail = มีการบันทึก analytics.insightjs.com ไว้ในไฟล์สถานะเครือข่าย {files} เซิร์ฟเวอร์นั้นส่งเอเจนต์ (insight.bundle) และรับการรายงานตัว (check-in) จากเอเจนต์ การเปิด launcher ที่ตัวโหลดทำงานโดยไม่มีเอเจนต์จะบันทึกไว้เพียง insightjs.com
 finding.loader_cached.title = launcher โหลดสคริปต์อันตราย
@@ -392,6 +406,8 @@ finding.network_state.title = launcher เชื่อมต่อกับ insi
 finding.network_state.detail = มีการบันทึก insightjs.com ไว้ในไฟล์สถานะเครือข่าย {files} แสดงว่าเบราว์เซอร์ในตัวของ launcher ได้ติดต่อโดเมนนี้
 finding.data_mention.title = ข้อมูล launcher กล่าวถึง insightjs.com
 finding.data_mention.detail = พบ insightjs.com ในไฟล์ข้อมูล launcher {files}
+finding.login_mention.title = โปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher กล่าวถึง insightjs.com
+finding.login_mention.detail = พบ insightjs.com ในไฟล์ของโปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher (CEF\\User Data) {files}
 finding.data_clean.title = ไม่พบร่องรอยในข้อมูล launcher
 finding.data_clean.detail = ตรวจแล้ว {files}
 # {browser} is a browser name such as Chrome or Edge.
@@ -418,6 +434,8 @@ finding.registry.where_windows = มีคีย์ {E77CC89B-7401-4C04-8CED-149
 finding.registry.where_wine = user.reg ซึ่งเป็น hive HKCU ของ Wine prefix นี้ มีคีย์ {E77CC89B-7401-4C04-8CED-149DB35ADD04}
 finding.launcher_running.title = NIKKE launcher กำลังทำงานอยู่ตอนนี้
 finding.launcher_running.detail = ปิด launcher ทันที (สิ้นสุดโปรเซสหากปิดไม่ได้) และตัดการเชื่อมต่อเครือข่าย ระหว่างที่ launcher ทำงาน ผู้โจมตีสามารถส่งคำสั่งมายังคอมพิวเตอร์เครื่องนี้ได้
+finding.launcher_running_clean.title = NIKKE launcher กำลังทำงานอยู่
+finding.launcher_running_clean.detail = launcher กำลังทำงานอยู่ตอนนี้ และไม่มีสิ่งใดในการสแกนนี้แสดงว่ามีเอเจนต์ รายการนี้แสดงไว้เพื่อเป็นข้อมูลเท่านั้น
 finding.dll_loaded.title = DLL ของการฝังตัวถูกโหลดอยู่ตอนนี้
 finding.dll_loaded.detail = โปรแกรมเหล่านี้โหลด platform_experience_helper.dll ของมัลแวร์อยู่ Windows จะล็อกไฟล์ไว้จนกว่าโปรแกรมจะปิด และ Chrome จะโหลดไฟล์อีกครั้งเมื่อเปิดครั้งถัดไปตราบใดที่ยังมีคีย์ HKCU อยู่ ให้ลบคีย์รีจิสทรี รีสตาร์ท Windows แล้วลบโฟลเดอร์ของ DLL
 
@@ -454,6 +472,8 @@ ui.button.stop = หยุดสแกน
 ui.button.copy_report = คัดลอกรายงาน
 ui.button.save_report = บันทึกรายงาน...
 ui.button.see_todo = ดูสิ่งที่ต้องทำ
+# The big button under the verdict. A result always has more than one step.
+ui.button.see_todo_count = ดูสิ่งที่ต้องทำ ({n} ขั้นตอน)
 ui.button.open_folder = เปิดโฟลเดอร์
 ui.button.task_manager = เปิดตัวจัดการงาน
 ui.button.registry_editor = เปิดตัวแก้ไขรีจิสทรี
@@ -512,6 +532,10 @@ ui.happened.payload_build = บิลด์ของเพย์โหลด
 ui.happened.agent_runs = การทำงานของเอเจนต์ที่พบใน log
 ui.todo.hint = ทำทีละขั้นตอนตามลำดับ ปุ่มต่าง ๆ จะเปิดโฟลเดอร์หรือเครื่องมือที่ถูกต้องให้ แต่คุณต้องลบไฟล์เอง โปรแกรมนี้ไม่ลบอะไรเลย
 ui.todo.note = ขั้นตอนเหล่านี้มาจากสิ่งที่การสแกนนี้พบ เรียงตามลำดับที่ควรทำ เครื่องหมาย "เสร็จแล้ว" จะไม่ถูกบันทึก
+# Shown when the window is closed before the What to do tab was opened, on an Infected or Exposed result.
+ui.close.title = คุณยังไม่ได้ดูขั้นตอนต่าง ๆ
+ui.close.text = ขั้นตอนใน "สิ่งที่ต้องทำ" จะบอกว่าต้องลบอะไรทิ้งและต้องเปลี่ยนรหัสผ่านใดบ้าง
+ui.close.anyway = ปิดเลย
 ui.tile.critical = วิกฤต
 ui.tile.warnings = คำเตือน
 ui.tile.info = ข้อมูล

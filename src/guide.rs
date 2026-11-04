@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::exposure::Exposure;
-use crate::i18n::{Lang, msg, tr};
+use crate::i18n::{Lang, Text, msg, tr};
 use crate::locate::TargetKind;
 use crate::report;
 use crate::scan::{self, ATTACKER_IPS, Finding, FindingKind as K, ScanResult, Verdict};
@@ -30,19 +30,7 @@ pub struct Answer {
 }
 
 /// Kinds that show the agent itself reached this computer.
-const RAN: [K; 11] = [
-    K::AgentRan,
-    K::AgentState,
-    K::PayloadDownloaded,
-    K::PayloadFile,
-    K::AgentServerContacted,
-    K::TempFile,
-    K::ChromeDll,
-    K::RegistryKey,
-    K::RegistryLeftover,
-    K::LegacyDll,
-    K::DllLoaded,
-];
+const RAN: [K; 11] = scan::AGENT_SIGNS;
 const PERSISTENCE: [K; 5] = [K::ChromeDll, K::RegistryKey, K::RegistryLeftover, K::LegacyDll, K::DllLoaded];
 const CACHE_TRACES: [K; 4] = [K::AgentState, K::AgentServerContacted, K::LoaderCached, K::LauncherContacted];
 
@@ -180,7 +168,9 @@ fn still_active(r: &ScanResult, lang: Lang) -> Answer {
     }
     let q = t("answer.active.question");
     if lines.is_empty() {
-        lines.push(t("answer.active.none").into());
+        // The running launcher without a sign of the agent is an Info finding: "not running" would be wrong.
+        let launcher = findings(r).any(|f| matches!(f.title, Text::Msg("finding.launcher_running_clean.title", _)));
+        lines.push(t(if launcher { "answer.active.launcher_clean" } else { "answer.active.none" }).into());
         return answer(q, t("answer.no"), Tone::Good, lines);
     }
     answer(q, t("answer.yes"), Tone::Bad, lines)
@@ -205,7 +195,7 @@ fn to_clean(r: &ScanResult, lang: Lang) -> Answer {
         push_new(&mut lines, line);
     }
     for c in caches(r).iter().filter(|c| c.traces) {
-        push_new(&mut lines, path("answer.clean.cache", &c.tbs));
+        push_new(&mut lines, path(if c.login { "answer.clean.login_profile" } else { "answer.clean.cache" }, &c.tbs));
     }
     let q = t("answer.clean.question");
     if !lines.is_empty() {
@@ -638,35 +628,48 @@ fn dll_step(r: &ScanResult, lang: Lang) -> Step {
     step(title, parts)
 }
 
-/// A launcher data folder and its browser cache.
+/// A launcher data folder and its browser cache, or the launcher's login
+/// browser profile (the whole folder) when it holds traces.
 struct Cache {
     tbs: PathBuf,
     traces: bool,
+    login: bool,
 }
 
 fn caches(r: &ScanResult) -> Vec<Cache> {
     r.targets
         .iter()
-        .filter(|t| t.kind == TargetKind::LauncherData)
-        .map(|t| Cache {
-            tbs: t.path.join("tbs_cache"),
-            traces: r
-                .groups
-                .iter()
-                .filter(|g| g.path.as_deref() == Some(t.path.as_path()))
-                .flat_map(|g| &g.findings)
-                .any(|f| CACHE_TRACES.contains(&f.kind)),
+        .filter(|t| matches!(t.kind, TargetKind::LauncherData | TargetKind::LoginProfile))
+        .map(|t| {
+            let login = t.kind == TargetKind::LoginProfile;
+            Cache {
+                tbs: if login { t.path.clone() } else { t.path.join("tbs_cache") },
+                traces: r
+                    .groups
+                    .iter()
+                    .filter(|g| g.path.as_deref() == Some(t.path.as_path()))
+                    .flat_map(|g| &g.findings)
+                    .any(|f| CACHE_TRACES.contains(&f.kind)),
+                login,
+            }
         })
+        // Other CEF programs can use the same profile: only one with traces is named.
+        .filter(|c| !c.login || c.traces)
         .collect()
 }
 
 fn cache_step(r: &ScanResult, lang: Lang) -> Step {
     let mut parts = vec![text(lang, "step.cache.intro")];
     let caches = caches(r);
-    if caches.is_empty() {
+    if !caches.iter().any(|c| !c.login) {
         parts.push(text(lang, "step.cache.none"));
     }
+    let mut login_note = false;
     for c in caches {
+        if c.login && !login_note {
+            login_note = true;
+            parts.push(text(lang, "step.cache.login"));
+        }
         parts.push(Part::Code(c.tbs.display().to_string()));
         parts.push(Part::Actions(vec![Action::Reveal(c.tbs)]));
     }
@@ -779,16 +782,68 @@ fn block_step(r: &ScanResult, lang: Lang) -> Step {
     } else if cfg!(target_os = "macos") {
         parts.push(text(lang, "step.block.macos"));
     } else {
-        let cmd = format!("sudo ufw deny out to {a} && sudo ufw deny out to {b}");
-        parts.push(text(lang, "step.block.ufw"));
-        parts.push(Part::Code(cmd.clone()));
-        parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
+        parts.extend(linux_firewall_parts(Firewall::find(), lang));
     }
     step(tr(lang, title), parts)
 }
 
+/// The Linux firewall tools the IP step knows, in the order it prefers them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Firewall {
+    Firewalld,
+    Ufw,
+    Nftables,
+}
+
+impl Firewall {
+    /// The first tool whose program is installed. Only looks for the files: nothing is run.
+    fn find() -> Option<Firewall> {
+        // ufw and nft are in /usr/sbin, which some distributions leave out of a user's PATH.
+        let mut dirs: Vec<PathBuf> = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
+        dirs.extend(["/usr/sbin", "/sbin"].map(PathBuf::from));
+        let has = |name: &str| dirs.iter().any(|d| d.join(name).is_file());
+        [(Firewall::Firewalld, "firewall-cmd"), (Firewall::Ufw, "ufw"), (Firewall::Nftables, "nft")]
+            .into_iter()
+            .find(|(_, name)| has(name))
+            .map(|(f, _)| f)
+    }
+}
+
+/// The text and the command that block the attacker's IPs with `tool`.
+fn linux_firewall_parts(tool: Option<Firewall>, lang: Lang) -> Vec<Part> {
+    let [a, b] = ATTACKER_IPS;
+    let mut parts = Vec::new();
+    let mut command = |key: &'static str, cmd: String| {
+        parts.push(text(lang, key));
+        parts.push(Part::Code(cmd.clone()));
+        parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
+    };
+    match tool {
+        Some(Firewall::Firewalld) => {
+            let p = "sudo firewall-cmd --permanent --policy nikke-block";
+            let reject = |ip| format!("{p} --add-rich-rule='rule family=\"ipv4\" destination address=\"{ip}\" reject'");
+            let cmd = format!(
+                "sudo firewall-cmd --permanent --new-policy nikke-block && {p} --add-ingress-zone HOST && {p} --add-egress-zone ANY && {} && {} && sudo firewall-cmd --reload",
+                reject(a),
+                reject(b)
+            );
+            command("step.block.firewalld", cmd);
+            command("step.block.firewalld_check", "sudo firewall-cmd --policy nikke-block --list-all".into());
+        }
+        Some(Firewall::Ufw) => command("step.block.ufw", format!("sudo ufw deny out to {a} && sudo ufw deny out to {b}")),
+        Some(Firewall::Nftables) => command(
+            "step.block.nft",
+            format!(
+                "sudo nft add table inet nikke_block && sudo nft add chain inet nikke_block output '{{ type filter hook output priority 0; }}' && sudo nft add rule inet nikke_block output ip daddr '{{ {a}, {b} }}' reject"
+            ),
+        ),
+        None => parts.push(text(lang, "step.block.no_firewall")),
+    }
+    parts
+}
+
 fn wait_step(agent_ran: bool, lang: Lang) -> Step {
-    let mut parts = vec![text(lang, "step.wait.servers")];
+    let mut parts = vec![text(lang, "step.wait.fixed"), text(lang, "step.wait.evidence"), text(lang, "step.wait.keep_blocked")];
     if agent_ran {
         parts.push(text(lang, "step.wait.reinstall"));
     }
@@ -963,7 +1018,7 @@ mod tests {
                 "Clear the launcher cache",
                 "Change your passwords from another device",
                 "Block the domains",
-                "Do not open the launcher until Level Infinite confirms a fix",
+                "Before you open the launcher again",
             ]
         );
         let all = steps(&infected, EN);
@@ -991,7 +1046,7 @@ mod tests {
                 "Clear the launcher cache",
                 "Change your NIKKE password if the launcher was open on or after October 23",
                 "Block the domains",
-                "Do not open the launcher until Level Infinite confirms a fix",
+                "Before you open the launcher again",
             ]
         );
         let [ran, active, clean, _] = answers(&clean_scan, EN);
@@ -1085,6 +1140,60 @@ mod tests {
         let step = dll_step(&result(Verdict::Infected, vec![legacy], vec![(TargetKind::WinePrefix, pfx)]), EN);
         let t = texts(&step);
         assert!(!t.contains("64 hex") && t.contains("1. In the folder below, delete only platform_experience_helper.dll"), "{t}");
+    }
+
+    #[test]
+    fn running_launcher_needs_a_sign_of_the_agent() {
+        let targets = || vec![(TargetKind::InstallDir, "/n"), (TargetKind::LauncherData, "/d/nikke_launcher")];
+        // A clean, reinstalled launcher that runs: listed for information, no step to close it.
+        let mut running = finding(K::Info, Severity::Info, "");
+        running.title = msg("finding.launcher_running_clean.title");
+        let clean = result(Verdict::NoTraces, vec![running], targets());
+        assert!(!act_now(&clean));
+        assert!(!titles(&clean).iter().any(|t| t == "Close the launcher"), "{:?}", titles(&clean));
+        let active = &answers(&clean, EN)[1];
+        assert_eq!(active.reply, "No");
+        assert!(active.lines[0].starts_with("The NIKKE launcher is running, but"), "{:?}", active.lines);
+        // With the agent's traces, the launcher is critical and closing it comes first.
+        let running = finding(K::LauncherRunning, Severity::Critical, "The NIKKE launcher is running now");
+        let infected = result(Verdict::Infected, vec![running, finding(K::AgentState, Severity::Critical, "Agent state")], targets());
+        assert!(act_now(&infected));
+        assert_eq!(titles(&infected)[0], "Close the launcher");
+        assert_eq!(answers(&infected, EN)[1].reply, "Yes");
+    }
+
+    #[test]
+    fn firewall_commands_follow_the_tool() {
+        let codes = |tool| {
+            linux_firewall_parts(tool, EN).into_iter().filter_map(|p| if let Part::Code(c) = p { Some(c) } else { None }).collect::<Vec<_>>()
+        };
+        let firewalld = codes(Some(Firewall::Firewalld));
+        assert_eq!(firewalld.len(), 2);
+        assert!(firewalld[0].starts_with("sudo firewall-cmd --permanent --new-policy nikke-block && "), "{}", firewalld[0]);
+        assert!(firewalld[0].contains(r#"--add-rich-rule='rule family="ipv4" destination address="89.126.250.172" reject'"#), "{}", firewalld[0]);
+        assert!(firewalld[0].ends_with(" && sudo firewall-cmd --reload"));
+        assert_eq!(firewalld[1], "sudo firewall-cmd --policy nikke-block --list-all");
+        assert_eq!(codes(Some(Firewall::Ufw)), ["sudo ufw deny out to 89.127.233.127 && sudo ufw deny out to 89.126.250.172"]);
+        let nft = codes(Some(Firewall::Nftables));
+        assert!(nft[0].ends_with("output ip daddr '{ 89.127.233.127, 89.126.250.172 }' reject"), "{}", nft[0]);
+        assert!(codes(None).is_empty());
+        assert!(format!("{:?}", linux_firewall_parts(None, EN)).contains("No firewall tool was found"));
+    }
+
+    #[test]
+    fn login_profile_with_traces_is_cleaned_too() {
+        let cef = "/x/AppData/Local/CEF/User Data";
+        let mut state = finding(K::AgentState, Severity::Critical, "Agent state");
+        state.path = Some(PathBuf::from(cef));
+        let mut r = result(Verdict::Infected, vec![], vec![(TargetKind::LauncherData, "/d/nikke_launcher"), (TargetKind::LoginProfile, cef)]);
+        r.groups = vec![Group { label: "Login".into(), path: Some(PathBuf::from(cef)), findings: vec![state] }];
+        let step = cache_step(&r, EN);
+        let t = texts(&step);
+        assert!(t.contains("login browser profile below also holds traces") && t.contains(&format!("Code({cef:?})")), "{t}");
+        assert!(answers(&r, EN)[2].lines.iter().any(|l| l.starts_with("The launcher's login browser profile")));
+        // Without traces the profile is another program's data as much as the launcher's: not named.
+        r.groups.clear();
+        assert!(!texts(&cache_step(&r, EN)).contains("CEF"));
     }
 
     #[test]

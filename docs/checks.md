@@ -1,10 +1,10 @@
 # What it checks
 
-The tool checks four kinds of locations: NIKKE installs, launcher data folders, user profiles and Wine prefixes. [Where it looks](locations.md) explains how it finds them. Every scan, a folder scan included, also checks the running programs and the hosts file, and on Windows the DLLs that running programs have loaded.
+The tool checks five kinds of locations: NIKKE installs, launcher data folders, user profiles, Wine prefixes and the launcher's login browser profile. [Where it looks](locations.md) explains how it finds them. Every scan, a folder scan included, also checks the running programs and the hosts file, and on Windows the DLLs that running programs have loaded.
 
 Each finding has one of three severities:
 
-- `CRITICAL`: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, the agent left persistence, or the launcher is running now.
+- `CRITICAL`: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, or the agent left persistence. A running launcher is critical too when the same scan found one of these signs.
 - `WARNING`: the launcher loaded the malicious script or contacted insightjs.com.
 - `INFO`: context, such as an install that was found, a location that could not be checked, or a file that looks related but does not change the verdict.
 
@@ -50,6 +50,12 @@ A launcher data folder is `AppData/Roaming/nikke_launcher` or `AppData/Roaming/n
 
 A launcher data folder that is a symbolic link or a junction is read through its target, unless the target is missing, a drive root or a folder above the link. Such a link is listed as info and not read.
 
+## Launcher's login browser profile
+
+The launcher's sign-in page runs in its own web view, `tbs_browser.exe`, started with `--user-data-dir=<user>\AppData\Local\CEF\User Data`. That folder is the launcher's login browser profile. The tool reads it in every user profile it checks, which covers the Windows user running the tool and every user of a Wine or Proton prefix (`drive_c/users/<user>/AppData/Local/CEF/User Data`).
+
+The checks are those of the launcher data above: `k2f_chan` and `k2f.agent` (critical, "The malware agent left traces in the launcher's login browser profile"), `TransportSecurity` hashes, `Network Persistent State`, `insightjs` in `Code Cache` or `Cache`, and the decompressed `.ldb` tables. `CEF\User Data` is also the default profile folder of other CEF programs, so the folder is reported only when it holds one of these traces. It never gives a "No traces" finding, and on its own it does not count as a NIKKE install or launcher data. When it holds traces, the cache step lists it next to `tbs_cache`.
+
 When launcher data is found but no install folder, an info finding says that `debug.log` and the download logs were not checked, and suggests scanning the install folder with "Scan a folder..." or `nikke-check --cli <folder>`.
 
 ## User profiles
@@ -82,7 +88,7 @@ The older persistence files are also looked for in `drive_c/Program Files` and `
 
 ## Running programs
 
-A running launcher is critical: close it now. The tool looks for a process named `nikke_launcher.exe` (Linux shows `nikke_launcher.`, because it cuts process names to 15 bytes), a process whose first command-line argument is a path to `nikke_launcher.exe` (Wine sets it to the Windows path), or a `wine`, `wine64`, `wine-preloader` or `wine64-preloader` process started on `nikke_launcher.exe`. Programs that only name the file, such as `sha256sum` or an editor, do not count. The report lists the process ID and command line of each match.
+A running launcher is critical when the same scan found a sign of the agent: the agent ran or was downloaded, its file or its saved state is on disk, the launcher contacted the agent server, or the persistence, its leftover, the loaded DLL or the `k2f` files in Temp exist. The steps then start with closing the launcher. Without such a sign, a clean or freshly reinstalled launcher is running, and the tool lists it as info ("The NIKKE launcher is running"), with no step. The tool looks for a process named `nikke_launcher.exe` (Linux shows `nikke_launcher.`, because it cuts process names to 15 bytes), a process whose first command-line argument is a path to `nikke_launcher.exe` (Wine sets it to the Windows path), or a `wine`, `wine64`, `wine-preloader` or `wine64-preloader` process started on `nikke_launcher.exe`. Programs that only name the file, such as `sha256sum` or an editor, do not count. The report lists the process ID and command line of each match.
 
 On Windows, after the locations, the tool lists the modules of every running process it is allowed to open (Toolhelp snapshots; processes that deny access are skipped). A module at `PlatformExperienceHelper\<64 hex>\platform_experience_helper.dll`, at `PlatformExperienceHelper\platform_experience_helper.dll`, or at the path the HKCU key names is critical ("The persistence DLL is loaded now"). Windows keeps a loaded DLL locked, so the DLL step then asks for a restart before the files are deleted. The report lists the process ID, the program and the DLL of each match.
 
@@ -112,7 +118,7 @@ Times taken from log lines are the local time of the computer that ran the launc
 |---|---|---|
 | No traces found | An install or launcher data was found, with info findings only. When only launcher data was found, the report says that `debug.log` and the download logs were not checked. | 0 |
 | Exposed | Warnings only: the launcher loaded the script or contacted insightjs.com. No sign that the agent ran. | 1 |
-| Infected | At least one critical finding: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, persistence or its leftover exists, the DLL is loaded, or the launcher is running now. | 2 |
+| Infected | At least one critical finding: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, persistence or its leftover exists, or the DLL is loaded. | 2 |
 | NIKKE not found | No install and no launcher data in the places searched, and no critical or warning finding. | 3 |
 
 The most severe finding sets the verdict, so a critical finding gives Infected even when no NIKKE install was found, for example Chrome persistence in a profile or `k2f` files in Temp. Info findings never change the verdict. Exit code 4 means invalid arguments: an unknown option, or with `--cli` a path that is not a folder or a folder that cannot be read.

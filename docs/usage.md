@@ -163,18 +163,20 @@ While a scan runs, the window shows:
 
 ### Result screen
 
-Above the result are "Copy report", "Save report...", the "Hide my info" switch, "Scan again" (the same scan once more) and "New scan" (back to the start screen). The result itself has three tabs. It opens on "What happened", or on "What to do" when the launcher is running or a program has the malware's DLL loaded.
+Above the result are "Copy report", "Save report...", the "Hide my info" switch, "Scan again" (the same scan once more) and "New scan" (back to the start screen). The result itself has three tabs. It opens on "What happened", or on "What to do" when the launcher is running and the scan found a sign of the agent, or when a program has the malware's DLL loaded. The "What to do" tab shows the number of steps, such as "What to do (7)".
+
+If the result is Infected or Exposed and the "What to do" tab was never opened, closing the window first shows "You have not looked at the steps yet". "See what to do" opens the tab, and "Close anyway" closes the window.
 
 #### What happened
 
-The verdict and its summary come first, then four answers, each with a colored reply and the reasons behind it:
+The verdict and its summary come first. Right under them, a wide button in the color of the verdict, such as "See what to do (7 steps)", opens the next tab. Then come four answers, each with a colored reply and the reasons behind it:
 
 - "Did the malware run on this computer?" Yes, No or Cannot tell. With Yes, the agent runs found in the logs follow, one line each: the time, whether the agent was downloaded, started for the first time or started again with its saved ID, the computer name it sent, and the log the line comes from. A "No" turns orange when part of the scan could not be done, such as a `debug.log` that could not be read, and after a quick scan, which does not open folders more than 5 levels deep.
-- "Is anything still active?" The running launcher, a program that has the DLL loaded, the registry key, or the DLL files.
+- "Is anything still active?" The running launcher when the scan also found a sign of the agent, a program that has the DLL loaded, the registry key, or the DLL files.
 - "Is there something to clean up?" The DLL folders, the registry key or its empty leftover, the older DLL files, the `k2f` files in Temp, and the launcher cache when it holds traces. With nothing found, it still says to delete `tbs_cache` before the launcher is opened again.
 - "Are you protected for next time?" Each domain in the hosts file, and the two IP addresses, which only a firewall or router can block.
 
-When the download logs keep the headers of the agent download, a "Payload build" card gives the ETag, the upload time it encodes, the size and whether it is one of the 7 known builds. "See what to do" opens the next tab.
+When the download logs keep the headers of the agent download, a "Payload build" card gives the ETag, the upload time it encodes, the size and whether it is one of the 7 known builds.
 
 #### What to do
 
@@ -182,13 +184,13 @@ The steps that match what the scan found, numbered in the order to do them. Each
 
 - Scan the folder where NIKKE is installed: first when NIKKE was not found, and right after "Save the report" when launcher data was found but not the install, because `debug.log` in the install can change the result. After a quick scan this step also has the "Full scan" button.
 - Run the full scan: after a quick scan that found the install but no proof of the agent (No traces found or Exposed), since an older copy more than 5 levels deep can still hold the agent's log lines.
-- Close the launcher, or the programs that have the DLL loaded. On Windows, "Open Task Manager" starts Task Manager. On Linux and macOS, the step gives a `pkill` command.
+- Close the launcher, when the scan also found a sign of the agent, or the programs that have the DLL loaded. A running launcher with no such sign is listed under Information in Details, with no step. On Windows, "Open Task Manager" starts Task Manager. On Linux and macOS, the step gives a `pkill` command.
 - Save the report before you delete anything ("Save report..." and "Copy report").
 - Remove the DLL, or delete the registry key when no DLL was found: "Copy key path", "Open Registry Editor", the restart when Windows needs one, and "Open folder" for the 64-hex folder. In a Wine prefix it gives a `wine regedit` command for the prefix, and a `protontricks` command for a Steam prefix.
-- Clear the launcher cache, with "Open folder" at each `tbs_cache`.
+- Clear the launcher cache, with "Open folder" at each `tbs_cache`, and at the launcher's login browser profile when it holds traces.
 - Change your passwords from another device. The list names the browsers with saved logins, the wallet extensions and the secret files found, and "Copy this list" copies it.
-- Block the domains: on Windows "Copy hosts path" and "Copy these lines" for Notepad, on Linux and macOS a command that adds the lines to `/etc/hosts`. Then a firewall command for the two IP addresses (PowerShell on Windows, `ufw` on Linux).
-- Do not open the launcher until Level Infinite confirms a fix.
+- Block the domains: on Windows "Copy hosts path" and "Copy these lines" for Notepad, on Linux and macOS a command that adds the lines to `/etc/hosts`. Then a firewall command for the two IP addresses. On Windows it is a PowerShell command. On Linux the tool looks for `firewall-cmd`, `ufw` and `nft` in `PATH`, `/usr/sbin` and `/sbin`, without running them, and gives the command for the first one found in that order: a firewalld policy, `ufw` rules, or an nftables table that lasts until the next restart. With none of them, it says to block the addresses in the router. On macOS it says to use the router.
+- Before you open the launcher again: Level Infinite confirmed a fix on November 4, 2026. Delete `tbs_cache` first, since it can still hold the modified files. To keep the evidence, scan first or copy the folder. Keep the domains and the IP addresses blocked: it is still unknown how the attacker got write access to the CDN.
 
 "Open folder" opens the file manager with the file or folder selected: Explorer on Windows, Finder on macOS, and on Linux the file manager that answers the freedesktop `FileManager1` D-Bus call, or `xdg-open` on the parent folder. If the file was deleted since the scan, the nearest folder that still exists opens. These buttons only open windows and change nothing.
 
@@ -212,7 +214,7 @@ If the scan stops with an internal error, the window says so and offers "Scan ag
 2. `VERDICT:` and the summary of the verdict.
 3. `WHAT HAPPENED`: the four answers with their reasons, the agent runs and the payload builds.
 4. `WHAT TO DO`: the numbered steps, with the paths, registry keys and commands the window shows, and an `Open:` line for each folder to open.
-5. `DETAILS`: `Locations checked:` with each location tagged `[NIKKE install]`, `[Launcher data]`, `[Wine prefix]` or `[User profile]`, the data the malware could reach, and the findings in the same groups as the window. Each finding is tagged `[CRITICAL]`, `[WARNING]` or `[INFO]` and can have `Path:`, `Open:`, `Time:` and `Registry key:` lines and evidence lines that start with `|`.
+5. `DETAILS`: `Locations checked:` with each location tagged `[NIKKE install]`, `[Launcher data]`, `[Wine prefix]`, `[User profile]` or `[Launcher's login browser profile]`, the data the malware could reach, and the findings in the same groups as the window. Each finding is tagged `[CRITICAL]`, `[WARNING]` or `[INFO]` and can have `Path:`, `Open:`, `Time:` and `Registry key:` lines and evidence lines that start with `|`.
 6. `PROTECTION`: which domains the hosts file blocks, the lines to add for the others, and the two IP addresses.
 7. `LIMITS OF THIS CHECK` and the link to the write-up.
 8. `Scan stats:`: entries visited, folders, permission errors, network drives skipped and the time taken. When the entry limit was reached, this line says that some folders were not visited.

@@ -25,7 +25,7 @@ cli.error_box = ウィンドウを開けませんでした:\n{error}\n\nウィ�
 
 # Top bar, start screen and report header.
 report.read_only = 読み取り専用です。ネットワークにはアクセスしません。
-report.about = 2026 年 9 月 27 日、Level Infinite の CDN 上にある 4 つのファイルが書き換えられ、NIKKE PC ランチャー内で insightjs.com のスクリプトを読み込むようになりました。遅くとも 2026 年 10 月 23 日から、このスクリプトはリモート アクセス エージェント (insight.bundle) をダウンロードしていました。このエージェントは、コマンドの実行、ファイルの読み取り、スクリーンショットの撮影、ブラウザー データの収集ができます。4 つのうち 3 つのファイルは 11 月 3 日に置き換えられました。残りの 1 つは 10 月 28 日に修正されましたが、11 月 3 日の時点でも一部の CDN サーバーが古いファイルを配信していました。このツールは、ローダーとエージェントがディスクに残す痕跡を調べます。
+report.about = 2026 年 9 月 27 日、Level Infinite の CDN 上にある 4 つのファイルが書き換えられ、NIKKE PC ランチャー内で insightjs.com のスクリプトを読み込むようになりました。遅くとも 2026 年 10 月 23 日から、このスクリプトはリモート アクセス エージェント (insight.bundle) をダウンロードしていました。このエージェントは、コマンドの実行、ファイルの読み取り、スクリーンショットの撮影、ブラウザー データの収集ができます。4 つのうち 3 つのファイルは 11 月 3 日に置き換えられました。残りの 1 つは 10 月 28 日に修正されましたが、11 月 3 日の時点でも一部の CDN サーバーが古いファイルを配信していました。Level Infinite は 11 月 4 日に修正を確認しました。このツールは、ローダーとエージェントがディスクに残す痕跡を調べます。
 # What was scanned ("Scan of: ...", "Scanning ...").
 report.scope.computer = このコンピューター
 report.scope.quick = このコンピューター (クイック スキャン)
@@ -33,7 +33,7 @@ report.scope.full = このコンピューター (フル スキャン)
 
 # The verdict: a title, then one sentence.
 verdict.infected.title = 感染しています
-verdict.infected.summary = 重大な痕跡が見つかりました。エージェントがダウンロードまたは実行されたか、永続化の仕組みを残したか、ランチャーが現在実行中です。このコンピューターは侵害されたものとして扱ってください。
+verdict.infected.summary = 重大な痕跡が見つかりました。エージェントがダウンロードまたは実行されたか、永続化の仕組みを残しています。このコンピューターは侵害されたものとして扱ってください。
 verdict.exposed.title = 危険にさらされました
 verdict.exposed.summary = ランチャーが悪意のあるスクリプトを読み込んだか insightjs.com に接続しましたが、エージェントが実行された形跡は見つかりませんでした。
 verdict.no_traces.title = 痕跡は見つかりませんでした
@@ -51,6 +51,7 @@ kind.install = NIKKE のインストール
 kind.launcher_data = ランチャー データ
 kind.wine_prefix = Wine プレフィックス
 kind.user_profile = ユーザー プロファイル
+kind.login_profile = ランチャーのログイン用ブラウザー プロファイル
 # Groups of findings with no folder.
 group.running = 実行中のプログラム
 group.coverage = スキャンの範囲
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = Wine プレフィックス {n} 件
 report.checked.wine_prefix_other = Wine プレフィックス {n} 件
 report.checked.user_profile_one = ユーザー プロファイル {n} 件
 report.checked.user_profile_other = ユーザー プロファイル {n} 件
+report.checked.login_profile_one = ランチャーのログイン用ブラウザー プロファイル {n} 件
+report.checked.login_profile_other = ランチャーのログイン用ブラウザー プロファイル {n} 件
 report.checked.nothing = 確認する対象なし
 
 # "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
@@ -149,6 +152,7 @@ answer.active.launcher = NIKKE ランチャーが現在実行中です。実行�
 answer.active.dll_loaded = マルウェアの DLL が現在 {programs} に読み込まれています。
 answer.active.registry = ブラウザーにマルウェアの DLL を読み込ませるレジストリ キーが設定されています。
 answer.active.none = ランチャーは実行されておらず、DLL のインストールも読み込みの設定もありません。
+answer.active.launcher_clean = NIKKE ランチャーは実行中ですが、このスキャンにはエージェントを示すものはありませんでした。DLL のインストールも読み込みの設定もありません。
 answer.clean.question = 削除が必要なものはありますか?
 answer.clean.dll_folder = {browser} の DLL フォルダー: {path}
 answer.clean.registry = HKCU のレジストリ キー {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
@@ -156,7 +160,8 @@ answer.clean.leftover = HKCU の空のレジストリ キー {E77CC89B-7401-4C04
 answer.clean.legacy = {path} にある古い DLL ファイル
 answer.clean.temp = {path} にある k2f ファイル
 answer.clean.cache = マルウェアの痕跡が残っているランチャーのキャッシュ: {path}
-answer.clean.none_cache = マルウェアが残したファイルは見つかりませんでした。それでも、次にランチャーを開く前に、ランチャーのキャッシュ (tbs_cache) を削除してください。修正前の悪意のあるスクリプトがまだ残っている可能性があります。
+answer.clean.login_profile = マルウェアの痕跡が残っているランチャーのログイン用ブラウザー プロファイル: {path}
+answer.clean.none_cache = マルウェアが残したファイルは見つかりませんでした。それでも、次にランチャーを開く前に、ランチャーのキャッシュ (tbs_cache) を削除してください。修正前に書き換えられたファイルがまだ残っている可能性があります。
 answer.clean.none = マルウェアが残したものは見つかりませんでした。
 answer.protected.question = 次回に備えて保護されていますか?
 answer.protected.not_checked = hosts ファイルは確認していません。
@@ -245,8 +250,9 @@ step.dll.drive_key = その Windows を起動し、下のレジストリ キー�
 step.dll.scan_again = その後、もう一度スキャンしてください。これらの検出結果は消えているはずです。
 step.dll.defender = 感染したコンピューターの 1 台で、Microsoft Defender はこの DLL を検出しませんでした。そのため、ウイルス対策ソフトのスキャンで何も見つからなくても、DLL がなくなったとは言えません。
 step.cache.title = ランチャーのキャッシュを削除する
-step.cache.intro = 先にランチャーを閉じてください。次に、ランチャーの内蔵ブラウザーのキャッシュである tbs_cache フォルダーを削除します。このフォルダーには修正前の悪意のあるスクリプトがまだ残っている可能性があり、その場合はランチャーがそれを再び読み込みます。
+step.cache.intro = 先にランチャーを閉じてください。次に、ランチャーをもう一度開く前に、ランチャーの内蔵ブラウザーのキャッシュである tbs_cache フォルダーを削除します。このフォルダーには修正前に書き換えられたファイルがまだ残っている可能性があり、その場合はランチャーがそれらを再び読み込みます。証拠を残す場合は、先にフォルダーを別の場所にコピーしてください。
 step.cache.none = このスキャンでは、ランチャー データ フォルダーが見つかりませんでした。Windows では %APPDATA%\\nikke_launcher\\tbs_cache (HMT 版ランチャーの場合は nikke_launcher_hmt)、Proton または Wine のプレフィックス内では drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache にあります。
+step.cache.login = 下にあるランチャーのログイン用ブラウザー プロファイルにも、マルウェアの痕跡が残っています。これも削除してください。ランチャーが新しいプロファイルを作成しますが、ランチャーにもう一度ログインする必要があります。
 step.password.title = 別のデバイスからパスワードを変更する
 step.password.intro_infected = NIKKE ランチャーを一度も実行したことのないスマートフォンまたは別のコンピューターを使ってください。エージェントの実行中は、そのコマンドでこのコンピューターのファイルやブラウザー データを読み取ることができました。次のものを変更または交換してください:
 step.password.intro_exposed = エージェントは、遅くとも 2026 年 10 月 23 日から、一部の起動時にだけ送り込まれていました。その日以降にランチャーを開いていた場合は、エージェントが実行されたものとして行動してください。ランチャーを一度も実行したことのないスマートフォンまたは別のコンピューターから、次のものを変更または交換してください:
@@ -277,9 +283,15 @@ step.block.scan_again = その後、もう一度スキャンしてください�
 step.block.ips = hosts ファイルでは IP アドレスをブロックできません。89.127.233.127 と 89.126.250.172 をファイアウォールまたはルーターでブロックしてください。
 step.block.firewall = Windows ファイアウォールの規則を追加するには、スタート ボタンを右クリックし、「ターミナル (管理者)」または「Windows PowerShell (管理者)」を選んで、次のコマンドを実行します:
 step.block.macos = macOS では、ルーターの設定でブロックしてください。
-step.block.ufw = ufw を使う場合は、次のコマンドを実行します。ufw が無効の間、この規則は何もブロックしません。sudo ufw status で「Status: active」と表示される必要があり、sudo ufw enable で有効にできます。ufw を使わない場合は、ルーターの設定でブロックしてください。
-step.wait.title = Level Infinite が修正を確認するまでランチャーを開かない
-step.wait.servers = 2026 年 11 月 3 日の時点でも、Level Infinite の一部のサーバーが悪意のあるファイルを配信していました。修正前に起動すると、スクリプトが再び読み込まれる可能性があります。
+step.block.ufw = ufw がインストールされています。次のコマンドを実行してください。ufw が無効の間、この規則は何もブロックしません。sudo ufw status で「Status: active」と表示される必要があり、sudo ufw enable で有効にできます。
+step.block.firewalld = firewalld がインストールされています。次のコマンドを実行してください。このコンピューターから両方のアドレスへの接続を拒否するポリシーが追加されます。このポリシーは再起動後も残ります。
+step.block.firewalld_check = ポリシーを確認するには、次のコマンドを実行します:
+step.block.nft = nftables がインストールされています。次のコマンドを実行してください。この規則は次回の再起動まで有効です。/etc/nftables.conf に保存すると、再起動後も残ります。
+step.block.no_firewall = ファイアウォールのツール (firewall-cmd、ufw、nft) が見つかりませんでした。ルーターの設定でブロックしてください。
+step.wait.title = ランチャーをもう一度開く前に
+step.wait.fixed = Level Infinite は 2026 年 11 月 4 日に修正を確認しました。ランチャーをもう一度開く前に、キャッシュ フォルダー tbs_cache を削除してください。書き換えられたファイルがまだ残っている可能性があり、その場合はランチャーがそれらを再び読み込みます。
+step.wait.evidence = 証拠を残す場合は、先にチェックを済ませるか、削除する前にフォルダーを別の場所にコピーしてください。
+step.wait.keep_blocked = ドメインと IP アドレスはブロックしたままにしてください。攻撃者が CDN への書き込み権限をどのように得たのかは、まだわかっていません。
 step.wait.reinstall = エージェントは任意のコマンドを実行できたため、このコンピューターが感染していないと確実に言うには、OS を再インストールするのが最も安全な方法です。
 
 # Details: the groups of findings.
@@ -384,6 +396,8 @@ finding.data_link.detail = このフォルダーは {target} へのリンクで�
 finding.data_link.unknown_target = 不明なリンク先
 finding.agent_state.title = マルウェアのエージェントがランチャー データに痕跡を残しています
 finding.agent_state.detail = ランチャー データ内の {files}に、k2f_chan (エージェントのブリッジ チャネル名) または k2f.agent.state (エージェントが保存する ID) が含まれています。これはエージェントが実行されたことを示しています。
+finding.login_agent_state.title = マルウェアのエージェントがランチャーのログイン用ブラウザー プロファイルに痕跡を残しています
+finding.login_agent_state.detail = ランチャーのログイン用ブラウザー プロファイル (CEF\\User Data) 内の {files}に、k2f_chan (エージェントのブリッジ チャネル名) または k2f.agent.state (エージェントが保存する ID) が含まれています。これはエージェントが実行されたことを示しています。
 finding.agent_server.title = ランチャーがエージェント サーバーに接続しました
 finding.agent_server.detail = ネットワーク状態を記録した {files}に analytics.insightjs.com が記録されています。このサーバーはエージェント (insight.bundle) を配信し、エージェントからの定期的な接続 (チェックイン) を受け付けます。ローダーは実行されたもののエージェントは実行されなかった起動では、insightjs.com だけが記録されていました。
 finding.loader_cached.title = ランチャーが悪意のあるスクリプトを読み込みました
@@ -392,6 +406,8 @@ finding.network_state.title = ランチャーが insightjs.com に接続しま�
 finding.network_state.detail = ネットワーク状態を記録した {files}に insightjs.com が記録されているため、ランチャーの内蔵ブラウザーはこのドメインに接続しています。
 finding.data_mention.title = ランチャー データに insightjs.com の記録があります
 finding.data_mention.detail = ランチャー データ内の {files}に insightjs.com が含まれています。
+finding.login_mention.title = ランチャーのログイン用ブラウザー プロファイルに insightjs.com の記録があります
+finding.login_mention.detail = ランチャーのログイン用ブラウザー プロファイル (CEF\\User Data) 内の {files}に insightjs.com が含まれています。
 finding.data_clean.title = ランチャー データに痕跡はありません
 finding.data_clean.detail = {files}を確認しました。
 # {browser} is a browser name such as Chrome or Edge.
@@ -418,6 +434,8 @@ finding.registry.where_windows = HKCU の下にキー {E77CC89B-7401-4C04-8CED-1
 finding.registry.where_wine = この Wine プレフィックスの HKCU ハイブである user.reg に、キー {E77CC89B-7401-4C04-8CED-149DB35ADD04} が含まれています。
 finding.launcher_running.title = NIKKE ランチャーが現在実行中です
 finding.launcher_running.detail = 今すぐランチャーを閉じ (閉じない場合はプロセスを終了します)、ネットワークから切断してください。実行中は、攻撃者がこのコンピューターにコマンドを送れます。
+finding.launcher_running_clean.title = NIKKE ランチャーが実行中です
+finding.launcher_running_clean.detail = ランチャーは現在実行中ですが、このスキャンにはエージェントを示すものはありませんでした。参考情報として表示しています。
 finding.dll_loaded.title = 永続化の DLL が現在読み込まれています
 finding.dll_loaded.detail = これらのプログラムに、マルウェアの platform_experience_helper.dll が読み込まれています。プログラムが終了するまで、Windows はこのファイルをロックします。また、HKCU のキーが残っている間は、Chrome が次回の起動時に再び読み込みます。レジストリ キーを削除し、Windows を再起動してから、DLL のフォルダーを削除してください。
 
@@ -454,6 +472,8 @@ ui.button.stop = スキャンを停止
 ui.button.copy_report = レポートをコピー
 ui.button.save_report = レポートを保存...
 ui.button.see_todo = 対処方法を見る
+# The big button under the verdict. A result always has more than one step.
+ui.button.see_todo_count = 対処方法を見る (手順 {n} 件)
 ui.button.open_folder = フォルダーを開く
 ui.button.task_manager = タスク マネージャーを開く
 ui.button.registry_editor = レジストリ エディターを開く
@@ -512,6 +532,10 @@ ui.happened.payload_build = ペイロードのビルド
 ui.happened.agent_runs = ログに記録されたエージェントの実行
 ui.todo.hint = 手順は 1 つずつ、順番に行ってください。ボタンを押すと該当するフォルダーやツールが開きますが、ファイルの削除はご自身で行ってください。このプログラムが何かを削除することはありません。
 ui.todo.note = これらの手順は、このスキャンで見つかったものに基づいており、行う順番に並んでいます。「完了」のチェックは保存されません。
+# Shown when the window is closed before the What to do tab was opened, on an Infected or Exposed result.
+ui.close.title = まだ手順を確認していません
+ui.close.text = 「対処方法」の手順に、削除が必要なものと変更が必要なパスワードが書かれています。
+ui.close.anyway = このまま閉じる
 ui.tile.critical = 重大
 ui.tile.warnings = 警告
 ui.tile.info = 情報

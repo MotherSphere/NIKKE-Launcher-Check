@@ -25,7 +25,7 @@ cli.error_box = Das Fenster konnte nicht geöffnet werden:\n{error}\n\nUm den Be
 
 # Obere Leiste, Startbildschirm und Kopf des Berichts.
 report.read_only = Nur Lesezugriff. Kein Netzwerkzugriff.
-report.about = Am 27. September 2026 wurden vier Dateien im CDN von Level Infinite so verändert, dass der NIKKE-PC-Launcher ein Skript von insightjs.com lädt. Spätestens ab dem 23. Oktober 2026 lud dieses Skript einen Fernzugriffsagenten (insight.bundle) herunter, der Befehle ausführen, Dateien lesen, Bildschirmfotos aufnehmen und Browserdaten sammeln kann. Drei der Dateien wurden am 3. November ersetzt. Die vierte wurde am 28. Oktober bereinigt, doch einige CDN-Server lieferten am 3. November noch die alte Version aus. Dieses Programm sucht nach den Spuren, die das Ladeskript und der Agent auf dem Datenträger hinterlassen.
+report.about = Am 27. September 2026 wurden vier Dateien im CDN von Level Infinite so verändert, dass der NIKKE-PC-Launcher ein Skript von insightjs.com lädt. Spätestens ab dem 23. Oktober 2026 lud dieses Skript einen Fernzugriffsagenten (insight.bundle) herunter, der Befehle ausführen, Dateien lesen, Bildschirmfotos aufnehmen und Browserdaten sammeln kann. Drei der Dateien wurden am 3. November ersetzt. Die vierte wurde am 28. Oktober bereinigt, doch einige CDN-Server lieferten am 3. November noch die alte Version aus. Level Infinite hat am 4. November eine Behebung bestätigt. Dieses Programm sucht nach den Spuren, die das Ladeskript und der Agent auf dem Datenträger hinterlassen.
 # Was geprüft wurde („Geprüfter Bereich: ...“, „Prüfung läuft: ...“).
 report.scope.computer = dieser Computer
 report.scope.quick = dieser Computer (Schnellprüfung)
@@ -33,7 +33,7 @@ report.scope.full = dieser Computer (vollständige Prüfung)
 
 # Das Ergebnis: ein Titel, dann ein Satz.
 verdict.infected.title = Infiziert
-verdict.infected.summary = Es wurden kritische Spuren gefunden: Der Agent wurde heruntergeladen oder ausgeführt, er hat sich dauerhaft eingerichtet, oder der Launcher läuft gerade. Betrachten Sie diesen Computer als kompromittiert.
+verdict.infected.summary = Es wurden kritische Spuren gefunden: Der Agent wurde heruntergeladen oder ausgeführt, oder er hat sich dauerhaft eingerichtet. Betrachten Sie diesen Computer als kompromittiert.
 verdict.exposed.title = Gefährdet
 verdict.exposed.summary = Der Launcher hat das Schadskript geladen oder insightjs.com kontaktiert, aber es wurde kein Hinweis darauf gefunden, dass der Agent ausgeführt wurde.
 verdict.no_traces.title = Keine Spuren gefunden
@@ -51,6 +51,7 @@ kind.install = NIKKE-Installation
 kind.launcher_data = Launcher-Daten
 kind.wine_prefix = Wine-Präfix
 kind.user_profile = Benutzerprofil
+kind.login_profile = Anmelde-Browserprofil des Launchers
 # Gruppen von Befunden ohne Ordner.
 group.running = Laufende Programme
 group.coverage = Prüfumfang
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = {n} Wine-Präfix
 report.checked.wine_prefix_other = {n} Wine-Präfixe
 report.checked.user_profile_one = {n} Benutzerprofil
 report.checked.user_profile_other = {n} Benutzerprofile
+report.checked.login_profile_one = {n} Anmelde-Browserprofil des Launchers
+report.checked.login_profile_other = {n} Anmelde-Browserprofile des Launchers
 report.checked.nothing = nichts zu prüfen
 
 # „Prüfstatistik: ...“. {skipped} ist einer der beiden „übersprungen“-Texte unten oder leer.
@@ -149,6 +152,7 @@ answer.active.launcher = Der NIKKE-Launcher läuft gerade. Solange er läuft, ka
 answer.active.dll_loaded = Die DLL der Schadsoftware ist gerade in {programs} geladen.
 answer.active.registry = Der Registrierungsschlüssel, über den der Browser die DLL der Schadsoftware lädt, ist gesetzt.
 answer.active.none = Der Launcher läuft nicht, und es ist keine DLL installiert oder zum Laden eingetragen.
+answer.active.launcher_clean = Der NIKKE-Launcher läuft, aber nichts in dieser Prüfung weist auf den Agenten hin. Es ist keine DLL installiert oder zum Laden eingetragen.
 answer.clean.question = Gibt es etwas zu bereinigen?
 answer.clean.dll_folder = Der DLL-Ordner von {browser}: {path}
 answer.clean.registry = Der HKCU-Registrierungsschlüssel {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
@@ -156,7 +160,8 @@ answer.clean.leftover = Der leere HKCU-Registrierungsschlüssel {E77CC89B-7401-4
 answer.clean.legacy = Ältere DLL-Dateien in {path}
 answer.clean.temp = k2f-Dateien in {path}
 answer.clean.cache = Der Launcher-Cache, der Spuren der Schadsoftware enthält: {path}
-answer.clean.none_cache = Es wurde keine Datei gefunden, die die Schadsoftware hinterlassen hat. Löschen Sie den Launcher-Cache (tbs_cache) trotzdem, bevor Sie den Launcher wieder öffnen: Der Cache kann noch das Schadskript aus der Zeit vor der Behebung enthalten.
+answer.clean.login_profile = Das Anmelde-Browserprofil des Launchers, das Spuren der Schadsoftware enthält: {path}
+answer.clean.none_cache = Es wurde keine Datei gefunden, die die Schadsoftware hinterlassen hat. Löschen Sie den Launcher-Cache (tbs_cache) trotzdem, bevor Sie den Launcher wieder öffnen: Der Cache kann noch die veränderten Dateien aus der Zeit vor der Behebung enthalten.
 answer.clean.none = Es wurde nichts gefunden, was die Schadsoftware hinterlassen hat.
 answer.protected.question = Sind Sie für das nächste Mal geschützt?
 answer.protected.not_checked = Die hosts-Datei wurde nicht geprüft.
@@ -245,8 +250,9 @@ step.dll.drive_key = Starten Sie das Windows auf diesem Laufwerk, und löschen S
 step.dll.scan_again = Prüfen Sie danach erneut: Diese Befunde sollten dann verschwunden sein.
 step.dll.defender = Microsoft Defender hat diese DLL auf einem infizierten Computer nicht erkannt. Ein Virenscan ohne Befund zeigt also nicht, dass sie entfernt ist.
 step.cache.title = Leeren Sie den Launcher-Cache
-step.cache.intro = Schließen Sie zuerst den Launcher. Löschen Sie dann den Ordner tbs_cache, den Cache des im Launcher integrierten Browsers. Dieser Cache kann noch das Schadskript aus der Zeit vor der Behebung enthalten, und der Launcher würde es erneut laden.
+step.cache.intro = Schließen Sie zuerst den Launcher. Löschen Sie dann, bevor Sie ihn wieder öffnen, den Ordner tbs_cache, den Cache des im Launcher integrierten Browsers. Dieser Cache kann noch die veränderten Dateien aus der Zeit vor der Behebung enthalten, und der Launcher würde sie erneut laden. Um die Beweise zu sichern, kopieren Sie den Ordner zuerst an einen anderen Ort.
 step.cache.none = Diese Prüfung hat keinen Launcher-Datenordner gefunden. Unter Windows liegt der Cache in %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt beim HMT-Launcher), im Proton- oder Wine-Präfix in drive_c/users/<Benutzer>/AppData/Roaming/nikke_launcher/tbs_cache.
+step.cache.login = Auch das unten angezeigte Anmelde-Browserprofil des Launchers enthält Spuren der Schadsoftware. Löschen Sie es ebenfalls. Der Launcher legt ein neues an, und Sie müssen sich erneut beim Launcher anmelden.
 step.password.title = Ändern Sie Ihre Passwörter von einem anderen Gerät aus
 step.password.intro_infected = Verwenden Sie ein Smartphone oder einen anderen Computer, auf dem der NIKKE-Launcher nie ausgeführt wurde. Während der Agent lief, konnten seine Befehle die Dateien und Browserdaten dieses Computers lesen. Ändern oder ersetzen Sie Folgendes:
 step.password.intro_exposed = Der Agent wurde spätestens ab dem 23. Oktober 2026 ausgeliefert, und zwar nur bei manchen Starts. Wenn der Launcher an diesem Tag oder später geöffnet war, gehen Sie davon aus, dass der Agent ausgeführt wurde: Ändern oder ersetzen Sie Folgendes von einem Smartphone oder einem anderen Computer aus, auf dem der Launcher nie ausgeführt wurde:
@@ -277,9 +283,15 @@ step.block.scan_again = Prüfen Sie danach erneut: Unter Details zeigt „Schutz
 step.block.ips = Die hosts-Datei kann keine IP-Adressen blockieren. Blockieren Sie 89.127.233.127 und 89.126.250.172 in Ihrer Firewall oder Ihrem Router.
 step.block.firewall = Um eine Regel zur Windows-Firewall hinzuzufügen, klicken Sie mit der rechten Maustaste auf die Schaltfläche „Start“, wählen Sie „Terminal (Administrator)“ oder „Windows PowerShell (Administrator)“, und führen Sie Folgendes aus:
 step.block.macos = Blockieren Sie sie unter macOS in den Einstellungen Ihres Routers.
-step.block.ufw = Führen Sie mit ufw diesen Befehl aus. Solange ufw ausgeschaltet ist, blockieren die Regeln nichts: sudo ufw status muss „Status: active“ anzeigen (auf Deutsch „Status: Aktiv“), und sudo ufw enable schaltet ufw ein. Ohne ufw blockieren Sie sie in den Einstellungen Ihres Routers.
-step.wait.title = Öffnen Sie den Launcher erst wieder, wenn Level Infinite eine Behebung bestätigt
-step.wait.servers = Einige Server von Level Infinite lieferten am 3. November 2026 noch die schädliche Datei aus. Ein Start vor der Behebung kann das Skript erneut laden.
+step.block.ufw = ufw ist installiert. Führen Sie diesen Befehl aus. Solange ufw ausgeschaltet ist, blockieren die Regeln nichts: sudo ufw status muss „Status: active“ anzeigen (auf Deutsch „Status: Aktiv“), und sudo ufw enable schaltet ufw ein.
+step.block.firewalld = firewalld ist installiert. Führen Sie diesen Befehl aus. Er fügt eine Richtlinie hinzu, die Verbindungen von diesem Computer zu beiden Adressen ablehnt. Die Richtlinie bleibt auch nach einem Neustart bestehen.
+step.block.firewalld_check = Um die Richtlinie zu prüfen, führen Sie Folgendes aus:
+step.block.nft = nftables ist installiert. Führen Sie diesen Befehl aus. Die Regeln gelten bis zum nächsten Neustart, es sei denn, Sie speichern sie in /etc/nftables.conf.
+step.block.no_firewall = Es wurde kein Firewall-Programm gefunden (firewall-cmd, ufw oder nft). Blockieren Sie sie in den Einstellungen Ihres Routers.
+step.wait.title = Bevor Sie den Launcher wieder öffnen
+step.wait.fixed = Level Infinite hat am 4. November 2026 eine Behebung bestätigt. Löschen Sie den Cache-Ordner tbs_cache des Launchers, bevor Sie den Launcher wieder öffnen: Dieser Ordner kann noch die veränderten Dateien enthalten, und der Launcher würde sie erneut laden.
+step.wait.evidence = Um die Beweise zu sichern, führen Sie zuerst die Prüfungen durch, oder kopieren Sie den Ordner an einen anderen Ort, bevor Sie ihn löschen.
+step.wait.keep_blocked = Lassen Sie die Domains und die IP-Adressen blockiert: Es ist noch nicht bekannt, wie der Angreifer Schreibzugriff auf das CDN erhalten hat.
 step.wait.reinstall = Der Agent konnte beliebige Befehle ausführen. Daher ist eine Neuinstallation des Betriebssystems der sicherste Weg, um sicherzugehen, dass dieser Computer sauber ist.
 
 # Details: die Gruppen von Befunden.
@@ -384,6 +396,8 @@ finding.data_link.detail = Dieser Ordner verweist auf {target}. Dieses Ziel fehl
 finding.data_link.unknown_target = ein unbekanntes Ziel
 finding.agent_state.title = Der Agent der Schadsoftware hat Spuren in den Launcher-Daten hinterlassen
 finding.agent_state.detail = k2f_chan (der Name des Bridge-Kanals des Agenten) oder k2f.agent.state (die ID, die der Agent speichert) kommt in {files} in den Launcher-Daten vor. Das zeigt, dass der Agent ausgeführt wurde.
+finding.login_agent_state.title = Der Agent der Schadsoftware hat Spuren im Anmelde-Browserprofil des Launchers hinterlassen
+finding.login_agent_state.detail = k2f_chan (der Name des Bridge-Kanals des Agenten) oder k2f.agent.state (die ID, die der Agent speichert) kommt in {files} im Anmelde-Browserprofil des Launchers (CEF\\User Data) vor. Das zeigt, dass der Agent ausgeführt wurde.
 finding.agent_server.title = Der Launcher hat den Agent-Server kontaktiert
 finding.agent_server.detail = analytics.insightjs.com ist in {files} des Netzwerkstatus verzeichnet. Dieser Server liefert den Agenten (insight.bundle) aus und empfängt seine Rückmeldungen. Ein Start, bei dem das Ladeskript ohne den Agenten lief, hat nur insightjs.com verzeichnet.
 finding.loader_cached.title = Der Launcher hat das Schadskript geladen
@@ -392,6 +406,8 @@ finding.network_state.title = Der Launcher hat eine Verbindung zu insightjs.com 
 finding.network_state.detail = insightjs.com ist in {files} des Netzwerkstatus verzeichnet, der integrierte Browser des Launchers hat die Domain also kontaktiert.
 finding.data_mention.title = Die Launcher-Daten erwähnen insightjs.com
 finding.data_mention.detail = insightjs.com kommt in {files} in den Launcher-Daten vor.
+finding.login_mention.title = Das Anmelde-Browserprofil des Launchers erwähnt insightjs.com
+finding.login_mention.detail = insightjs.com kommt in {files} im Anmelde-Browserprofil des Launchers (CEF\\User Data) vor.
 finding.data_clean.title = Keine Spuren in den Launcher-Daten
 finding.data_clean.detail = Geprüft: {files}.
 # {browser} ist ein Browsername wie Chrome oder Edge.
@@ -418,6 +434,8 @@ finding.registry.where_windows = Der Schlüssel {E77CC89B-7401-4C04-8CED-149DB35
 finding.registry.where_wine = user.reg, die HKCU-Registrierungsstruktur dieses Wine-Präfixes, enthält den Schlüssel {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
 finding.launcher_running.title = Der NIKKE-Launcher läuft gerade
 finding.launcher_running.detail = Schließen Sie den Launcher sofort (beenden Sie den Prozess, wenn er sich nicht schließen lässt), und trennen Sie die Verbindung zum Netzwerk. Solange er läuft, kann der Angreifer Befehle an diesen Computer senden.
+finding.launcher_running_clean.title = Der NIKKE-Launcher läuft
+finding.launcher_running_clean.detail = Der Launcher läuft gerade, und nichts in dieser Prüfung weist auf den Agenten hin. Er wird zur Information aufgeführt.
 finding.dll_loaded.title = Die Persistenz-DLL ist gerade geladen
 finding.dll_loaded.detail = In diesen Programmen ist platform_experience_helper.dll der Schadsoftware geladen. Windows sperrt die Datei, bis die Programme beendet werden, und Chrome lädt sie beim nächsten Start erneut, solange der HKCU-Schlüssel vorhanden ist. Löschen Sie den Registrierungsschlüssel, starten Sie Windows neu, und löschen Sie dann den Ordner der DLL.
 
@@ -454,6 +472,8 @@ ui.button.stop = Prüfung abbrechen
 ui.button.copy_report = Bericht kopieren
 ui.button.save_report = Bericht speichern...
 ui.button.see_todo = Anzeigen, was zu tun ist
+# Die große Schaltfläche unter dem Ergebnis. Ein Ergebnis hat immer mehr als einen Schritt.
+ui.button.see_todo_count = Anzeigen, was zu tun ist ({n} Schritte)
 ui.button.open_folder = Ordner öffnen
 ui.button.task_manager = Task-Manager öffnen
 ui.button.registry_editor = Registrierungs-Editor öffnen
@@ -512,6 +532,10 @@ ui.happened.payload_build = Build der Agent-Datei
 ui.happened.agent_runs = Ausführungen des Agenten in den Protokollen
 ui.todo.hint = Gehen Sie die Schritte einzeln und der Reihe nach durch. Die Schaltflächen öffnen den passenden Ordner oder das passende Programm für Sie, aber die Dateien löschen Sie selbst. Dieses Programm löscht nie etwas.
 ui.todo.note = Diese Schritte ergeben sich aus den Befunden dieser Prüfung, in der Reihenfolge, in der Sie sie ausführen sollten. Die Markierungen „Erledigt“ werden nicht gespeichert.
+# Erscheint, wenn das Fenster geschlossen wird, bevor die Registerkarte „Was zu tun ist“ geöffnet wurde, bei einem Ergebnis „Infiziert“ oder „Gefährdet“.
+ui.close.title = Sie haben sich die Schritte noch nicht angesehen
+ui.close.text = Die Schritte unter „Was zu tun ist“ zeigen, was Sie bereinigen und welche Passwörter Sie ändern sollten.
+ui.close.anyway = Trotzdem schließen
 ui.tile.critical = Kritisch
 ui.tile.warnings = Warnungen
 ui.tile.info = Info

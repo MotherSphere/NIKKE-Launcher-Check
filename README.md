@@ -68,7 +68,7 @@ To switch, open the menu at the bottom left of the window. It shows the current 
 |---|---|
 | No traces found | No trace of the malicious script or the agent was found in the NIKKE files this scan located. |
 | Exposed | The launcher loaded the malicious script or contacted insightjs.com, but no sign that the agent ran was found. |
-| Infected | Critical traces were found: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, the agent left persistence, or the launcher is running now. Treat this computer as compromised. |
+| Infected | Critical traces were found: the agent was downloaded or ran, the launcher contacted analytics.insightjs.com, or the agent left persistence. Treat this computer as compromised. |
 | NIKKE not found | No NIKKE install or launcher data was found in the places this scan checked. |
 
 Finding nothing is not proof that the computer is clean. [What it checks](docs/checks.md) lists the traces behind each verdict, and [Using the tool](docs/usage.md#command-line) has the `--cli` exit codes.
@@ -78,12 +78,12 @@ Finding nothing is not proof that the computer is clean. [What it checks](docs/c
 If the result is Infected, start with these steps:
 
 1. Close the NIKKE launcher now (on Windows, if it does not close, open Task Manager with Ctrl+Shift+Esc and end nikke_launcher.exe) and disconnect this computer from the network.
-2. Do not open the launcher again until Level Infinite confirms a fix.
-3. Click "Save report..." before you delete anything. Deleting the launcher cache also deletes one of the traces.
+2. Click "Save report..." before you delete anything. Deleting the launcher cache also deletes one of the traces.
+3. Before you open the launcher again, delete its cache folder, `tbs_cache`. Level Infinite confirmed a fix on November 4, 2026, but the cache can still hold the modified files, and the launcher would load them again.
 
 Then follow the "What to do" tab, or [What to do](docs/what-to-do.md#infected). It covers the launcher cache, blocking the domains and the attacker's two IP addresses, removing the DLL and its registry key on Windows (the key first, then a restart, then the DLL folder), and changing your passwords from a clean device (a phone or another computer that never ran the NIKKE launcher).
 
-Whatever the result, do not open the NIKKE launcher until Level Infinite confirms a fix. If the result is Exposed and the launcher was open on or after October 23, 2026, also change your passwords from a clean device. [What to do](docs/what-to-do.md#exposed) has the steps.
+Whatever the result, delete `tbs_cache` before you open the NIKKE launcher again. Scan first, or copy the folder, if you want to keep the evidence. Keep the domains and the two IP addresses blocked: it is still unknown how the attacker got write access to the CDN. If the result is Exposed and the launcher was open on or after October 23, 2026, also change your passwords from a clean device. [What to do](docs/what-to-do.md#exposed) has the steps.
 
 ## Documentation
 

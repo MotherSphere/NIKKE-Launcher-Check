@@ -25,7 +25,7 @@ cli.error_box = The window could not open:\n{error}\n\nTo get the report without
 
 # Top bar, start screen and report header.
 report.read_only = Read-only. No network access.
-report.about = On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.
+report.about = On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. Level Infinite confirmed a fix on November 4. This tool looks for the traces the loader and the agent leave on disk.
 # What was scanned ("Scan of: ...", "Scanning ...").
 report.scope.computer = this computer
 report.scope.quick = this computer (quick scan)
@@ -33,7 +33,7 @@ report.scope.full = this computer (full scan)
 
 # The verdict: a title, then one sentence.
 verdict.infected.title = Infected
-verdict.infected.summary = Critical traces were found: the agent was downloaded or ran, it left persistence, or the launcher is running now. Treat this computer as compromised.
+verdict.infected.summary = Critical traces were found: the agent was downloaded or ran, or it left persistence. Treat this computer as compromised.
 verdict.exposed.title = Exposed
 verdict.exposed.summary = The launcher loaded the malicious script or contacted insightjs.com, but no sign that the agent ran was found.
 verdict.no_traces.title = No traces found
@@ -51,6 +51,7 @@ kind.install = NIKKE install
 kind.launcher_data = Launcher data
 kind.wine_prefix = Wine prefix
 kind.user_profile = User profile
+kind.login_profile = Launcher's login browser profile
 # Groups of findings with no folder.
 group.running = Running programs
 group.coverage = Scan coverage
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = {n} Wine prefix
 report.checked.wine_prefix_other = {n} Wine prefixes
 report.checked.user_profile_one = {n} user profile
 report.checked.user_profile_other = {n} user profiles
+report.checked.login_profile_one = {n} login browser profile of the launcher
+report.checked.login_profile_other = {n} login browser profiles of the launcher
 report.checked.nothing = nothing to check
 
 # "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
@@ -149,6 +152,7 @@ answer.active.launcher = The NIKKE launcher is running now. While it runs, the a
 answer.active.dll_loaded = The malware's DLL is loaded now in {programs}.
 answer.active.registry = The registry key that makes the browser load the malware's DLL is set.
 answer.active.none = The launcher is not running, and no DLL is installed or set to load.
+answer.active.launcher_clean = The NIKKE launcher is running, but nothing in this scan shows the agent. No DLL is installed or set to load.
 answer.clean.question = Is there something to clean up?
 answer.clean.dll_folder = The {browser} DLL folder: {path}
 answer.clean.registry = The HKCU registry key {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
@@ -156,7 +160,8 @@ answer.clean.leftover = The empty HKCU registry key {E77CC89B-7401-4C04-8CED-149
 answer.clean.legacy = Older DLL files in {path}
 answer.clean.temp = k2f files in {path}
 answer.clean.cache = The launcher cache, which holds traces of the malware: {path}
-answer.clean.none_cache = No file left by the malware was found. Delete the launcher cache (tbs_cache) anyway before you open the launcher again: it can still hold the malicious script from before the fix.
+answer.clean.login_profile = The launcher's login browser profile, which holds traces of the malware: {path}
+answer.clean.none_cache = No file left by the malware was found. Delete the launcher cache (tbs_cache) anyway before you open the launcher again: it can still hold the modified files from before the fix.
 answer.clean.none = Nothing left by the malware was found.
 answer.protected.question = Are you protected for next time?
 answer.protected.not_checked = The hosts file was not checked.
@@ -245,8 +250,9 @@ step.dll.drive_key = Start that Windows and delete the registry key below, and t
 step.dll.scan_again = Scan again afterwards: these findings should be gone.
 step.dll.defender = Microsoft Defender did not detect this DLL on one infected computer, so a clean antivirus scan does not show that it is gone.
 step.cache.title = Clear the launcher cache
-step.cache.intro = Close the launcher first. Then delete the tbs_cache folder, the cache of the launcher's built-in browser. It can still hold the malicious script from before the fix, and the launcher would load it again.
+step.cache.intro = Close the launcher first. Then, before you open it again, delete the tbs_cache folder, the cache of the launcher's built-in browser. It can still hold the modified files from before the fix, and the launcher would load them again. To keep the evidence, copy the folder somewhere else first.
 step.cache.none = This scan found no launcher data folder. It is %APPDATA%\\nikke_launcher\\tbs_cache on Windows (nikke_launcher_hmt for the HMT launcher), or drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache inside the Proton or Wine prefix.
+step.cache.login = The launcher's login browser profile below also holds traces of the malware. Delete it too. The launcher creates a new one, and you will have to sign in to the launcher again.
 step.password.title = Change your passwords from another device
 step.password.intro_infected = Use a phone or another computer that never ran the NIKKE launcher. While the agent ran, its commands could read this computer's files and browser data. Change or replace these:
 step.password.intro_exposed = The agent was sent from October 23, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, act as if it ran: from a phone or another computer that never ran the launcher, change or replace these:
@@ -277,9 +283,15 @@ step.block.scan_again = Scan again afterwards: Protection, in Details, then show
 step.block.ips = The hosts file cannot block IP addresses. Block 89.127.233.127 and 89.126.250.172 in your firewall or router.
 step.block.firewall = To add a Windows firewall rule, right-click the Start button, choose Terminal (Admin) or Windows PowerShell (Admin), and run:
 step.block.macos = On macOS, block them in your router's settings.
-step.block.ufw = With ufw, run this command. The rules block nothing while ufw is off: sudo ufw status must show "Status: active", and sudo ufw enable turns it on. Without ufw, block them in your router's settings.
-step.wait.title = Do not open the launcher until Level Infinite confirms a fix
-step.wait.servers = Some of Level Infinite's servers still sent the malicious file on November 3, 2026. A launch before the fix can load the script again.
+step.block.ufw = ufw is installed. Run this command. The rules block nothing while ufw is off: sudo ufw status must show "Status: active", and sudo ufw enable turns it on.
+step.block.firewalld = firewalld is installed. Run this command. It adds a policy that rejects connections from this computer to both addresses, and the policy stays after a restart.
+step.block.firewalld_check = To check the policy, run:
+step.block.nft = nftables is installed. Run this command. The rules last until the next restart, unless you save them to /etc/nftables.conf.
+step.block.no_firewall = No firewall tool was found (firewall-cmd, ufw or nft). Block them in your router's settings.
+step.wait.title = Before you open the launcher again
+step.wait.fixed = Level Infinite confirmed a fix on November 4, 2026. Before you open the launcher again, delete its cache folder tbs_cache: it can still hold the modified files, and the launcher would load them again.
+step.wait.evidence = To keep the evidence, do the checks first, or copy the folder somewhere else before you delete it.
+step.wait.keep_blocked = Keep the domains and the IP addresses blocked: it is still unknown how the attacker got write access to the CDN.
 step.wait.reinstall = The agent could run any command, so reinstalling the operating system is the safest way to be sure this computer is clean.
 
 # Details: the groups of findings.
@@ -384,6 +396,8 @@ finding.data_link.detail = This folder links to {target}, which is missing, a dr
 finding.data_link.unknown_target = an unknown target
 finding.agent_state.title = The malware agent left traces in the launcher data
 finding.agent_state.detail = k2f_chan (the agent's bridge channel name) or k2f.agent.state (the ID the agent saves) appears in {files} in the launcher data. This shows that the agent ran.
+finding.login_agent_state.title = The malware agent left traces in the launcher's login browser profile
+finding.login_agent_state.detail = k2f_chan (the agent's bridge channel name) or k2f.agent.state (the ID the agent saves) appears in {files} in the launcher's login browser profile (CEF\\User Data). This shows that the agent ran.
 finding.agent_server.title = The launcher contacted the agent server
 finding.agent_server.detail = analytics.insightjs.com is recorded in {files} of network state. That server sends the agent (insight.bundle) and receives its check-ins. A launch where the loader ran without the agent recorded only insightjs.com.
 finding.loader_cached.title = The launcher loaded the malicious script
@@ -392,6 +406,8 @@ finding.network_state.title = The launcher connected to insightjs.com
 finding.network_state.detail = insightjs.com is recorded in {files} of network state, so the launcher's built-in browser contacted it.
 finding.data_mention.title = Launcher data mentions insightjs.com
 finding.data_mention.detail = insightjs.com appears in {files} in the launcher data.
+finding.login_mention.title = The launcher's login browser profile mentions insightjs.com
+finding.login_mention.detail = insightjs.com appears in {files} in the launcher's login browser profile (CEF\\User Data).
 finding.data_clean.title = No traces in the launcher data
 finding.data_clean.detail = Checked {files}.
 # {browser} is a browser name such as Chrome or Edge.
@@ -418,6 +434,8 @@ finding.registry.where_windows = The key {E77CC89B-7401-4C04-8CED-149DB35ADD04}\
 finding.registry.where_wine = user.reg, the HKCU hive of this Wine prefix, holds the key {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
 finding.launcher_running.title = The NIKKE launcher is running now
 finding.launcher_running.detail = Close the launcher immediately (end the process if it does not close) and disconnect from the network. While it runs, the attacker can send commands to this computer.
+finding.launcher_running_clean.title = The NIKKE launcher is running
+finding.launcher_running_clean.detail = The launcher is running now, and nothing in this scan shows the agent. It is listed for information.
 finding.dll_loaded.title = The persistence DLL is loaded now
 finding.dll_loaded.detail = These programs have the malware's platform_experience_helper.dll loaded. Windows keeps the file locked until they exit, and Chrome loads it again at its next start while the HKCU key is there. Delete the registry key, restart Windows, then delete the DLL's folder.
 
@@ -454,6 +472,8 @@ ui.button.stop = Stop scan
 ui.button.copy_report = Copy report
 ui.button.save_report = Save report...
 ui.button.see_todo = See what to do
+# The big button under the verdict. A result always has more than one step.
+ui.button.see_todo_count = See what to do ({n} steps)
 ui.button.open_folder = Open folder
 ui.button.task_manager = Open Task Manager
 ui.button.registry_editor = Open Registry Editor
@@ -512,6 +532,10 @@ ui.happened.payload_build = Payload build
 ui.happened.agent_runs = Agent runs in the logs
 ui.todo.hint = Do the steps one at a time, in order. The buttons open the right folder or tool for you, but you delete the files yourself. This program never deletes anything.
 ui.todo.note = These steps come from what this scan found, in the order to do them. The Done marks are not saved.
+# Shown when the window is closed before the What to do tab was opened, on an Infected or Exposed result.
+ui.close.title = You have not looked at the steps yet
+ui.close.text = The steps in "What to do" tell you what to clean up and which passwords to change.
+ui.close.anyway = Close anyway
 ui.tile.critical = Critical
 ui.tile.warnings = Warnings
 ui.tile.info = Info

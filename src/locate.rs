@@ -40,7 +40,7 @@ pub struct Progress {
     pub entries: AtomicU64,
     pub folders: AtomicU64,
     /// Locations found so far, indexed by `TargetKind as usize`.
-    pub found: [AtomicUsize; 4],
+    pub found: [AtomicUsize; 5],
     pub checks_done: AtomicUsize,
     pub checks_total: AtomicUsize,
     /// Findings so far, indexed by `Severity as usize` (info, warning, critical).
@@ -106,6 +106,9 @@ pub enum TargetKind {
     LauncherData,
     WinePrefix,
     UserProfile,
+    /// `AppData/Local/CEF/User Data` of a user profile: the launcher's login web view
+    /// (tbs_browser.exe --user-data-dir) keeps its browser data there.
+    LoginProfile,
 }
 
 impl TargetKind {
@@ -116,6 +119,7 @@ impl TargetKind {
             TargetKind::LauncherData => "kind.launcher_data",
             TargetKind::WinePrefix => "kind.wine_prefix",
             TargetKind::UserProfile => "kind.user_profile",
+            TargetKind::LoginProfile => "kind.login_profile",
         }
     }
 
@@ -232,6 +236,12 @@ impl<'p> Finder<'p> {
             self.pending_prefixes.push(path.to_path_buf());
         }
         self.targets.push(Target { kind, path: path.to_path_buf(), host });
+        // Other CEF programs can use the same default folder, so it is only read for the IOCs.
+        if kind == TargetKind::UserProfile
+            && let Some(cef) = find_ci(path, &["AppData", "Local", "CEF", "User Data"]).filter(|p| p.is_dir())
+        {
+            self.add(TargetKind::LoginProfile, &cef, host);
+        }
     }
 
     /// Walks a top-level search root if it exists.

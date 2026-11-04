@@ -89,6 +89,7 @@ pub fn checked_summary(r: &ScanResult, lang: Lang) -> String {
         (TargetKind::LauncherData, "report.checked.launcher_data_one", "report.checked.launcher_data_other"),
         (TargetKind::WinePrefix, "report.checked.wine_prefix_one", "report.checked.wine_prefix_other"),
         (TargetKind::UserProfile, "report.checked.user_profile_one", "report.checked.user_profile_other"),
+        (TargetKind::LoginProfile, "report.checked.login_profile_one", "report.checked.login_profile_other"),
     ];
     let parts: Vec<String> = kinds
         .iter()

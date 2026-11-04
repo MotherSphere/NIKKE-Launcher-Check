@@ -81,12 +81,29 @@ pub enum FindingKind {
     DllLoaded,
     /// k2f files in Temp.
     TempFile,
+    /// The launcher runs while the scan also found a sign of the agent. Without
+    /// one, the running launcher is an `Info` finding.
     LauncherRunning,
     /// A place the scan could not check.
     Coverage,
     /// Context that does not change the verdict.
     Info,
 }
+
+/// Kinds that show the agent itself reached this computer.
+pub const AGENT_SIGNS: [FindingKind; 11] = [
+    FindingKind::AgentRan,
+    FindingKind::AgentState,
+    FindingKind::PayloadDownloaded,
+    FindingKind::PayloadFile,
+    FindingKind::AgentServerContacted,
+    FindingKind::TempFile,
+    FindingKind::ChromeDll,
+    FindingKind::RegistryKey,
+    FindingKind::RegistryLeftover,
+    FindingKind::LegacyDll,
+    FindingKind::DllLoaded,
+];
 
 /// Titles, details, tool-written evidence lines and times are messages, so a
 /// result shows in any language after the scan. Lines quoted from files stay raw.
@@ -241,10 +258,11 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
     };
     let mut groups = Vec::new();
     let mut running = Vec::new();
+    // Its severity depends on the other findings, so it is counted after the locations.
+    let mut launcher = Vec::new();
     if system_checks {
         progress.set_stage(Stage::Programs);
-        running = check_processes();
-        tally(&running);
+        launcher = launcher_processes();
     }
     progress.set_stage(Stage::Locations);
     progress.checks_total.store(discovery.targets.len(), Relaxed);
@@ -256,7 +274,8 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         progress.show(&target.path);
         let mut findings = match target.kind {
             TargetKind::InstallDir => check_install(&target.path, &mut runs, &mut builds),
-            TargetKind::LauncherData => check_launcher_data(&target.path),
+            TargetKind::LauncherData => check_launcher_data(&target.path, false),
+            TargetKind::LoginProfile => check_launcher_data(&target.path, true),
             TargetKind::UserProfile => check_profile(&target.path, target.host),
             TargetKind::WinePrefix => check_prefix(&target.path),
         };
@@ -277,6 +296,12 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         let loaded = check_loaded_dlls();
         tally(&loaded);
         running.extend(loaded);
+    }
+    if !launcher.is_empty() {
+        let agent = groups.iter().flat_map(|g: &Group| &g.findings).chain(&running).any(|f| AGENT_SIGNS.contains(&f.kind));
+        let f = launcher_running(launcher, agent);
+        tally(std::slice::from_ref(&f));
+        running.insert(0, f);
     }
     if !running.is_empty() {
         groups.insert(0, Group { label: msg("group.running"), path: None, findings: running });
@@ -584,7 +609,10 @@ fn files(n: usize) -> Text {
     msg(if n == 1 { "common.files_one" } else { "common.files_other" }).arg("n", n.to_string())
 }
 
-fn check_launcher_data(dir: &Path) -> Vec<Finding> {
+/// The launcher data folder, or with `login` the launcher's login browser profile
+/// (CEF/User Data). Other CEF programs can share that profile, so it reports
+/// only the traces and never "no traces".
+fn check_launcher_data(dir: &Path, login: bool) -> Vec<Finding> {
     let Some(real) = linked_dir(dir) else {
         let shown = fs::read_link(dir).map_or_else(|_| msg("finding.data_link.unknown_target"), |t| t.display().to_string().into());
         return vec![
@@ -658,7 +686,12 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         }
     }
     let mut out = Vec::new();
-    out.extend(agent.finding(FindingKind::AgentState, Severity::Critical, "finding.agent_state.title", "finding.agent_state.detail"));
+    let (agent_title, agent_detail, mention_title, mention_detail) = if login {
+        ("finding.login_agent_state.title", "finding.login_agent_state.detail", "finding.login_mention.title", "finding.login_mention.detail")
+    } else {
+        ("finding.agent_state.title", "finding.agent_state.detail", "finding.data_mention.title", "finding.data_mention.detail")
+    };
+    out.extend(agent.finding(FindingKind::AgentState, Severity::Critical, agent_title, agent_detail));
     out.extend(server.finding(
         FindingKind::AgentServerContacted,
         Severity::Critical,
@@ -672,8 +705,8 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
         "finding.network_state.title",
         "finding.network_state.detail",
     ));
-    out.extend(other.finding(FindingKind::LauncherContacted, Severity::Warning, "finding.data_mention.title", "finding.data_mention.detail"));
-    if out.is_empty() {
+    out.extend(other.finding(FindingKind::LauncherContacted, Severity::Warning, mention_title, mention_detail));
+    if out.is_empty() && !login {
         let detail = msg("finding.data_clean.detail").arg("files", files(checked));
         out.push(Finding::new(FindingKind::Info, Severity::Info, msg("finding.data_clean.title"), detail).at(dir));
     }
@@ -1021,7 +1054,8 @@ pub fn parse_hosts(text: &str) -> Vec<(&'static str, bool)> {
 
 // --------------------------------------------------------- E: processes
 
-fn check_processes() -> Vec<Finding> {
+/// "PID 1234: <command line>" for each running launcher process.
+fn launcher_processes() -> Vec<String> {
     use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
     let mut system = System::new();
     system.refresh_processes_specifics(
@@ -1041,19 +1075,29 @@ fn check_processes() -> Vec<Finding> {
                 .then(|| format!("PID {pid}: {}", if cmd.is_empty() { name.into_owned() } else { cmd.join(" ") }))
         })
         .collect();
-    if evidence.is_empty() {
-        return Vec::new();
-    }
     evidence.sort();
-    vec![
+    evidence
+}
+
+/// The running launcher is critical only next to a sign of the agent: a clean,
+/// reinstalled launcher runs too, and on its own it is listed for information.
+fn launcher_running(evidence: Vec<String>, agent: bool) -> Finding {
+    let finding = if agent {
         Finding::new(
             FindingKind::LauncherRunning,
             Severity::Critical,
             msg("finding.launcher_running.title"),
             msg("finding.launcher_running.detail"),
         )
-        .evidence(evidence),
-    ]
+    } else {
+        Finding::new(
+            FindingKind::Info,
+            Severity::Info,
+            msg("finding.launcher_running_clean.title"),
+            msg("finding.launcher_running_clean.detail"),
+        )
+    };
+    finding.evidence(evidence)
 }
 
 /// The launcher itself, not a program that only names its file (sha256sum, an
@@ -1657,6 +1701,37 @@ mod tests {
             assert_eq!(r.verdict, Verdict::Infected, "{root:?}");
             assert!(has(&r, Severity::Critical, "The malware agent ran"));
         }
+    }
+
+    #[test]
+    fn running_launcher_is_critical_only_with_the_agent() {
+        let evidence = || vec!["PID 7: nikke_launcher.exe".to_string()];
+        let clean = launcher_running(evidence(), false);
+        assert_eq!((clean.kind, clean.severity), (FindingKind::Info, Severity::Info));
+        assert_eq!(clean.title.en(), "The NIKKE launcher is running");
+        let infected = launcher_running(evidence(), true);
+        assert_eq!((infected.kind, infected.severity), (FindingKind::LauncherRunning, Severity::Critical));
+        assert_eq!(infected.evidence.len(), 1);
+    }
+
+    #[test]
+    fn login_browser_profile_is_read_for_the_iocs() {
+        let fx = Fixture::new("cefprofile");
+        let cef = "pfx/drive_c/users/steamuser/AppData/Local/CEF/User Data";
+        // Another CEF program's data: no finding, and NIKKE is not found.
+        fx.file(&format!("{cef}/Default/Network Persistent State"), br#"{"servers":[{"server":"https://example.com"}]}"#);
+        let r = fx.scan();
+        assert!(r.targets.iter().any(|t| t.kind == TargetKind::LoginProfile));
+        assert!(findings(&r).is_empty(), "{:?}", findings(&r));
+        assert_eq!(r.verdict, Verdict::NotFound);
+
+        fx.file(&format!("{cef}/Default/Local Storage/leveldb/000003.log"), b"\x01_https://www.nikkelauncher.com\x00\x01k2f.agent.state\xf3{}");
+        fx.file(&format!("{cef}/Default/Code Cache/js/aa_0"), b"\x00https://insightjs.com/l.js?f=aegis\x00");
+        let r = fx.scan();
+        assert_eq!(r.verdict, Verdict::Infected);
+        let group = r.groups.iter().find(|g| g.label.en() == "Launcher's login browser profile").expect("group");
+        assert!(group.findings.iter().any(|f| f.title.en() == "The malware agent left traces in the launcher's login browser profile"));
+        assert!(group.findings.iter().any(|f| f.kind == FindingKind::LoaderCached));
     }
 
     #[test]

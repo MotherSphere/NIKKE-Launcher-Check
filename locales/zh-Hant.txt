@@ -25,7 +25,7 @@ cli.error_box = 視窗無法開啟：\n{error}\n\n若要在不開啟視窗的情
 
 # Top bar, start screen and report header.
 report.read_only = 唯讀，不存取網路。
-report.about = 2026 年 9 月 27 日，Level Infinite 的 CDN 上有四個檔案遭到竄改，讓 NIKKE PC 版啟動器從 insightjs.com 載入一段指令碼。最晚自 2026 年 10 月 23 日起，這段指令碼會下載一個遠端控制程式（insight.bundle），它能執行命令、讀取檔案、擷取螢幕畫面，並收集瀏覽器資料。其中三個檔案已於 11 月 3 日替換。第四個檔案已於 10 月 28 日清理，但到了 11 月 3 日，仍有部分 CDN 伺服器提供舊的副本。本工具會尋找載入器和遠端控制程式在磁碟上留下的痕跡。
+report.about = 2026 年 9 月 27 日，Level Infinite 的 CDN 上有四個檔案遭到竄改，讓 NIKKE PC 版啟動器從 insightjs.com 載入一段指令碼。最晚自 2026 年 10 月 23 日起，這段指令碼會下載一個遠端控制程式（insight.bundle），它能執行命令、讀取檔案、擷取螢幕畫面，並收集瀏覽器資料。其中三個檔案已於 11 月 3 日替換。第四個檔案已於 10 月 28 日清理，但到了 11 月 3 日，仍有部分 CDN 伺服器提供舊的副本。Level Infinite 已於 11 月 4 日確認修復。本工具會尋找載入器和遠端控制程式在磁碟上留下的痕跡。
 # What was scanned ("Scan of: ...", "Scanning ...").
 report.scope.computer = 這台電腦
 report.scope.quick = 這台電腦（快速掃描）
@@ -33,7 +33,7 @@ report.scope.full = 這台電腦（完整掃描）
 
 # The verdict: a title, then one sentence.
 verdict.infected.title = 已感染
-verdict.infected.summary = 發現嚴重痕跡：遠端控制程式曾被下載或執行、留下了常駐機制，或啟動器目前正在執行。請將這台電腦視為已遭入侵。
+verdict.infected.summary = 發現嚴重痕跡：遠端控制程式曾被下載或執行，或留下了常駐機制。請將這台電腦視為已遭入侵。
 verdict.exposed.title = 已暴露
 verdict.exposed.summary = 啟動器曾載入惡意指令碼或連線到 insightjs.com，但沒有發現遠端控制程式執行過的跡象。
 verdict.no_traces.title = 未發現痕跡
@@ -51,6 +51,7 @@ kind.install = NIKKE 安裝資料夾
 kind.launcher_data = 啟動器資料
 kind.wine_prefix = Wine 前綴
 kind.user_profile = 使用者設定檔
+kind.login_profile = 啟動器的登入瀏覽器設定檔
 # Groups of findings with no folder.
 group.running = 執行中的程式
 group.coverage = 掃描涵蓋範圍
@@ -79,6 +80,8 @@ report.checked.wine_prefix_one = {n} 個 Wine 前綴
 report.checked.wine_prefix_other = {n} 個 Wine 前綴
 report.checked.user_profile_one = {n} 個使用者設定檔
 report.checked.user_profile_other = {n} 個使用者設定檔
+report.checked.login_profile_one = {n} 個啟動器的登入瀏覽器設定檔
+report.checked.login_profile_other = {n} 個啟動器的登入瀏覽器設定檔
 report.checked.nothing = 沒有可檢查的項目
 
 # "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
@@ -149,6 +152,7 @@ answer.active.launcher = NIKKE 啟動器目前正在執行。在它執行期間�
 answer.active.dll_loaded = 惡意軟體的 DLL 目前已載入到 {programs} 中。
 answer.active.registry = 讓瀏覽器載入惡意軟體 DLL 的登錄機碼已設定。
 answer.active.none = 啟動器沒有在執行，也沒有任何 DLL 已安裝或設定為載入。
+answer.active.launcher_clean = NIKKE 啟動器正在執行，但這次掃描沒有發現任何遠端控制程式的跡象。沒有任何 DLL 已安裝或設定為載入。
 answer.clean.question = 是否有需要清理的東西？
 answer.clean.dll_folder = {browser} 的 DLL 資料夾：{path}
 answer.clean.registry = HKCU 登錄機碼 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
@@ -156,7 +160,8 @@ answer.clean.leftover = 空的 HKCU 登錄機碼 {E77CC89B-7401-4C04-8CED-149DB3
 answer.clean.legacy = {path} 中較舊的 DLL 檔案
 answer.clean.temp = {path} 中的 k2f 檔案
 answer.clean.cache = 啟動器快取，其中含有惡意軟體的痕跡：{path}
-answer.clean.none_cache = 沒有發現惡意軟體留下的檔案。不過，再次開啟啟動器之前，仍請先刪除啟動器快取（tbs_cache）：其中可能還留有修復之前的惡意指令碼。
+answer.clean.login_profile = 啟動器的登入瀏覽器設定檔，其中含有惡意軟體的痕跡：{path}
+answer.clean.none_cache = 沒有發現惡意軟體留下的檔案。不過，再次開啟啟動器之前，仍請先刪除啟動器快取（tbs_cache）：其中可能還留有修復之前遭竄改的檔案。
 answer.clean.none = 沒有發現惡意軟體留下的任何東西。
 answer.protected.question = 是否已為下次做好防護？
 answer.protected.not_checked = 未檢查 hosts 檔案。
@@ -245,8 +250,9 @@ step.dll.drive_key = 請啟動那個 Windows，刪除下方的登錄機碼；如
 step.dll.scan_again = 完成後再掃描一次：這些發現項目應該會消失。
 step.dll.defender = 在一台已感染的電腦上，Microsoft Defender 沒有偵測到這個 DLL，因此防毒掃描結果乾淨，並不代表它已經消失。
 step.cache.title = 清除啟動器快取
-step.cache.intro = 請先關閉啟動器。然後刪除 tbs_cache 資料夾，這是啟動器內建瀏覽器的快取。其中可能還留有修復之前的惡意指令碼，啟動器會再次載入它。
+step.cache.intro = 請先關閉啟動器。然後，在再次開啟它之前，刪除 tbs_cache 資料夾，這是啟動器內建瀏覽器的快取。其中可能還留有修復之前遭竄改的檔案，啟動器會再次載入它們。若要保留證據，請先將這個資料夾複製到其他地方。
 step.cache.none = 這次掃描沒有找到存放啟動器資料的資料夾。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 版啟動器為 nikke_launcher_hmt），在 Proton 或 Wine 前綴中則是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
+step.cache.login = 下方的啟動器登入瀏覽器設定檔中也有惡意軟體的痕跡。請一併刪除。啟動器會重新建立它，你需要再次登入啟動器。
 step.password.title = 用另一台裝置變更密碼
 step.password.intro_infected = 請使用從未執行過 NIKKE 啟動器的手機或另一台電腦。遠端控制程式執行期間，它的命令可以讀取這台電腦的檔案和瀏覽器資料。請變更或更換以下項目：
 step.password.intro_exposed = 遠端控制程式最晚自 2026 年 10 月 23 日起開始傳送，而且只在部分啟動時傳送。如果啟動器在當天或之後開啟過，請當作遠端控制程式已經執行過：用從未執行過啟動器的手機或另一台電腦，變更或更換以下項目：
@@ -277,9 +283,15 @@ step.block.scan_again = 完成後再掃描一次：「詳細資料」中的「�
 step.block.ips = hosts 檔案無法封鎖 IP 位址。請在防火牆或路由器中封鎖 89.127.233.127 和 89.126.250.172。
 step.block.firewall = 若要新增 Windows 防火牆規則，請以滑鼠右鍵按一下「開始」按鈕，選擇「終端機 (系統管理員)」或「Windows PowerShell (系統管理員)」，然後執行：
 step.block.macos = 在 macOS 上，請在路由器的設定中封鎖它們。
-step.block.ufw = 如果使用 ufw，請執行下面的命令。ufw 關閉時，這些規則不會封鎖任何東西：sudo ufw status 必須顯示「Status: active」，而 sudo ufw enable 會將它開啟。如果沒有 ufw，請在路由器的設定中封鎖它們。
-step.wait.title = 在 Level Infinite 確認修復之前，不要開啟啟動器
-step.wait.servers = 2026 年 11 月 3 日，Level Infinite 的部分伺服器仍在傳送惡意檔案。在修復之前開啟啟動器，可能會再次載入這段指令碼。
+step.block.ufw = 已安裝 ufw。請執行下面的命令。ufw 關閉時，這些規則不會封鎖任何東西：sudo ufw status 必須顯示「Status: active」，而 sudo ufw enable 會將它開啟。
+step.block.firewalld = 已安裝 firewalld。請執行下面的命令。它會新增一條原則，拒絕這台電腦連線到這兩個位址，而且重新啟動後這條原則仍會保留。
+step.block.firewalld_check = 若要檢查這條原則，請執行：
+step.block.nft = 已安裝 nftables。請執行下面的命令。這些規則會維持到下次重新啟動為止，除非你將它們儲存到 /etc/nftables.conf。
+step.block.no_firewall = 找不到任何防火牆工具（firewall-cmd、ufw 或 nft）。請在路由器的設定中封鎖它們。
+step.wait.title = 再次開啟啟動器之前
+step.wait.fixed = Level Infinite 已於 2026 年 11 月 4 日確認修復。再次開啟啟動器之前，請刪除它的快取資料夾 tbs_cache：其中可能還留有遭竄改的檔案，啟動器會再次載入它們。
+step.wait.evidence = 若要保留證據，請先完成檢查，或在刪除之前將這個資料夾複製到其他地方。
+step.wait.keep_blocked = 請繼續封鎖這些網域和 IP 位址：目前仍不清楚攻擊者是如何取得 CDN 寫入權限的。
 step.wait.reinstall = 遠端控制程式可以執行任何命令，因此重新安裝作業系統是確保這台電腦乾淨最安全的方法。
 
 # Details: the groups of findings.
@@ -384,6 +396,8 @@ finding.data_link.detail = 這個資料夾連結到 {target}，而該目標不�
 finding.data_link.unknown_target = 未知的目標
 finding.agent_state.title = 惡意遠端控制程式在啟動器資料中留下了痕跡
 finding.agent_state.detail = 啟動器資料中有 {files} 出現 k2f_chan（遠端控制程式的橋接通道名稱）或 k2f.agent.state（遠端控制程式儲存的 ID）。這表示遠端控制程式曾經執行。
+finding.login_agent_state.title = 惡意遠端控制程式在啟動器的登入瀏覽器設定檔中留下了痕跡
+finding.login_agent_state.detail = 啟動器的登入瀏覽器設定檔（CEF\\User Data）中有 {files} 出現 k2f_chan（遠端控制程式的橋接通道名稱）或 k2f.agent.state（遠端控制程式儲存的 ID）。這表示遠端控制程式曾經執行。
 finding.agent_server.title = 啟動器曾連線到遠端控制程式的伺服器
 finding.agent_server.detail = 網路狀態資料中有 {files} 記錄了 analytics.insightjs.com。這個伺服器負責傳送遠端控制程式（insight.bundle），並接收它的定期回報。若某次啟動只有載入器執行、沒有遠端控制程式，記錄中只會出現 insightjs.com。
 finding.loader_cached.title = 啟動器載入了惡意指令碼
@@ -392,6 +406,8 @@ finding.network_state.title = 啟動器曾連線到 insightjs.com
 finding.network_state.detail = 網路狀態資料中有 {files} 記錄了 insightjs.com，表示啟動器內建的瀏覽器曾連線到它。
 finding.data_mention.title = 啟動器資料中提到 insightjs.com
 finding.data_mention.detail = 啟動器資料中有 {files} 出現了 insightjs.com。
+finding.login_mention.title = 啟動器的登入瀏覽器設定檔中提到 insightjs.com
+finding.login_mention.detail = 啟動器的登入瀏覽器設定檔（CEF\\User Data）中有 {files} 出現了 insightjs.com。
 finding.data_clean.title = 啟動器資料中沒有痕跡
 finding.data_clean.detail = 已檢查 {files}。
 # {browser} is a browser name such as Chrome or Edge.
@@ -418,6 +434,8 @@ finding.registry.where_windows = HKCU 下存在機碼 {E77CC89B-7401-4C04-8CED-1
 finding.registry.where_wine = 這個 Wine 前綴的 HKCU 登錄區 user.reg 中有機碼 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
 finding.launcher_running.title = NIKKE 啟動器目前正在執行
 finding.launcher_running.detail = 請立即關閉啟動器（如果無法關閉，請結束它的處理程序），並中斷網路連線。在它執行期間，攻擊者可以傳送命令到這台電腦。
+finding.launcher_running_clean.title = NIKKE 啟動器正在執行
+finding.launcher_running_clean.detail = 啟動器目前正在執行，而這次掃描沒有發現任何遠端控制程式的跡象。列出這一項僅供參考。
 finding.dll_loaded.title = 常駐機制的 DLL 目前已載入
 finding.dll_loaded.detail = 這些程式已載入惡意軟體的 platform_experience_helper.dll。在這些程式結束之前，Windows 會一直鎖定這個檔案；只要 HKCU 機碼還在，Chrome 下次啟動時就會再次載入它。請刪除登錄機碼、重新啟動 Windows，然後刪除這個 DLL 的資料夾。
 
@@ -454,6 +472,8 @@ ui.button.stop = 停止掃描
 ui.button.copy_report = 複製報告
 ui.button.save_report = 儲存報告...
 ui.button.see_todo = 查看該怎麼做
+# The big button under the verdict. A result always has more than one step.
+ui.button.see_todo_count = 查看該怎麼做（{n} 個步驟）
 ui.button.open_folder = 開啟資料夾
 ui.button.task_manager = 開啟工作管理員
 ui.button.registry_editor = 開啟登錄編輯程式
@@ -512,6 +532,10 @@ ui.happened.payload_build = 酬載版本
 ui.happened.agent_runs = 記錄檔中的遠端控制程式執行紀錄
 ui.todo.hint = 請依序一次完成一個步驟。按鈕會幫你開啟正確的資料夾或工具，但檔案要由你自己刪除。本程式絕不會刪除任何東西。
 ui.todo.note = 這些步驟依據這次掃描的發現產生，並依照應執行的順序排列。「完成」標記不會被儲存。
+# Shown when the window is closed before the What to do tab was opened, on an Infected or Exposed result.
+ui.close.title = 你還沒有查看這些步驟
+ui.close.text = 「該怎麼做」中的步驟會告訴你需要清理什麼，以及要變更哪些密碼。
+ui.close.anyway = 仍要關閉
 ui.tile.critical = 嚴重
 ui.tile.warnings = 警告
 ui.tile.info = 資訊
