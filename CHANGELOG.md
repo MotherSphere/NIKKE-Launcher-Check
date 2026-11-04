@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.3.0...v0.4.0) (2026-11-04)
+
+
+### Features
+
+* **scan:** make the computer scan quick and keep the full scan as an option ([d3c0aab](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/d3c0aab029aecc4c746328207405de6e21bbae4b))
+
+
+### Fixes
+
+* **scan:** know the fifth payload build and the Oct 23 agent start ([af2db1c](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/af2db1c63d7a16c4be6862c263bb31a13780a977))
+
+
+### Documentation
+
+* describe the quick scan and the full scan ([9d23022](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/9d23022be86d2b28aad6b38d793897047d09d14f))
+
 ## [0.3.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.2.1...v0.3.0) (2026-11-04)
 
 
