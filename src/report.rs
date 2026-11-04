@@ -1,9 +1,11 @@
-//! Plain-text report and the shared advice text (CLI output and "Copy report").
+//! Plain-text report (CLI output, "Copy report" and "Save report...") and the
+//! texts the window shares with it.
 
 use std::fmt::Write;
 
+use crate::guide::{self, Action, EXPOSURE_NOTE, EXPOSURE_TITLE, Part, Section};
 use crate::locate::TargetKind;
-use crate::scan::{HostsStatus, PAYLOAD_IP, ScanResult, Verdict};
+use crate::scan::{ATTACKER_IPS, Finding, FindingKind, Group, HostsStatus, ScanResult, Verdict};
 
 pub const APP_NAME: &str = "NIKKE Launcher Check";
 pub const GIST_URL: &str = "https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5";
@@ -36,54 +38,6 @@ pub fn summary(verdict: Verdict) -> &'static str {
     }
 }
 
-const BLOCK: &str = "Block insightjs.com, analytics.insightjs.com and insightjs.org in your hosts file (see Protection), and block the IP 89.127.233.127 in your firewall or router.";
-const DO_NOT_OPEN: &str = "Do not open the NIKKE launcher until Level Infinite confirms a fix.";
-const CLEAR_CACHE: &str = "Before you open the launcher again, delete its cache folder, tbs_cache, in the launcher data folder: %APPDATA%\\nikke_launcher\\tbs_cache on Windows (nikke_launcher_hmt for the HMT launcher), or drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache inside the Proton or Wine prefix. It can still hold the malicious script from before the fix.";
-
-/// Steps for any computer where the agent may have run.
-const ACCOUNT_STEPS: [&str; 5] = [
-    "From a clean device, change your passwords: the NIKKE / Level Infinite account first, then email, Discord, banking, and every password saved in your browsers.",
-    "Log out of all sessions on those services. The agent can collect browser cookies, and a stolen cookie works without the password.",
-    "Revoke API tokens and SSH keys that were stored on this computer.",
-    "If you hold cryptocurrency, move it to a wallet with a new seed phrase created on a clean device.",
-    "Linux and macOS (Proton, umu, Wine, CrossOver, Whisky): the Wine Z: drive maps to /, so the remote commands could read your whole home folder and the environment variables of the launcher process, not only the Wine prefix.",
-];
-
-pub fn advice(verdict: Verdict) -> Vec<&'static str> {
-    let mut steps = match verdict {
-        Verdict::Infected => vec![
-            "Close the launcher now (end the process if it does not close) and disconnect this computer from the network.",
-            DO_NOT_OPEN,
-            "Save a copy of this report before you delete anything. Deleting tbs_cache also deletes the k2f.agent.state trace.",
-            CLEAR_CACHE,
-            BLOCK,
-            "On Windows, delete the registry key HKCU\\Software\\Classes\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04} (and the WOW6432Node copy if the report lists one), restart Windows, then in %LOCALAPPDATA%\\Google\\Chrome\\User Data\\PlatformExperienceHelper delete the subfolder named with 64 hex characters that holds platform_experience_helper.dll. The DLL stays locked until the restart, even with Chrome closed. Leave the rest alone: Chrome keeps its own platform_experience_helper.exe in that folder, and the HKLM copy of the CLSID points to wpc.dll, which is part of Windows.",
-            "Reinstalling Windows is the safest way to be sure the computer is clean, because the agent could run any command.",
-        ],
-        Verdict::Exposed => vec![
-            DO_NOT_OPEN,
-            CLEAR_CACHE,
-            BLOCK,
-            "The agent was served from October 24, 2026 at the latest. If the launcher was open on or after that date, treat this computer as infected and follow these steps:",
-        ],
-        Verdict::NoTraces => vec![
-            DO_NOT_OPEN,
-            CLEAR_CACHE,
-            BLOCK,
-            "If the launcher was open on or after October 24, 2026, change your NIKKE / Level Infinite password from a clean device anyway.",
-        ],
-        Verdict::NotFound => vec![
-            "If NIKKE is installed somewhere unusual, scan that folder: \"Scan a folder...\" in the window, or nikke-check --cli <folder>.",
-            DO_NOT_OPEN,
-            BLOCK,
-        ],
-    };
-    if matches!(verdict, Verdict::Infected | Verdict::Exposed) {
-        steps.extend(ACCOUNT_STEPS);
-    }
-    steps
-}
-
 /// Lines to paste into the hosts file, for the domains it does not block yet.
 pub fn block_lines(h: &HostsStatus) -> Vec<String> {
     h.domains
@@ -106,7 +60,23 @@ pub const BLOCK_LINES_INTRO: &str = "To block the domains that are not shown as 
 pub const HOSTS_NOTE: &str = "Editing the hosts file needs administrator rights. This tool never edits it.";
 
 pub fn ip_note() -> String {
-    format!("The IP {PAYLOAD_IP} cannot be blocked in the hosts file. Block it in your firewall or router.")
+    format!(
+        "The IPs {} and {} cannot be blocked in the hosts file. Block them in your firewall or router.",
+        ATTACKER_IPS[0], ATTACKER_IPS[1]
+    )
+}
+
+/// 1234567 to "1,234,567".
+pub fn thousands(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// "1 NIKKE install, 2 Wine prefixes, ..." for the targets that were checked.
@@ -149,6 +119,35 @@ pub fn stats_line(r: &ScanResult) -> String {
     )
 }
 
+/// The findings of one Details section, with the location group of each.
+pub fn section(r: &ScanResult, s: Section) -> Vec<(usize, usize, &Group, &Finding)> {
+    let mut out: Vec<(usize, usize, &Group, &Finding)> = r
+        .groups
+        .iter()
+        .enumerate()
+        .flat_map(|(gi, g)| g.findings.iter().enumerate().map(move |(fi, f)| (gi, fi, g, f)))
+        .filter(|(_, _, _, f)| Section::of(f.kind) == s)
+        .collect();
+    out.sort_by_key(|(_, _, _, f)| std::cmp::Reverse(f.severity));
+    out
+}
+
+/// "NIKKE install: /path", the location a finding was found in.
+pub fn location(g: &Group) -> String {
+    match &g.path {
+        Some(p) => format!("{}: {}", g.label, p.display()),
+        None => g.label.clone(),
+    }
+}
+
+/// The label of a finding's copy text.
+pub fn copy_label(f: &Finding) -> &'static str {
+    match f.kind {
+        FindingKind::RegistryKey | FindingKind::RegistryLeftover => "Registry key",
+        _ => "Text",
+    }
+}
+
 pub fn render(r: &ScanResult) -> String {
     let mut out = String::new();
     let o = &mut out;
@@ -160,38 +159,95 @@ pub fn render(r: &ScanResult) -> String {
     let _ = writeln!(o, "{}", summary(r.verdict));
     let _ = writeln!(o);
 
-    let _ = writeln!(o, "Locations checked: {}", checked_summary(r));
-    for t in &r.targets {
-        let _ = writeln!(o, "  [{}] {}", t.kind.label(), t.path.display());
+    let _ = writeln!(o, "WHAT HAPPENED");
+    for a in guide::answers(r) {
+        let _ = writeln!(o, "  {} {}.", a.question, a.reply);
+        for line in &a.lines {
+            let _ = writeln!(o, "    - {line}");
+        }
+        if !a.runs.is_empty() {
+            let _ = writeln!(o, "    Agent runs in the logs:");
+            for run in &a.runs {
+                let _ = writeln!(o, "      {run}");
+            }
+        }
+    }
+    for b in &r.builds {
+        let _ = writeln!(o, "  Payload build: {}", guide::build_line(b));
     }
     let _ = writeln!(o);
 
-    let _ = writeln!(o, "FINDINGS");
-    if r.groups.is_empty() {
-        let _ = writeln!(o, "  None.");
+    let _ = writeln!(o, "WHAT TO DO");
+    for (i, s) in guide::steps(r).iter().enumerate() {
+        let _ = writeln!(o, "  {}. {}", i + 1, s.title);
+        for part in &s.parts {
+            match part {
+                Part::Text(t) => {
+                    let _ = writeln!(o, "     {t}");
+                }
+                Part::Item(t) => {
+                    let _ = writeln!(o, "     - {t}");
+                }
+                Part::Code(c) => {
+                    for line in c.lines() {
+                        let _ = writeln!(o, "       {line}");
+                    }
+                }
+                // Buttons only, except a folder to open that the step does not show already.
+                Part::Actions(actions) => {
+                    for a in actions {
+                        if let Action::Reveal(p) = a
+                            && !s.parts.iter().any(|q| matches!(q, Part::Code(c) if *c == p.display().to_string()))
+                        {
+                            let _ = writeln!(o, "     Open: {}", p.display());
+                        }
+                    }
+                }
+            }
+        }
+        let _ = writeln!(o);
     }
-    for g in &r.groups {
-        match &g.path {
-            Some(p) => {
-                let _ = writeln!(o, "\n{}: {}", g.label, p.display());
+
+    let _ = writeln!(o, "DETAILS");
+    let _ = writeln!(o, "  Locations checked: {}", checked_summary(r));
+    for t in &r.targets {
+        let _ = writeln!(o, "    [{}] {}", t.kind.label(), t.path.display());
+    }
+    for s in Section::ALL {
+        if s == Section::Info
+            && let Some(e) = &r.exposure
+        {
+            let _ = writeln!(o, "\n  {EXPOSURE_TITLE}");
+            let _ = writeln!(o, "    {EXPOSURE_NOTE}");
+            if let Some(note) = guide::home_note(r) {
+                let _ = writeln!(o, "    {note}");
             }
-            None => {
-                let _ = writeln!(o, "\n{}", g.label);
+            for (heading, items) in guide::exposure_lists(e) {
+                if items.is_empty() {
+                    let _ = writeln!(o, "    {heading}: none found.");
+                    continue;
+                }
+                let _ = writeln!(o, "    {heading}:");
+                for (what, path) in items {
+                    let _ = writeln!(o, "      {what}: {}", path.display());
+                }
+            }
+            let _ = writeln!(o, "    Folders checked:");
+            for p in &e.checked {
+                let _ = writeln!(o, "      {}", p.display());
             }
         }
-        for f in &g.findings {
-            let _ = writeln!(o, "  [{}] {}", f.severity.tag(), f.title);
-            let _ = writeln!(o, "    {}", f.detail);
-            if let Some(p) = &f.path {
-                let _ = writeln!(o, "    Path: {}", p.display());
-            }
-            if let Some(t) = &f.time {
-                let _ = writeln!(o, "    Time: {t}");
-            }
-            for e in &f.evidence {
-                let _ = writeln!(o, "    | {e}");
-            }
+        let found = section(r, s);
+        if found.is_empty() {
+            continue;
         }
+        let _ = writeln!(o, "\n  {}", s.title());
+        for (_, _, g, f) in found {
+            write_finding(o, g, f);
+        }
+    }
+    if r.groups.is_empty() {
+        let _ = writeln!(o, "\n  No findings.");
     }
     let _ = writeln!(o);
 
@@ -216,17 +272,34 @@ pub fn render(r: &ScanResult) -> String {
         let _ = writeln!(o);
     }
 
-    let _ = writeln!(o, "WHAT TO DO");
-    for a in advice(r.verdict) {
-        let _ = writeln!(o, "  - {a}");
-    }
-    let _ = writeln!(o);
     let _ = writeln!(o, "LIMITS OF THIS CHECK");
     for c in CAVEATS {
         let _ = writeln!(o, "  - {c}");
     }
-    let _ = writeln!(o, "  Details: {GIST_URL}");
+    let _ = writeln!(o, "  Write-up: {GIST_URL}");
     let _ = writeln!(o);
     let _ = writeln!(o, "Scan stats: {}", stats_line(r));
     out
+}
+
+fn write_finding(o: &mut String, g: &Group, f: &Finding) {
+    let _ = writeln!(o, "    [{}] {}", f.severity.tag(), f.title);
+    let _ = writeln!(o, "      {}", f.detail);
+    let _ = writeln!(o, "      What this means: {}", guide::meaning(f.kind));
+    let _ = writeln!(o, "      Found in: {}", location(g));
+    if let Some(p) = &f.path {
+        let _ = writeln!(o, "      Path: {}", p.display());
+    }
+    if let Some(p) = f.open_path.as_ref().filter(|p| f.path.as_ref() != Some(*p)) {
+        let _ = writeln!(o, "      Open: {}", p.display());
+    }
+    if let Some(t) = &f.time {
+        let _ = writeln!(o, "      Time: {t}");
+    }
+    for line in f.copy_text.iter().flat_map(|t| t.lines()) {
+        let _ = writeln!(o, "      {}: {line}", copy_label(f));
+    }
+    for e in &f.evidence {
+        let _ = writeln!(o, "      | {e}");
+    }
 }

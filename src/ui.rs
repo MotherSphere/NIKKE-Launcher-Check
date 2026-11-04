@@ -1,7 +1,9 @@
 //! The window (iced 0.14). Scans run on a worker thread and report through a
-//! shared `Progress`, which the scanning screen reads on each frame.
+//! shared `Progress`, which the scanning screen reads on each frame. The result
+//! has three tabs: What happened, What to do and Details.
 
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::f32::consts::{PI, TAU};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -11,15 +13,21 @@ use std::time::{Duration, Instant};
 
 use iced::futures::channel::oneshot;
 use iced::theme::Palette;
-use iced::widget::{Column, button, canvas, column, container, grid, responsive, row, scrollable, space, stack, text};
+use iced::widget::{
+    Column, button, canvas, checkbox, column, container, grid, responsive, row, scrollable, space, stack, text, toggler,
+};
 use iced::{
     Alignment, Background, Color, Element, Fill, Font, Length, Point, Radians, Rectangle, Renderer, Shrink, Size,
     Subscription, Task, Theme, border, font, mouse, window,
 };
 
+use crate::exposure::Exposure;
+use crate::guide::{self, Action, Answer, Part, Section, Step, Tone};
 use crate::locate::{Progress, Stage};
-use crate::report;
-use crate::scan::{self, Finding, ScanResult, Severity, Verdict};
+use crate::open::{self, Target};
+use crate::redact::Secrets;
+use crate::report::{self, thousands};
+use crate::scan::{self, Finding, FindingKind, Group, ScanResult, Severity, Verdict};
 
 pub fn run(folder: Option<PathBuf>) -> iced::Result {
     iced::application(move || App::boot(folder.clone()), App::update, App::view)
@@ -50,13 +58,42 @@ struct Scan {
     now: Instant,
 }
 
+/// A finished scan and what the result tabs show of it.
+#[derive(Debug)]
+struct Done {
+    result: Arc<ScanResult>,
+    report: String,
+    steps: Vec<Step>,
+    secrets: Secrets,
+}
+
 #[derive(Debug, Default)]
 enum Phase {
     #[default]
     Idle,
     Scanning(Scan),
-    Done(Arc<ScanResult>, String),
+    Done(Box<Done>),
     Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum Tab {
+    #[default]
+    Happened,
+    Todo,
+    Details,
+}
+
+impl Tab {
+    const ALL: [Tab; 3] = [Tab::Happened, Tab::Todo, Tab::Details];
+
+    fn label(self) -> &'static str {
+        match self {
+            Tab::Happened => "What happened",
+            Tab::Todo => "What to do",
+            Tab::Details => "Details",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -69,17 +106,27 @@ struct App {
     scan_id: u32,
     /// The folder dialog is open (it does not block the window).
     picking: bool,
+    /// The save dialog is open, or the report is being written.
+    saving: bool,
     /// One line shown above the home or results screen.
-    notice: Option<&'static str>,
+    notice: Option<String>,
     theme: Theme,
+    tab: Tab,
+    /// "Hide my info": Copy report and Save report replace personal values.
+    hide: bool,
+    /// Steps marked done, by index. Window state only.
+    checked: HashSet<usize>,
+    /// Findings with their evidence shown, by group and finding index.
+    evidence: HashSet<(usize, usize)>,
+    /// The Information section of Details is open.
+    info_open: bool,
 }
 
 /// What a copy button puts on the clipboard.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum Clip {
     Report,
-    HostsLines,
-    Link,
+    Text(String),
 }
 
 #[derive(Debug, Clone)]
@@ -95,6 +142,16 @@ enum Message {
     Finished(u32, Option<Arc<ScanResult>>),
     Copy(Clip),
     CopiedDone(u32),
+    Tab(Tab),
+    StepDone(usize, bool),
+    Evidence(usize, usize),
+    ToggleInfo,
+    Hide(bool),
+    SaveReport,
+    SaveTo(Option<PathBuf>),
+    Saved(Option<Result<PathBuf, String>>),
+    Open(Target),
+    Opened(Option<Result<(), String>>),
 }
 
 /// Runs `job` on its own thread and delivers the result as a message.
@@ -123,8 +180,14 @@ impl App {
             copied_shown: None,
             scan_id: 0,
             picking: false,
+            saving: false,
             notice: None,
             theme: Theme::custom(report::APP_NAME, palette),
+            tab: Tab::default(),
+            hide: false,
+            checked: HashSet::new(),
+            evidence: HashSet::new(),
+            info_open: false,
         };
         // Same path as a drop on the window, so a file gets the "only folders" notice.
         let task = match folder {
@@ -181,6 +244,15 @@ impl App {
         )
     }
 
+    /// The report as Copy report and Save report give it.
+    fn report_text(&self) -> Option<String> {
+        match &self.phase {
+            Phase::Done(d) if self.hide => Some(d.secrets.apply(&d.report)),
+            Phase::Done(d) => Some(d.report.clone()),
+            _ => None,
+        }
+    }
+
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ScanComputer | Message::PickFolder | Message::ScanAgain | Message::Dropped(_) if self.busy() => {
@@ -203,7 +275,7 @@ impl App {
             }
             Message::Dropped(path) if path.is_dir() => self.start(Request::Folder(path)),
             Message::Dropped(_) => {
-                self.notice = Some("Only folders can be scanned. Drop the folder that holds the file.");
+                self.notice = Some("Only folders can be scanned. Drop the folder that holds the file.".into());
                 Task::none()
             }
             Message::ScanAgain => match self.last.clone() {
@@ -223,7 +295,7 @@ impl App {
                     // The cancelled scan still delivers a result; the new id drops it.
                     self.scan_id += 1;
                     self.phase = Phase::Idle;
-                    self.notice = Some("Scan stopped.");
+                    self.notice = Some("Scan stopped.".into());
                 }
                 Task::none()
             }
@@ -236,23 +308,31 @@ impl App {
             Message::Finished(id, _) if id != self.scan_id => Task::none(),
             Message::Finished(_, result) => {
                 self.phase = match result {
-                    Some(r) => {
-                        let text = report::render(&r);
-                        Phase::Done(r, text)
-                    }
+                    Some(r) => Phase::Done(Box::new(Done {
+                        report: report::render(&r),
+                        steps: guide::steps(&r),
+                        secrets: Secrets::of(&r),
+                        result: r,
+                    })),
                     None => Phase::Failed,
                 };
+                // The launcher is running or a program has the DLL loaded: the steps come first.
+                self.tab = match &self.phase {
+                    Phase::Done(d) if guide::act_now(&d.result) => Tab::Todo,
+                    _ => Tab::default(),
+                };
+                self.checked.clear();
+                self.evidence.clear();
+                self.info_open = false;
                 Task::none()
             }
             Message::Copy(what) => {
-                let text = match (&self.phase, what) {
-                    (_, Clip::Link) => report::GIST_URL.to_string(),
-                    (Phase::Done(_, text), Clip::Report) => text.clone(),
-                    (Phase::Done(r, _), Clip::HostsLines) => match &r.hosts {
-                        Some(h) => report::block_lines(h).join("\n"),
+                let text = match &what {
+                    Clip::Report => match self.report_text() {
+                        Some(text) => text,
                         None => return Task::none(),
                     },
-                    _ => return Task::none(),
+                    Clip::Text(text) => text.clone(),
                 };
                 self.copied += 1;
                 self.copied_shown = Some(what);
@@ -268,11 +348,82 @@ impl App {
                 }
                 Task::none()
             }
+            Message::Tab(tab) => {
+                self.tab = tab;
+                Task::none()
+            }
+            Message::StepDone(i, done) => {
+                if done {
+                    self.checked.insert(i);
+                } else {
+                    self.checked.remove(&i);
+                }
+                Task::none()
+            }
+            Message::Evidence(g, f) => {
+                if !self.evidence.remove(&(g, f)) {
+                    self.evidence.insert((g, f));
+                }
+                Task::none()
+            }
+            Message::ToggleInfo => {
+                self.info_open = !self.info_open;
+                Task::none()
+            }
+            Message::Hide(hide) => {
+                self.hide = hide;
+                Task::none()
+            }
+            Message::SaveReport => {
+                let Phase::Done(d) = &self.phase else {
+                    return Task::none();
+                };
+                if self.saving {
+                    return Task::none();
+                }
+                self.saving = true;
+                // "2026-11-03 23:05:42 UTC" gives the date of the file name.
+                let date = d.result.started.get(..10).unwrap_or("scan");
+                Task::perform(
+                    rfd::AsyncFileDialog::new()
+                        .set_title("Save the report")
+                        .set_file_name(format!("nikke-check-report-{date}.txt"))
+                        .add_filter("Text", &["txt"])
+                        .save_file(),
+                    |h| Message::SaveTo(h.map(|h| h.path().to_path_buf())),
+                )
+            }
+            Message::SaveTo(path) => match (path, self.report_text()) {
+                // The only file this program writes: the one the user picked in the save dialog.
+                (Some(path), Some(text)) => background(move || std::fs::write(&path, text).map(|_| path).map_err(|e| e.to_string()), Message::Saved),
+                _ => {
+                    self.saving = false;
+                    Task::none()
+                }
+            },
+            Message::Saved(result) => {
+                self.saving = false;
+                self.notice = Some(match result {
+                    Some(Ok(path)) => format!("Report saved to {}.", path.display()),
+                    Some(Err(err)) => format!("Could not save the report: {err}"),
+                    None => "Could not save the report.".into(),
+                });
+                Task::none()
+            }
+            Message::Open(target) => background(move || open::open(&target), Message::Opened),
+            Message::Opened(result) => {
+                match result {
+                    Some(Ok(())) => {}
+                    Some(Err(err)) => self.notice = Some(format!("Could not open it: {err}")),
+                    None => self.notice = Some("Could not open it.".into()),
+                }
+                Task::none()
+            }
         }
     }
 
     fn copy_button(&self, what: Clip, label: &'static str, primary: bool) -> Element<'static, Message> {
-        let label = if self.copied_shown == Some(what) { "Copied" } else { label };
+        let label = if self.copied_shown.as_ref() == Some(&what) { "Copied" } else { label };
         action(label, Some(Message::Copy(what)), primary)
     }
 
@@ -280,13 +431,13 @@ impl App {
         let body = match &self.phase {
             Phase::Idle => self.home(),
             Phase::Scanning(scan) => scanning(scan),
-            Phase::Done(r, _) => self.results(r),
+            Phase::Done(d) => self.results(d),
             Phase::Failed => self.failed(),
         };
         let mut page = Column::new().spacing(20).width(Fill).max_width(1080);
-        if let Some(notice) = self.notice.filter(|_| !self.scanning()) {
+        if let Some(notice) = self.notice.as_deref().filter(|_| !self.scanning()) {
             page = page.push(
-                container(text(notice).color(INFO_TEXT))
+                container(text(notice).color(INFO_TEXT).wrapping(text::Wrapping::WordOrGlyph))
                     .padding([10, 16])
                     .width(Fill)
                     .style(|_| surface(CARD, 8).border(border::rounded(8).color(INFO).width(1))),
@@ -348,8 +499,12 @@ impl App {
     fn failed(&self) -> Element<'_, Message> {
         card(
             column![
-                text("The scan stopped with an internal error. Try again, or run nikke-check --cli to see the report in a terminal.")
-                    .color(CRITICAL_TEXT),
+                text(if cfg!(windows) {
+                    format!("The scan stopped with an internal error. Try again, or run {} in PowerShell, from the folder that holds this program, to see the report.", guide::powershell_cli(""))
+                } else {
+                    "The scan stopped with an internal error. Try again, or run nikke-check --cli to see the report in a terminal.".into()
+                })
+                .color(CRITICAL_TEXT),
                 row![
                     action("Scan again", (!self.busy()).then_some(Message::ScanAgain), true),
                     action("New scan", Some(Message::NewScan), false),
@@ -361,7 +516,32 @@ impl App {
         .into()
     }
 
-    fn results<'a>(&self, r: &'a ScanResult) -> Element<'a, Message> {
+    fn results<'a>(&'a self, d: &'a Done) -> Element<'a, Message> {
+        let idle = !self.busy();
+        let actions = row![
+            self.copy_button(Clip::Report, "Copy report", true),
+            action("Save report...", (!self.saving).then_some(Message::SaveReport), false),
+            toggler(self.hide).label("Hide my info").on_toggle(Message::Hide).style(switch_style),
+            action("Scan again", idle.then_some(Message::ScanAgain), false),
+            action("New scan", idle.then_some(Message::NewScan), false),
+        ]
+        .spacing(12)
+        .align_y(Alignment::Center)
+        .wrap()
+        .vertical_spacing(12);
+        let tabs = row(Tab::ALL.map(|t| tab_button(t, t == self.tab))).spacing(8).wrap().vertical_spacing(8);
+        let hidden = self.hide.then(|| {
+            text("Hide my info applies to Copy report and Save report. The window still shows everything.").size(13).color(MUTED)
+        });
+        let body = match self.tab {
+            Tab::Happened => self.happened(&d.result),
+            Tab::Todo => self.todo(&d.steps),
+            Tab::Details => self.details(&d.result),
+        };
+        column![actions].push(hidden).push(tabs).push(body).spacing(16).into()
+    }
+
+    fn happened<'a>(&'a self, r: &'a ScanResult) -> Element<'a, Message> {
         let color = verdict_color(r.verdict);
         let hero = container(
             row![
@@ -380,6 +560,71 @@ impl App {
         .width(Fill)
         .style(move |_| container::Style { border: border::rounded(12), ..filled(color) });
 
+        let mut col = Column::new().spacing(14).push(hero);
+        for a in guide::answers(r) {
+            col = col.push(answer_card(a));
+        }
+        if !r.builds.is_empty() {
+            let mut c = Column::new().spacing(6).push(text("Payload build").size(16).font(bold()));
+            for b in &r.builds {
+                c = c.push(bullet(guide::build_line(b)));
+            }
+            col = col.push(card(c));
+        }
+        col.push(action("See what to do", Some(Message::Tab(Tab::Todo)), true)).into()
+    }
+
+    fn todo<'a>(&'a self, steps: &'a [Step]) -> Element<'a, Message> {
+        let mut col = Column::new().spacing(14).push(
+            text("These steps come from what this scan found, in the order to do them. The Done marks are not saved.")
+                .color(MUTED),
+        );
+        for (i, s) in steps.iter().enumerate() {
+            col = col.push(self.step_card(i, s));
+        }
+        col.into()
+    }
+
+    fn step_card<'a>(&'a self, i: usize, s: &'a Step) -> Element<'a, Message> {
+        let done = self.checked.contains(&i);
+        let number = container(text((i + 1).to_string()).size(14).font(bold()))
+            .padding([2, 10])
+            .style(move |_| filled(if done { NO_TRACES } else { INFO }));
+        let head = row![
+            number,
+            text(&s.title).size(17).font(bold()).color(if done { MUTED } else { TEXT }).width(Fill),
+            checkbox(done).label("Done").on_toggle(move |b| Message::StepDone(i, b)).style(check_style),
+        ]
+        .spacing(12)
+        .align_y(Alignment::Center);
+        let mut c = Column::new().spacing(8).push(head);
+        for part in &s.parts {
+            c = c.push(match part {
+                Part::Text(t) => text(t).wrapping(text::Wrapping::WordOrGlyph).into(),
+                Part::Item(t) => bullet(t.as_str()),
+                Part::Code(t) => mono_box(t.clone()),
+                Part::Actions(actions) => {
+                    row(actions.iter().map(|a| self.action_button(a))).spacing(10).wrap().vertical_spacing(10).into()
+                }
+            });
+        }
+        card(c).into()
+    }
+
+    fn action_button(&self, a: &Action) -> Element<'static, Message> {
+        let open = |label, target| action(label, Some(Message::Open(target)), false);
+        match a {
+            Action::Reveal(path) => open("Open folder", Target::Reveal(path.clone())),
+            Action::Copy(label, text) => self.copy_button(Clip::Text(text.clone()), label, false),
+            Action::TaskManager => open("Open Task Manager", Target::TaskManager),
+            Action::RegistryEditor => open("Open Registry Editor", Target::RegistryEditor),
+            Action::SaveReport => action("Save report...", (!self.saving).then_some(Message::SaveReport), true),
+            Action::CopyReport => self.copy_button(Clip::Report, "Copy report", false),
+            Action::ScanFolder => action("Scan a folder...", (!self.busy()).then_some(Message::PickFolder), true),
+        }
+    }
+
+    fn details<'a>(&'a self, r: &'a ScanResult) -> Element<'a, Message> {
         let mut counts = [0usize; 3];
         for f in r.groups.iter().flat_map(|g| &g.findings) {
             counts[f.severity as usize] += 1;
@@ -396,40 +641,42 @@ impl App {
         .spacing(12)
         .height(Shrink);
 
-        let idle = !self.busy();
-        let actions = row![
-            self.copy_button(Clip::Report, "Copy report", true),
-            action("Scan again", idle.then_some(Message::ScanAgain), false),
-            action("New scan", idle.then_some(Message::NewScan), false),
-        ]
-        .spacing(12)
-        .wrap()
-        .vertical_spacing(12);
-
-        let mut col = Column::new().spacing(14).push(hero).push(tiles).push(actions).push(
+        let mut col = Column::new().spacing(14).push(tiles).push(
             text(format!("Checked: {}. Scan of {}.", report::checked_summary(r), r.scope))
                 .color(MUTED)
                 .wrapping(text::Wrapping::WordOrGlyph),
         );
-
-        // When there is something to act on, the steps come before the evidence.
-        let urgent = matches!(r.verdict, Verdict::Infected | Verdict::Exposed);
-        if urgent {
-            col = col.push(heading("What to do")).push(advice(r.verdict));
-        }
-
-        col = col.push(heading("Findings"));
         if r.groups.is_empty() {
-            col = col.push(text("None."));
+            col = col.push(text("No findings."));
         }
-        for g in &r.groups {
-            let label = match &g.path {
-                Some(p) => format!("{}: {}", g.label, p.display()),
-                None => g.label.clone(),
-            };
-            col = col.push(text(label).size(16).font(bold()).wrapping(text::Wrapping::WordOrGlyph));
-            for f in &g.findings {
-                col = col.push(finding_card(f));
+        for s in Section::ALL {
+            if s == Section::Info
+                && let Some(e) = &r.exposure
+            {
+                col = col.push(heading(guide::EXPOSURE_TITLE)).push(exposure_view(e, guide::home_note(r)));
+            }
+            let found = report::section(r, s);
+            if found.is_empty() {
+                continue;
+            }
+            if s == Section::Info {
+                let label = if self.info_open { "Hide" } else { "Show" };
+                col = col.push(
+                    row![
+                        text(format!("{} ({})", s.title(), found.len())).size(20).font(bold()),
+                        action(label, Some(Message::ToggleInfo), false),
+                    ]
+                    .spacing(12)
+                    .align_y(Alignment::Center),
+                );
+                if !self.info_open {
+                    continue;
+                }
+            } else {
+                col = col.push(heading(s.title()));
+            }
+            for (gi, fi, g, f) in found {
+                col = col.push(self.finding_card(gi, fi, g, f));
             }
         }
 
@@ -456,35 +703,186 @@ impl App {
             if !lines.is_empty() {
                 p = p.push(text(report::BLOCK_LINES_INTRO));
                 p = p.push(mono_box(lines.join("\n")));
-                p = p.push(self.copy_button(Clip::HostsLines, "Copy these lines", false));
+                p = p.push(self.copy_button(Clip::Text(lines.join("\n")), "Copy these lines", false));
             }
             p = p.push(text(report::HOSTS_NOTE).color(MUTED));
             p = p.push(text(report::ip_note()).color(MUTED));
             col = col.push(heading("Protection")).push(card(p));
         }
 
-        if !urgent {
-            col = col.push(heading("What to do")).push(advice(r.verdict));
-        }
         col = col.push(heading("Limits of this check"));
         for c in report::CAVEATS {
-            col = col.push(text(format!("- {c}")));
+            col = col.push(bullet(c));
+        }
+        let mut places = Column::new().spacing(4);
+        for t in &r.targets {
+            places = places.push(
+                text(format!("[{}] {}", t.kind.label(), t.path.display()))
+                    .font(Font::MONOSPACE)
+                    .size(13)
+                    .wrapping(text::Wrapping::WordOrGlyph),
+            );
         }
         col.push(
             row![
-                text(format!("Details: {}", report::GIST_URL))
+                text(format!("Write-up: {}", report::GIST_URL))
                     .font(Font::MONOSPACE)
                     .size(13)
                     .width(Fill)
                     .wrapping(text::Wrapping::WordOrGlyph),
-                self.copy_button(Clip::Link, "Copy link", false),
+                self.copy_button(Clip::Text(report::GIST_URL.into()), "Copy link", false),
+                action("Open link", Some(Message::Open(Target::Link(report::GIST_URL.into()))), false),
             ]
             .spacing(12)
             .align_y(Alignment::Center),
         )
+        .push(heading("Locations checked"))
+        .push(places)
         .push(text(format!("Scan stats: {}", report::stats_line(r))).size(13).color(MUTED))
         .into()
     }
+
+    fn finding_card<'a>(&'a self, gi: usize, fi: usize, g: &'a Group, f: &'a Finding) -> Element<'a, Message> {
+        let color = severity_color(f.severity);
+        let badge = container(text(f.severity.tag()).size(12).font(bold()))
+            .padding([2, 8])
+            .style(move |_| filled(color));
+        let mut c = Column::new()
+            .spacing(6)
+            .push(row![badge, text(&f.title).size(16).font(bold()).width(Fill)].spacing(10))
+            .push(text(&f.detail).wrapping(text::Wrapping::WordOrGlyph))
+            .push(text(format!("What this means: {}", guide::meaning(f.kind))).color(INFO_TEXT))
+            .push(text(format!("Found in: {}", report::location(g))).size(13).color(MUTED).wrapping(text::Wrapping::WordOrGlyph));
+        if let Some(p) = &f.path {
+            c = c.push(text(format!("Path: {}", p.display())).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph));
+        }
+        if let Some(t) = &f.time {
+            c = c.push(text(format!("Time: {t}")).size(13).color(MUTED));
+        }
+        if let Some(copy) = &f.copy_text {
+            c = c.push(mono_box(format!("{}: {copy}", report::copy_label(f))));
+        }
+        let mut buttons: Vec<Element<'a, Message>> = Vec::new();
+        if let Some(p) = &f.open_path {
+            buttons.push(action("Open folder", Some(Message::Open(Target::Reveal(p.clone()))), false));
+        }
+        if let Some(p) = &f.path {
+            buttons.push(self.copy_button(Clip::Text(p.display().to_string()), "Copy path", false));
+        }
+        if let Some(copy) = &f.copy_text {
+            let label = if matches!(f.kind, FindingKind::RegistryKey | FindingKind::RegistryLeftover) { "Copy key path" } else { "Copy" };
+            buttons.push(self.copy_button(Clip::Text(copy.clone()), label, false));
+        }
+        let shown = self.evidence.contains(&(gi, fi));
+        if !f.evidence.is_empty() {
+            let label = if shown { "Hide technical details" } else { "Show technical details" };
+            buttons.push(action(label, Some(Message::Evidence(gi, fi)), false));
+        }
+        if !buttons.is_empty() {
+            c = c.push(row(buttons).spacing(10).wrap().vertical_spacing(10));
+        }
+        if shown {
+            c = c.push(mono_box(f.evidence.join("\n")));
+        }
+        container(c)
+            .padding(12)
+            .width(Length::Fill)
+            .style(move |_| surface(CARD, 6).border(border::rounded(6).color(color).width(1)))
+            .into()
+    }
+}
+
+/// One of the four answers of the What happened tab.
+fn answer_card(a: Answer) -> Element<'static, Message> {
+    let color = match a.tone {
+        Tone::Bad => CRITICAL_TEXT,
+        Tone::Unsure => WARNING_TEXT,
+        Tone::Good => OK_TEXT,
+    };
+    let mut c = Column::new()
+        .spacing(6)
+        .push(text(a.question).size(16).font(bold()))
+        .push(text(a.reply).size(24).font(bold()).color(color));
+    for line in a.lines {
+        c = c.push(bullet(line));
+    }
+    if !a.runs.is_empty() {
+        c = c.push(text("Agent runs in the logs").size(13).color(MUTED));
+        c = c.push(mono_box(a.runs.join("\n")));
+    }
+    card(c).into()
+}
+
+/// What the agent's commands could read, from the existence checks.
+fn exposure_view(e: &Exposure, note: Option<&'static str>) -> Element<'static, Message> {
+    let mut c = Column::new().spacing(8).push(text(guide::EXPOSURE_NOTE).color(MUTED)).push(note.map(|n| text(n).color(MUTED)));
+    for (title, items) in guide::exposure_lists(e) {
+        c = c.push(text(title).size(16).font(bold()));
+        if items.is_empty() {
+            c = c.push(text("None found.").color(MUTED));
+        }
+        for (what, path) in items {
+            c = c.push(
+                row![
+                    column![
+                        text(what),
+                        text(path.display().to_string()).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph),
+                    ]
+                    .spacing(2)
+                    .width(Fill),
+                    action("Open folder", Some(Message::Open(Target::Reveal(path))), false),
+                ]
+                .spacing(12)
+                .align_y(Alignment::Center),
+            );
+        }
+    }
+    c = c.push(text("Folders checked").size(16).font(bold()));
+    for p in &e.checked {
+        c = c.push(text(p.display().to_string()).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph));
+    }
+    card(c).into()
+}
+
+fn bullet<'a>(line: impl text::IntoFragment<'a>) -> Element<'a, Message> {
+    row![text("-").width(12), text(line).width(Fill).wrapping(text::Wrapping::WordOrGlyph)].spacing(6).into()
+}
+
+/// The default "Done" box, with a visible border while unchecked (MUTED on CARD: 6.1:1).
+fn check_style(theme: &Theme, status: checkbox::Status) -> checkbox::Style {
+    let mut style = checkbox::primary(theme, status);
+    if let checkbox::Status::Active { is_checked: false } | checkbox::Status::Hovered { is_checked: false } = status {
+        style.border.color = MUTED;
+    }
+    style
+}
+
+/// The default switch, with a visible track while off (NEUTRAL on BG: 3.8:1).
+fn switch_style(theme: &Theme, status: toggler::Status) -> toggler::Style {
+    let mut style = toggler::default(theme, status);
+    if let toggler::Status::Active { is_toggled: false } | toggler::Status::Hovered { is_toggled: false } = status {
+        style.background = NEUTRAL.into();
+        style.foreground = TEXT.into();
+    }
+    style
+}
+
+/// A result tab; the active one has the accent border and bold text.
+fn tab_button<'a>(tab: Tab, active: bool) -> Element<'a, Message> {
+    button(text(tab.label()).font(if active { bold() } else { Font::DEFAULT }))
+        .padding([8, 18])
+        .style(move |_, status| {
+            let hover = matches!(status, button::Status::Hovered | button::Status::Pressed);
+            let background = if active { CARD } else if hover { LINE } else { BG };
+            button::Style {
+                background: Some(Background::Color(background)),
+                text_color: if active || hover { TEXT } else { MUTED },
+                border: border::rounded(8).color(if active { ACCENT } else { LINE }).width(if active { 2 } else { 1 }),
+                ..button::Style::default()
+            }
+        })
+        .on_press(Message::Tab(tab))
+        .into()
 }
 
 /// One sentence on where "Scan this computer" looks (see `locate::plan_computer`).
@@ -618,39 +1016,6 @@ fn tile<'a>(label: &'a str, value: String, color: Color) -> Element<'a, Message>
     .into()
 }
 
-fn advice<'a>(verdict: Verdict) -> Element<'a, Message> {
-    let mut list = Column::new().spacing(10);
-    for (i, step) in report::advice(verdict).into_iter().enumerate() {
-        list = list.push(row![text(format!("{}.", i + 1)).font(bold()).width(28), text(step).width(Fill)].spacing(4));
-    }
-    card(list).into()
-}
-
-fn finding_card(f: &Finding) -> Element<'_, Message> {
-    let color = severity_color(f.severity);
-    let badge = container(text(f.severity.tag()).size(12).font(bold()))
-        .padding([2, 8])
-        .style(move |_| filled(color));
-    let mut c = Column::new()
-        .spacing(6)
-        .push(row![badge, text(&f.title).size(16).font(bold()).width(Fill)].spacing(10))
-        .push(text(&f.detail));
-    if let Some(p) = &f.path {
-        c = c.push(text(format!("Path: {}", p.display())).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph));
-    }
-    if let Some(t) = &f.time {
-        c = c.push(text(format!("Time: {t}")).size(13).color(MUTED));
-    }
-    if !f.evidence.is_empty() {
-        c = c.push(mono_box(f.evidence.join("\n")));
-    }
-    container(c)
-        .padding(12)
-        .width(Length::Fill)
-        .style(move |_| surface(CARD, 6).border(border::rounded(6).color(color).width(1)))
-        .into()
-}
-
 fn mono_box<'a>(content: String) -> Element<'a, Message> {
     container(text(content).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph))
         .padding(8)
@@ -759,19 +1124,6 @@ fn severity_color(severity: Severity) -> Color {
 fn drop_works() -> bool {
     let set = |k: &str| std::env::var_os(k).is_some_and(|v| !v.is_empty());
     !cfg!(all(unix, not(target_os = "macos"))) || !(set("WAYLAND_DISPLAY") || set("WAYLAND_SOCKET"))
-}
-
-/// 1234567 to "1,234,567".
-fn thousands(n: u64) -> String {
-    let digits = n.to_string();
-    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
-    for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    out
 }
 
 /// "m:ss".
@@ -986,6 +1338,66 @@ mod tests {
         assert_eq!(tail("/home/u/Games", 20), "/home/u/Games");
         assert_eq!(tail("/home/u/Games/NIKKE", 10), "...s/NIKKE");
         assert_eq!(tail("abc", 0), "...");
+    }
+
+    #[test]
+    fn every_result_tab_builds() {
+        use crate::exposure::SecretFile;
+        use crate::locate::{Target, TargetKind, WalkStats};
+        use crate::scan::HostsStatus;
+        use crate::timeline::{AgentRun, RunKind};
+        let profile = PathBuf::from("/x/pfx/drive_c/users/steamuser");
+        let finding = |kind, severity, title: &str| Finding {
+            kind,
+            severity,
+            title: title.into(),
+            detail: "Detail.".into(),
+            path: Some(profile.join("AppData/Local/Temp/k2f-bcreds-1")),
+            open_path: Some(profile.join("AppData/Local/Temp/k2f-bcreds-1")),
+            copy_text: Some("HKCU\\Software\\Classes\\CLSID\\{E77CC89B-7401-4C04-8CED-149DB35ADD04}".into()),
+            evidence: vec!["agent started as COLONY".into()],
+            time: None,
+        };
+        let r = ScanResult {
+            scope: "/x".into(),
+            started: "2026-11-04 10:00:00 UTC".into(),
+            verdict: Verdict::Infected,
+            targets: vec![Target { kind: TargetKind::UserProfile, path: profile.clone(), host: false }],
+            groups: vec![Group {
+                label: "User profile".into(),
+                path: Some(profile.clone()),
+                findings: vec![
+                    finding(FindingKind::TempFile, Severity::Critical, "Files left by the malware in Temp"),
+                    finding(FindingKind::RegistryLeftover, Severity::Critical, "Registry leftover"),
+                    finding(FindingKind::Info, Severity::Info, "Hex ID file in Temp"),
+                    finding(FindingKind::Coverage, Severity::Info, "Some folders could not be read"),
+                ],
+            }],
+            hosts: Some(HostsStatus { path: PathBuf::from("/etc/hosts"), note: None, domains: vec![("insightjs.com", Some(false))] }),
+            stats: WalkStats::default(),
+            seconds: 1.0,
+            runs: vec![AgentRun { kind: RunKind::Started, time: None, agent_id: None, host: Some("COLONY".into()), file: None, source: PathBuf::new() }],
+            builds: Vec::new(),
+            exposure: Some(Exposure {
+                checked: vec![profile.clone()],
+                secrets: vec![SecretFile { what: "AWS credentials", path: profile.join(".aws/credentials") }],
+                ..Exposure::default()
+            }),
+        };
+        let (mut app, _) = App::boot(None);
+        let _ = app.update(Message::Finished(0, Some(Arc::new(r))));
+        app.info_open = true;
+        app.evidence.insert((0, 0));
+        for tab in Tab::ALL {
+            let _ = app.update(Message::Tab(tab));
+            let _ = app.view();
+        }
+        let Phase::Done(d) = &app.phase else { panic!("no result") };
+        assert!(d.steps.iter().any(|s| s.title == "Delete the leftover registry key"));
+        assert!(app.report_text().unwrap().contains("COLONY"));
+        let _ = app.update(Message::Hide(true));
+        let hidden = app.report_text().unwrap();
+        assert!(!hidden.contains("COLONY") && !hidden.contains("steamuser"), "{hidden}");
     }
 
     #[test]

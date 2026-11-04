@@ -1,8 +1,14 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod exposure;
+mod guide;
+mod hsts;
 mod locate;
+mod open;
+mod redact;
 mod report;
 mod scan;
+mod timeline;
 mod ui;
 
 use std::ffi::OsString;
@@ -19,6 +25,8 @@ Usage:
   nikke-check PATH             Open the window and scan this folder
   nikke-check --cli            Scan this computer and print a report
   nikke-check --cli PATH...    Scan only these folders and print a report
+  nikke-check --cli --redact   Replace the computer name, user names, agent IDs
+                               and home folder in the report (any --cli form)
   nikke-check --help           Show this help
 
 Exit codes (--cli):
@@ -62,14 +70,58 @@ fn main() -> ExitCode {
 
 fn window(folder: Option<PathBuf>) -> ExitCode {
     skip_opengl();
-    match ui::run(folder) {
+    match run_window(folder) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("Could not open the window: {err}");
+            error_box(&err);
             ExitCode::FAILURE
         }
     }
 }
+
+#[cfg(not(windows))]
+fn run_window(folder: Option<PathBuf>) -> Result<(), String> {
+    ui::run(folder).map_err(|e| e.to_string())
+}
+
+/// The Windows build has no console, so a panic would close the window without
+/// a word. The hook keeps the panic message for the error box.
+#[cfg(windows)]
+fn run_window(folder: Option<PathBuf>) -> Result<(), String> {
+    use std::sync::{Arc, Mutex};
+    let message = Arc::new(Mutex::new(String::new()));
+    let kept = message.clone();
+    let default = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if let Ok(mut m) = kept.lock() {
+            *m = info.to_string();
+        }
+        default(info);
+    }));
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| ui::run(folder)))
+        .map_err(|_| message.lock().map(|m| m.clone()).unwrap_or_default())?
+        .map_err(|e| e.to_string())
+}
+
+/// Says what went wrong when the window cannot open, and how to get the report anyway.
+#[cfg(windows)]
+fn error_box(err: &str) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
+    let text = format!(
+        "The window could not open:\n{err}\n\nTo get the report without the window, open PowerShell in the folder that holds this program and run:\n\n{}",
+        guide::powershell_cli("")
+    );
+    let wide = |s: &str| s.encode_utf16().chain([0]).collect::<Vec<u16>>();
+    let (text, title) = (wide(&text), wide(report::APP_NAME));
+    // SAFETY: both strings are NUL-terminated and outlive the call; no owner window.
+    unsafe {
+        MessageBoxW(std::ptr::null_mut(), text.as_ptr(), title.as_ptr(), MB_OK | MB_ICONERROR);
+    }
+}
+
+#[cfg(not(windows))]
+fn error_box(_: &str) {}
 
 /// The absolute path of a folder argument, or exit code 4.
 fn folder(path: &OsString) -> Result<PathBuf, ExitCode> {
@@ -90,9 +142,10 @@ fn folder(path: &OsString) -> Result<PathBuf, ExitCode> {
     }
 }
 
-fn cli(paths: &[OsString]) -> ExitCode {
+fn cli(args: &[OsString]) -> ExitCode {
+    let redact = args.iter().any(|a| a == "--redact");
     let mut folders = Vec::new();
-    for path in paths {
+    for path in args.iter().filter(|a| *a != "--redact") {
         match folder(path) {
             Ok(full) => folders.push(full),
             Err(code) => return code,
@@ -104,8 +157,12 @@ fn cli(paths: &[OsString]) -> ExitCode {
     } else {
         scan::scan_folders(&folders, &progress)
     };
+    let mut text = report::render(&result);
+    if redact {
+        text = redact::Secrets::of(&result).apply(&text);
+    }
     let mut stdout = std::io::stdout().lock();
-    let _ = stdout.write_all(report::render(&result).as_bytes());
+    let _ = stdout.write_all(text.as_bytes());
     let _ = stdout.flush();
     ExitCode::from(result.verdict.exit_code())
 }
