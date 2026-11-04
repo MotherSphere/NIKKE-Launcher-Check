@@ -149,7 +149,7 @@ Keep this computer offline until these steps are done: while the key is set, the
 
    An empty key (the leftover) is deleted the same way.
 2. Restart Windows. The restart closes the window. Open the tool again and scan: the result shows what is left to delete.
-3. Open `%LOCALAPPDATA%\Google\Chrome\User Data\PlatformExperienceHelper` in Explorer ("Open folder" in the window selects the right subfolder). For another browser, the folder is in that browser's `User Data`. Delete the subfolder named with 64 hex characters (digits and the letters a to f) that holds `platform_experience_helper.dll`. Leave the rest alone: Chrome keeps its own `platform_experience_helper.exe` and an empty `LoadFeatures` file there.
+3. Open `%LOCALAPPDATA%\Google\Chrome\User Data\PlatformExperienceHelper` in Explorer ("Open folder" in the window selects the right subfolder). The agent writes the DLL to this Chrome folder even when you use another browser, or when Chrome is not installed. If the report names a `PlatformExperienceHelper` folder of another browser, clean that one the same way. Delete the subfolder named with 64 hex characters (digits and the letters a to f) that holds `platform_experience_helper.dll`. Leave the rest alone: Chrome keeps its own `platform_experience_helper.exe` and an empty `LoadFeatures` file there.
 4. If the report lists "Files of an older Chrome persistence are installed", open the folder it names, `Google\Chrome\Application\PlatformExperienceHelper` under Program Files or `%LOCALAPPDATA%`. Delete only `platform_experience_helper.dll`, `platform_experience_helper.dll.old` and `old-clsid.txt`, the ones that are there. Keep `platform_experience_helper.exe`: it belongs to Chrome.
 5. Scan again. The findings should be gone.
 

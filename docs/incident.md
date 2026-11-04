@@ -6,7 +6,7 @@ On September 27, four JavaScript files on Level Infinite's CDN (playerinfinite.c
 
 ## The modified CDN files
 
-All four files were modified on September 27 between 06:41 and 06:42. Each one loads `l.js` with its own `f` parameter.
+All four files were modified on September 27 between 06:41 and 06:42. Each one loads `l.js` with its own `f` parameter. Both CDN hosts, sg-gpts.playerinfinite.com and na-webassets.playerinfinite.com, served the modified files.
 
 | File | Loads | Cleaned |
 |---|---|---|
@@ -15,7 +15,7 @@ All four files were modified on September 27 between 06:41 and 06:42. Each one l
 | `https://na-webassets.playerinfinite.com/comm/assets/lib/vue-bucket.min.js` | `https://insightjs.com/l.js?f=vue` | Replaced on November 3 at 17:13:36 |
 | `https://na-webassets.playerinfinite.com/comm/nikke_launcher/assets/FeedList.feb647c9.js` | `https://insightjs.com/l.js?f=feedlist` | Cleaned at the origin on October 28 at 15:46:09, but still served by two CDN servers on November 3 |
 
-The CDN servers 43.175.144.148 and 43.175.145.181 still delivered the modified `FeedList.feb647c9.js` (SHA-256 `2f2aac505f486067af6831d6c75ea74df63acb1ed4e4002709c5962c68bd9203`) on November 3 at 18:59, and again at 20:23, also for requests with cache-busting query strings. Depending on the server it reaches, the launcher can still load the script.
+The CDN servers 43.175.144.148 and 43.175.145.181 still delivered the modified `FeedList.feb647c9.js` (SHA-256 `2f2aac505f486067af6831d6c75ea74df63acb1ed4e4002709c5962c68bd9203`) on November 3 at 18:59, and again at 20:23, also for requests with cache-busting query strings. On November 4 at 11:20, all four files were clean on four CDN servers, and the launcher now loads a rebuilt front-end.
 
 The modified `vue-bucket.min.js` (135,273 bytes, SHA-256 `3aaafbd612f04501a6fdb0bb8b2f8a87796223e5584ac18ea5eb180feeafb193`, Last-Modified September 27 06:41:44) was recovered from a launcher HTTP cache by another victim. At 20:23 on November 3, all three CDN servers above served the clean copy (134,592 bytes, SHA-256 `459343517635a96caa109b050361b4d32393e8727b2f54b44749db783feb4199`).
 
@@ -112,6 +112,8 @@ Modified CDN files
 
 SHA-256
   cc0ad05bfe85940a6067b3a72c182d3953339129206634141926d5d0b35973ec  insight.bundle, Nov 3 16:22 copy (other builds exist)
+  04471ccf9f6ebac477ba4ca6b408a56621bccd16118c3112720adb35e6422e3d  aegis-fix.min.js, modified copy
+  21d2fa4b6cdd15da3d5246687a01ef84fb848668144258b110606db5eb5ea7ce  images.7fec4c32.js, modified copy
   2f2aac505f486067af6831d6c75ea74df63acb1ed4e4002709c5962c68bd9203  FeedList.feb647c9.js, modified copy
   3aaafbd612f04501a6fdb0bb8b2f8a87796223e5584ac18ea5eb180feeafb193  vue-bucket.min.js, modified copy
 

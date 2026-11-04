@@ -751,7 +751,8 @@ fn check_profile(profile: &Path, host: bool) -> Vec<Finding> {
     let mut out = Vec::new();
     let local = find_ci(profile, &["AppData", "Local"]);
 
-    // C1: the HKCU key is per user, so any Chromium browser of this user could be the target.
+    // C1: the agent writes the DLL only under Chrome's User Data, whatever browser is used, and the
+    // per-user HKCU key can make any Chromium browser of this user load it. Other browsers' folders are checked too.
     for (browser, firefox, rel) in exposure::BROWSERS {
         if firefox || !rel.starts_with("AppData/") {
             continue;
