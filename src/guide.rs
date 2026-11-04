@@ -911,7 +911,8 @@ mod tests {
         let all = steps(&infected);
         let codes: Vec<&str> = all.iter().flat_map(|s| &s.parts).filter_map(|p| if let Part::Code(c) = p { Some(c.as_str()) } else { None }).collect();
         assert!(codes.contains(&format!("/p/PlatformExperienceHelper/{hash}").as_str()), "{codes:?}");
-        assert!(codes.contains(&"/d/nikke_launcher/tbs_cache"), "{codes:?}");
+        let cache = Path::new("/d/nikke_launcher").join("tbs_cache").display().to_string();
+        assert!(codes.contains(&cache.as_str()), "{codes:?}");
         let close = format!("{:?}", all[0].parts);
         assert!(close.contains("Programs to end: msedge.exe.") && close.contains("Do not end explorer.exe"), "{close}");
         let [ran, active, clean, protect] = answers(&infected);
