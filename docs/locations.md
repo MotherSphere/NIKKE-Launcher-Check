@@ -11,7 +11,7 @@
 ## Windows
 
 - Every fixed and removable drive from `A:\` to `Z:\`: 5 levels deep in a quick scan, every folder in a full scan. Only `\Windows` is left out: it holds system files, not NIKKE or the traces this tool looks for. Mapped network drives and CD drives are not walked, and the report lists the network drives it skipped. Junctions and symbolic links are never followed, so a drive mounted in a folder (Disk Management, "Mount in the following empty NTFS folder") instead of on a letter is not walked. Scan that folder with "Scan a folder...".
-- `%APPDATA%\nikke_launcher` and `%APPDATA%\nikke_launcher_hmt`.
+- `%APPDATA%\nikke_launcher`, `%APPDATA%\nikke_launcher_hmt` and `%APPDATA%\nikke_launcher_google` (the Google Play Games build).
 - The `%USERPROFILE%` profile, and the launcher's login browser profile in it, `%LOCALAPPDATA%\CEF\User Data`.
 
 The tool also reads the install path the launcher records, which covers an install on a network drive that the walk leaves out:

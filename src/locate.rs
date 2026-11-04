@@ -81,8 +81,9 @@ impl Progress {
     }
 }
 
-/// Launcher data folder names under `AppData/Roaming`.
-pub const LAUNCHER_DATA_NAMES: [&str; 2] = ["nikke_launcher", "nikke_launcher_hmt"];
+/// Launcher data folder names under `AppData/Roaming`. `nikke_launcher_google` belongs to the
+/// Google Play Games build (issue #11); the malware only reads the first two.
+pub const LAUNCHER_DATA_NAMES: [&str; 3] = ["nikke_launcher", "nikke_launcher_hmt", "nikke_launcher_google"];
 
 /// Folder names never entered by a discovery walk.
 const SKIP_NAMES: [&str; 8] = [

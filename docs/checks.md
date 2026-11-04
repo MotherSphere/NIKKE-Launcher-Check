@@ -38,7 +38,7 @@ These lines do not change the verdict. They make up the agent runs and the paylo
 
 ## Launcher data
 
-A launcher data folder is `AppData/Roaming/nikke_launcher` or `AppData/Roaming/nikke_launcher_hmt`. Every file in it up to 12 levels down and 64 MiB is read.
+A launcher data folder is `AppData/Roaming/nikke_launcher`, `AppData/Roaming/nikke_launcher_hmt` or, for the Google Play Games build, `AppData/Roaming/nikke_launcher_google`. Every file in it up to 12 levels down and 64 MiB is read.
 
 - `k2f_chan` or `k2f.agent` in any file is critical. `k2f_chan` is the agent's bridge channel name. `k2f.agent.state` is the ID the agent saves in the launcher's Local Storage (`tbs_cache/Local Storage/leveldb`). Deleting the NIKKE folder removes `debug.log` but not `k2f.agent.state`. LevelDB later moves records from its `.log` file into `.ldb` tables, whose blocks are often Snappy-compressed and whose keys share prefixes, so a plain text search can miss the name there. The tool reads each `.ldb` table, decompresses its blocks and rebuilds the full keys before it searches. The report cuts the quoted line before `agent_pass`, so it never shows the saved password that follows the key.
 - `insightjs` in a file under a folder named `Code Cache` or `Cache` means the launcher loaded the malicious script (warning). The script ran; this alone does not show that the agent was downloaded.

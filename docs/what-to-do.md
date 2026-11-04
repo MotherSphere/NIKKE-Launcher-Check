@@ -63,7 +63,7 @@ No NIKKE install or launcher data was found in the places this scan checked.
 
 ## Delete the launcher cache
 
-`tbs_cache` is the cache of the launcher's built-in browser. It sits in the launcher data folder, `nikke_launcher` (or `nikke_launcher_hmt`). The report lists every launcher data folder it found under `Locations checked`, tagged `[Launcher data]`, with its full path.
+`tbs_cache` is the cache of the launcher's built-in browser. It sits in the launcher data folder, `nikke_launcher` (`nikke_launcher_hmt` for the HMT launcher, `nikke_launcher_google` for the Google Play Games build). The report lists every launcher data folder it found under `Locations checked`, tagged `[Launcher data]`, with its full path.
 
 Save the report first. `tbs_cache/Local Storage/leveldb` holds the `k2f.agent.state` trace, and it is gone once the folder is deleted. To keep the evidence itself, copy the folder somewhere else before you delete it.
 
