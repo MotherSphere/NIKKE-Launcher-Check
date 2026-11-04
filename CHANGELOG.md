@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.4.1...v0.5.0) (2026-11-04)
+
+
+### Features
+
+* advise deleting tbs_cache after Level Infinite's fix, and give firewalld and nftables commands ([570d8a0](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/570d8a0cd42f00d2c11a507f2cb494c2d137cb4d))
+* **scan:** read the launcher's login browser profile (AppData\Local\CEF\User Data) ([570d8a0](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/570d8a0cd42f00d2c11a507f2cb494c2d137cb4d))
+* **ui:** put a large "See what to do (N steps)" button under the verdict and ask before closing when the steps were never opened ([570d8a0](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/570d8a0cd42f00d2c11a507f2cb494c2d137cb4d))
+* **ui:** translate the tool into 15 languages and follow the system language ([2c2e01e](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/2c2e01ee8401bc244e8ba69133044a9773ebeeaf))
+
+
+### Fixes
+
+* **scan:** report a running launcher as critical only when the scan also finds a sign of the agent ([570d8a0](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/570d8a0cd42f00d2c11a507f2cb494c2d137cb4d))
+
 ## [0.4.1](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.4.0...v0.4.1) (2026-11-04)
 
 
