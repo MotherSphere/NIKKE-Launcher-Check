@@ -78,52 +78,52 @@ pub const WALLETS: [(&str, &str); 28] = [
     ("phkbamefinggmakgklpkljjmgibohnba", "Pontem"),
 ];
 
-/// Secret files from the agent's keyscan list, relative to the home folder or
-/// Windows profile. SSH private keys (~/.ssh/id_*) are found separately.
+/// Secret files from the agent's keyscan list (catalog key of what each holds, path
+/// relative to the home folder or Windows profile). SSH private keys (~/.ssh/id_*) are found separately.
 const SECRETS: [(&str, &str); 43] = [
-    ("AWS credentials", ".aws/credentials"),
-    ("GitHub CLI token", ".config/gh/hosts.yml"),
-    ("GitHub CLI token", "AppData/Roaming/GitHub CLI/hosts.yml"),
-    ("Git credentials", ".git-credentials"),
-    ("Git credentials", ".config/git/credentials"),
-    ("npm config, can hold a token", ".npmrc"),
-    ("Docker registry logins", ".docker/config.json"),
-    ("Kubernetes config", ".kube/config"),
-    ("Google Cloud credentials", ".config/gcloud/credentials.db"),
-    ("Google Cloud credentials", ".config/gcloud/application_default_credentials.json"),
-    ("Google Cloud credentials", "AppData/Roaming/gcloud/credentials.db"),
-    ("Google Cloud credentials", "AppData/Roaming/gcloud/application_default_credentials.json"),
-    ("Azure CLI tokens", ".azure/msal_token_cache.bin"),
-    ("Azure CLI tokens", ".azure/msal_token_cache.json"),
-    ("Azure CLI tokens", ".azure/accessTokens.json"),
-    ("Claude Code credentials", ".claude/.credentials.json"),
-    ("Codex CLI credentials", ".codex/auth.json"),
-    ("Gemini CLI credentials", ".gemini/oauth_creds.json"),
-    ("GitHub Copilot CLI MCP config", ".copilot/mcp-config.json"),
-    ("opencode credentials", ".local/share/opencode/auth.json"),
-    ("FileZilla saved servers", "AppData/Roaming/FileZilla/sitemanager.xml"),
-    ("FileZilla saved servers", "AppData/Roaming/FileZilla/recentservers.xml"),
-    ("FileZilla saved servers", ".config/filezilla/sitemanager.xml"),
-    ("FileZilla saved servers", ".config/filezilla/recentservers.xml"),
-    ("netrc logins", ".netrc"),
-    ("netrc logins", "_netrc"),
-    ("PyPI token", ".pypirc"),
-    ("crates.io token", ".cargo/credentials.toml"),
-    ("crates.io token", ".cargo/credentials"),
-    ("HashiCorp Vault token", ".vault-token"),
-    ("Terraform token", ".terraform.d/credentials.tfrc.json"),
-    ("Terraform token", "AppData/Roaming/terraform.d/credentials.tfrc.json"),
-    ("Pulumi credentials", ".pulumi/credentials.json"),
-    ("Kaggle API key", ".kaggle/kaggle.json"),
-    ("Hugging Face token", ".cache/huggingface/token"),
-    ("rclone config", ".config/rclone/rclone.conf"),
-    ("rclone config", "AppData/Roaming/rclone/rclone.conf"),
-    ("s3cmd config", ".s3cfg"),
-    ("Databricks config", ".databrickscfg"),
-    ("Oracle Cloud config", ".oci/config"),
-    ("GnuPG private keys", ".gnupg/private-keys-v1.d"),
-    ("GnuPG private keys", "AppData/Roaming/gnupg/private-keys-v1.d"),
-    (".env file", ".env"),
+    ("secret.aws", ".aws/credentials"),
+    ("secret.github_cli", ".config/gh/hosts.yml"),
+    ("secret.github_cli", "AppData/Roaming/GitHub CLI/hosts.yml"),
+    ("secret.git", ".git-credentials"),
+    ("secret.git", ".config/git/credentials"),
+    ("secret.npm", ".npmrc"),
+    ("secret.docker", ".docker/config.json"),
+    ("secret.kubernetes", ".kube/config"),
+    ("secret.gcloud", ".config/gcloud/credentials.db"),
+    ("secret.gcloud", ".config/gcloud/application_default_credentials.json"),
+    ("secret.gcloud", "AppData/Roaming/gcloud/credentials.db"),
+    ("secret.gcloud", "AppData/Roaming/gcloud/application_default_credentials.json"),
+    ("secret.azure", ".azure/msal_token_cache.bin"),
+    ("secret.azure", ".azure/msal_token_cache.json"),
+    ("secret.azure", ".azure/accessTokens.json"),
+    ("secret.claude", ".claude/.credentials.json"),
+    ("secret.codex", ".codex/auth.json"),
+    ("secret.gemini", ".gemini/oauth_creds.json"),
+    ("secret.copilot", ".copilot/mcp-config.json"),
+    ("secret.opencode", ".local/share/opencode/auth.json"),
+    ("secret.filezilla", "AppData/Roaming/FileZilla/sitemanager.xml"),
+    ("secret.filezilla", "AppData/Roaming/FileZilla/recentservers.xml"),
+    ("secret.filezilla", ".config/filezilla/sitemanager.xml"),
+    ("secret.filezilla", ".config/filezilla/recentservers.xml"),
+    ("secret.netrc", ".netrc"),
+    ("secret.netrc", "_netrc"),
+    ("secret.pypi", ".pypirc"),
+    ("secret.crates", ".cargo/credentials.toml"),
+    ("secret.crates", ".cargo/credentials"),
+    ("secret.vault", ".vault-token"),
+    ("secret.terraform", ".terraform.d/credentials.tfrc.json"),
+    ("secret.terraform", "AppData/Roaming/terraform.d/credentials.tfrc.json"),
+    ("secret.pulumi", ".pulumi/credentials.json"),
+    ("secret.kaggle", ".kaggle/kaggle.json"),
+    ("secret.huggingface", ".cache/huggingface/token"),
+    ("secret.rclone", ".config/rclone/rclone.conf"),
+    ("secret.rclone", "AppData/Roaming/rclone/rclone.conf"),
+    ("secret.s3cmd", ".s3cfg"),
+    ("secret.databricks", ".databrickscfg"),
+    ("secret.oci", ".oci/config"),
+    ("secret.gnupg", ".gnupg/private-keys-v1.d"),
+    ("secret.gnupg", "AppData/Roaming/gnupg/private-keys-v1.d"),
+    ("secret.env", ".env"),
 ];
 
 /// Everything found in the checked home folders.
@@ -161,7 +161,7 @@ pub struct Wallet {
 
 #[derive(Debug, Clone)]
 pub struct SecretFile {
-    /// What the file holds: "AWS credentials", "SSH private key".
+    /// The catalog key of what the file holds ("AWS credentials").
     pub what: &'static str,
     pub path: PathBuf,
 }
@@ -201,7 +201,7 @@ pub fn collect(homes: &[PathBuf]) -> Exposure {
             .map(|e| e.path())
             .collect();
         keys.sort();
-        out.secrets.extend(keys.into_iter().map(|path| SecretFile { what: "SSH private key", path }));
+        out.secrets.extend(keys.into_iter().map(|path| SecretFile { what: "secret.ssh", path }));
     }
     out
 }
@@ -246,6 +246,7 @@ fn subdirs(dir: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::i18n::{Lang, tr};
 
     #[test]
     fn exposure_is_found_by_name() {
@@ -275,7 +276,7 @@ mod tests {
         assert_eq!(logins, [("Chrome", "Default"), ("Opera", "Opera Stable"), ("Firefox", "x1.default-release"), ("Firefox", "ab12.default")]);
         let wallets: Vec<(&str, &str)> = e.wallets.iter().map(|w| (w.name, w.browser)).collect();
         assert_eq!(wallets, [("MetaMask", "Chrome"), ("Phantom", "Brave")]);
-        let secrets: Vec<&str> = e.secrets.iter().map(|s| s.what).collect();
+        let secrets: Vec<&str> = e.secrets.iter().map(|s| tr(Lang::En, s.what)).collect();
         assert_eq!(secrets, ["AWS credentials", "GitHub CLI token", "SSH private key"]);
         assert!(e.secrets[2].path.ends_with(".ssh/id_ed25519"));
         let _ = fs::remove_dir_all(&root);

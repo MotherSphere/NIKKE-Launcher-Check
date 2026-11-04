@@ -1,0 +1,527 @@
+# NIKKE Launcher Check: the Indonesian (id) texts. The keys are those of en.txt.
+#
+# One entry per line: key = text. Lines that start with # are comments.
+# Translate only the text after "=". Do not change the keys.
+# In the text, \n starts a new line and \\ is one backslash.
+# {name} is a value the program fills in: a path, a number, a file name or another text.
+# Keep every {name} of the English text with the same name. You can move it in the sentence.
+# Other braces, such as the CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}, are plain text: keep them.
+# Keep file names, paths, registry keys, commands, domains, IP addresses and hashes as they are.
+# Text in quotes such as "Scan a folder..." names a button or a part of this window: use the
+# words of that button's own entry. Windows menus and buttons (Run as administrator, End task,
+# File > Open) are named as Windows shows them in your language.
+# An entry missing from a translation shows the English text.
+
+# Command line: nikke-check --help, and errors printed in the terminal.
+cli.usage = NIKKE Launcher Check: mencari jejak peretasan launcher NIKKE untuk PC pada November 2026.\nHanya baca. Tanpa akses jaringan.\n\nPenggunaan:\n  nikke-check                  Buka jendela\n  nikke-check JALUR            Buka jendela dan pindai folder ini\n  nikke-check --cli            Pindai cepat komputer ini dan cetak laporan\n  nikke-check --cli --full     Pemindaian penuh: buka semua folder di semua drive lokal\n  nikke-check --cli JALUR...   Pindai penuh folder ini saja, lalu cetak laporan\n  nikke-check --cli --redact   Ganti nama komputer, nama pengguna, ID agen, dan\n                               folder home di laporan (untuk semua bentuk --cli)\n  nikke-check --help           Tampilkan bantuan ini\n\nBahasa:\n  --lang KODE    Tambahkan ke perintah mana pun di atas untuk memilih bahasa\n                 jendela dan laporan. Tanpa opsi ini, program memakai bahasa\n                 sistem operasi.\n                 KODE: {codes}\n\nKode keluar (--cli):\n  0  tidak ada jejak ditemukan\n  1  terpapar (hanya peringatan)\n  2  terinfeksi (jejak kritis)\n  3  instalasi NIKKE atau data launcher tidak ditemukan\n  4  argumen tidak valid, atau folder yang tidak dapat dibaca\n
+cli.unknown_argument = Argumen tidak dikenal: {arg}
+cli.lang_missing = --lang memerlukan kode bahasa: {codes}
+cli.lang_unknown = Kode bahasa tidak dikenal: {code}. Gunakan salah satu dari: {codes}
+cli.cannot_read_folder = Tidak dapat membaca folder {path}: {error}
+cli.not_a_folder = Bukan folder: {path}
+cli.window_failed = Jendela tidak dapat dibuka: {error}
+# Windows error box when the window cannot open. {command} is a PowerShell command.
+cli.error_box = Jendela tidak dapat dibuka:\n{error}\n\nUntuk mendapatkan laporan tanpa jendela, buka PowerShell di folder tempat program ini berada, lalu jalankan:\n\n{command}
+
+# Top bar, start screen and report header.
+report.read_only = Hanya baca. Tanpa akses jaringan.
+report.about = Pada 27 September 2026, empat file di CDN Level Infinite diubah agar memuat skrip dari insightjs.com di dalam launcher NIKKE untuk PC. Paling lambat mulai 23 Oktober 2026, skrip itu mengunduh agen akses jarak jauh (insight.bundle) yang dapat menjalankan perintah, membaca file, mengambil tangkapan layar, dan mengumpulkan data browser. Tiga file di antaranya diganti pada 3 November. File keempat dibersihkan pada 28 Oktober, tetapi beberapa server CDN masih mengirimkan salinan lamanya pada 3 November. Alat ini mencari jejak yang ditinggalkan loader dan agen di disk.
+# What was scanned ("Scan of: ...", "Scanning ...").
+report.scope.computer = komputer ini
+report.scope.quick = komputer ini (pemindaian cepat)
+report.scope.full = komputer ini (pemindaian penuh)
+
+# The verdict: a title, then one sentence.
+verdict.infected.title = Terinfeksi
+verdict.infected.summary = Ditemukan jejak kritis: agen sudah diunduh atau berjalan, agen memasang persistensi, atau launcher sedang berjalan sekarang. Anggap komputer ini sudah disusupi.
+verdict.exposed.title = Terpapar
+verdict.exposed.summary = Launcher memuat skrip berbahaya atau menghubungi insightjs.com, tetapi tidak ditemukan tanda bahwa agen sudah berjalan.
+verdict.no_traces.title = Tidak ada jejak ditemukan
+verdict.no_traces.summary = Tidak ditemukan jejak skrip berbahaya atau agen di file NIKKE yang ditemukan pemindaian ini.
+verdict.not_found.title = NIKKE tidak ditemukan
+verdict.not_found.summary = Tidak ditemukan instalasi NIKKE atau data launcher di lokasi yang diperiksa pemindaian ini.
+
+# Severity badges of the findings, and the tags of the report ("[CRITICAL]").
+severity.critical = KRITIS
+severity.warning = PERINGATAN
+severity.info = INFO
+
+# The kinds of locations a scan checks ("[NIKKE install] /path" in the report).
+kind.install = Instalasi NIKKE
+kind.launcher_data = Data launcher
+kind.wine_prefix = Prefiks Wine
+kind.user_profile = Profil pengguna
+# Groups of findings with no folder.
+group.running = Program yang berjalan
+group.coverage = Cakupan pemindaian
+
+# "Limits of this check", in the window and the report.
+report.caveat.debug_log = debug.log hilang jika folder NIKKE dihapus atau diinstal ulang. Pemeriksaan k2f.agent.state di data launcher tidak bergantung pada file itu.
+report.caveat.not_proof = Tidak menemukan apa pun bukan bukti bahwa komputer ini bersih.
+report.caveat.no_logs = Perintah yang dijalankan agen tidak meninggalkan log, jadi alat ini tidak dapat mengetahui apa yang dilakukan penyerang.
+
+# Protection: the hosts file, in Details and in the report.
+hosts.blocked = diblokir
+hosts.not_blocked = tidak diblokir
+hosts.unknown = tidak diketahui
+hosts.missing = File hosts tidak ada, jadi tidak ada yang diblokir.
+hosts.unreadable = File hosts tidak dapat dibaca, jadi tidak diketahui domain mana yang diblokirnya.
+hosts.block_lines_intro = Untuk memblokir domain yang tidak ditampilkan sebagai diblokir, tambahkan baris berikut ke file hosts:
+hosts.note = Mengedit file hosts memerlukan hak administrator. Alat ini tidak pernah mengeditnya.
+hosts.ip_note = IP 89.127.233.127 dan 89.126.250.172 tidak dapat diblokir di file hosts. Blokir keduanya di firewall atau router Anda.
+
+# "Checked: ..." in Details and "Locations checked: ..." in the report, joined with commas.
+report.checked.install_one = {n} instalasi NIKKE
+report.checked.install_other = {n} instalasi NIKKE
+report.checked.launcher_data_one = {n} folder data launcher
+report.checked.launcher_data_other = {n} folder data launcher
+report.checked.wine_prefix_one = {n} prefiks Wine
+report.checked.wine_prefix_other = {n} prefiks Wine
+report.checked.user_profile_one = {n} profil pengguna
+report.checked.user_profile_other = {n} profil pengguna
+report.checked.nothing = tidak ada lokasi untuk diperiksa
+
+# "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
+report.stats = {entries} entri dikunjungi ({folders} folder), {errors} kesalahan izin{skipped}, {seconds} detik.
+report.stats.skipped_one = , 1 drive jaringan dilewati
+report.stats.skipped_other = , {n} drive jaringan dilewati
+report.stats.cap = Batas jumlah entri tercapai, jadi beberapa folder tidak dikunjungi.
+
+# The text report (CLI output, "Copy report" and "Save report...").
+report.scan_of = Yang dipindai: {scope}
+report.started = Dimulai: {time}
+report.verdict = KESIMPULAN: {verdict}
+report.what_happened = APA YANG TERJADI
+# One answer of "What happened": the question and its reply (Yes, No...).
+report.answer = {question} {reply}.
+report.agent_runs = Aktivitas agen di log:
+report.payload_build = Versi file agen: {build}
+report.what_to_do = YANG HARUS DILAKUKAN
+report.open = Buka: {path}
+report.details = DETAIL
+report.locations_checked = Lokasi yang diperiksa: {summary}
+report.exposure_heading = {heading}:
+report.exposure_none = {heading}: tidak ditemukan.
+report.exposure_item = {what}: {path}
+report.folders_checked = Folder yang diperiksa:
+report.no_findings = Tidak ada temuan.
+report.protection = PERLINDUNGAN (file hosts: {path})
+report.protection_note = Ini bukan pemeriksaan infeksi. Bagian ini menunjukkan apakah domain diblokir.
+report.domain_state = {domain}: {state}
+report.limits = BATASAN PEMERIKSAAN INI
+report.write_up = Analisis lengkap: {url}
+report.scan_stats = Statistik pemindaian: {stats}
+# Where a finding was found: "NIKKE install: /path".
+report.location = {label}: {path}
+
+# The lines of a finding, in Details and in the report.
+details.meaning = Artinya: {text}
+details.found_in = Ditemukan di: {location}
+details.path = Jalur: {path}
+details.time = Waktu: {time}
+# A registry key or a text to copy: "Registry key: HKCU\...".
+details.copy = {label}: {text}
+details.copy_label.registry = Kunci registri
+details.copy_label.text = Teks
+
+# Times read from the logs. Log times use the clock of the computer that ran the launcher.
+time.local = {time} (waktu lokal)
+time.local_no_year = {time} (waktu lokal, tahun tidak dicatat)
+
+# "What happened": four questions, each with a reply and the reasons.
+answer.yes = Ya
+answer.no = Tidak
+answer.cannot_tell = Tidak dapat dipastikan
+answer.partly = Sebagian
+# A finding title used as one reason.
+answer.finding = {title}.
+answer.ran.question = Apakah malware berjalan di komputer ini?
+answer.ran.nothing_checked = Tidak ditemukan instalasi NIKKE atau data launcher, jadi tidak ada yang dapat diperiksa.
+answer.ran.no_agent_log = Tidak ada log yang menunjukkan agen itu sendiri mulai berjalan, tetapi log dapat dihapus atau terpotong.
+answer.ran.loader = Launcher memuat skrip berbahaya, tetapi tidak ditemukan jejak agen.
+answer.ran.act_as_if = Agen hanya dikirim pada beberapa kali launcher dibuka, paling lambat mulai 23 Oktober 2026. Jika launcher dibuka pada tanggal itu atau sesudahnya, anggap agen sudah berjalan.
+answer.ran.nothing = Tidak ditemukan jejak skrip berbahaya atau agen.
+answer.ran.no_install = Folder instalasi NIKKE tidak ditemukan, jadi debug.log dan log unduhan tidak diperiksa.
+answer.ran.gaps = Sebagian pemindaian ini tidak dapat dilakukan. Lihat "Yang tidak dapat diperiksa pemindaian ini" di Detail.
+answer.ran.quick = Ini adalah pemindaian cepat, yang hanya membuka folder hingga kedalaman {depth} tingkat. Pemindaian penuh juga memeriksa folder yang lebih dalam.
+answer.active.question = Apakah masih ada yang aktif?
+answer.active.launcher = Launcher NIKKE sedang berjalan sekarang. Selama launcher berjalan, penyerang dapat mengirim perintah kepadanya.
+answer.active.dll_loaded = DLL malware saat ini dimuat di {programs}.
+answer.active.registry = Kunci registri yang membuat browser memuat DLL malware masih terpasang.
+answer.active.none = Launcher tidak berjalan, dan tidak ada DLL yang terpasang atau diatur untuk dimuat.
+answer.clean.question = Apakah ada yang perlu dibersihkan?
+answer.clean.dll_folder = Folder DLL {browser}: {path}
+answer.clean.registry = Kunci registri HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+answer.clean.leftover = Kunci registri HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04} yang kosong, sisa setelah malware menghapus jalur DLL dari kunci itu.
+answer.clean.legacy = File DLL versi lama di {path}
+answer.clean.temp = File k2f di {path}
+answer.clean.cache = Cache launcher, yang menyimpan jejak malware: {path}
+answer.clean.none_cache = Tidak ditemukan file yang ditinggalkan malware. Tetap hapus cache launcher (tbs_cache) sebelum Anda membuka launcher lagi: cache itu masih dapat menyimpan skrip berbahaya dari sebelum perbaikan.
+answer.clean.none = Tidak ditemukan sisa apa pun dari malware.
+answer.protected.question = Apakah Anda sudah terlindungi untuk lain kali?
+answer.protected.not_checked = File hosts tidak diperiksa.
+answer.protected.domain = {domain}: {state} di file hosts.
+answer.protected.ip = File hosts tidak dapat memblokir alamat IP, dan pemindaian ini tidak dapat memeriksa firewall. Blokir 89.127.233.127 dan 89.126.250.172 di firewall atau router Anda.
+
+# The agent runs found in the logs, one line each: "{time}: {what}".
+run.line = {time}: {what}
+run.line_from = {time}: {what} (dari {file})
+run.no_time = waktu tidak dicatat
+run.downloaded = launcher mengunduh agen
+run.downloaded_as = launcher mengunduh agen dan menyimpannya sebagai {file}
+run.adopted = agen berjalan untuk pertama kali di komputer ini dan membuat ID-nya
+run.resumed = agen berjalan lagi dengan ID yang disimpannya
+run.started = agen mengirim nama komputer kepada penyerang
+run.started_as = agen mengirim nama komputer {host} kepada penyerang
+
+# "Payload build": one line per build of the agent file. The parts follow each other on one line.
+build.no_etag = Tanpa ETag
+build.uploaded = , diunggah pada {time}
+build.last_modified = , terakhir diubah pada {time}
+build.size = , {size} byte
+build.known = , salah satu dari {n} versi yang dikenal.
+build.unknown = . Ini bukan salah satu dari {n} versi yang dikenal.
+build.received = Launcher menerimanya pada {time}.
+
+# Buttons shared by several screens.
+common.copy = Salin
+common.copy_command = Salin perintah
+common.copy_key_path = Salin jalur kunci
+common.copy_hosts_path = Salin jalur hosts
+common.copy_lines = Salin baris ini
+common.copy_list = Salin daftar ini
+# Two names joined, as in "Remove the Chrome and Edge DLL".
+common.and = {a} dan {b}
+common.files_one = {n} file
+common.files_other = {n} file
+
+# "What to do": the steps. Each title is followed by its texts.
+step.scan_folder.title = Pindai folder tempat NIKKE terinstal
+step.scan_folder.windows = Jika NIKKE terinstal di lokasi yang tidak diperiksa pemindaian ini, misalnya di drive lain, pindai folder itu dengan "Pindai folder...". Di PowerShell, dari folder tempat program ini berada, perintah ini juga dapat memindainya. Ganti D:\\Games\\NIKKE dengan folder NIKKE Anda.
+step.scan_folder.other = Jika NIKKE terinstal di lokasi yang tidak diperiksa pemindaian ini, misalnya di drive lain, pindai folder itu: "Pindai folder..." di jendela, atau nikke-check --cli <folder> di terminal.
+step.full_scan.title = Jalankan pemindaian penuh
+step.full_scan.intro = Ini adalah pemindaian cepat, yang hanya membuka folder hingga kedalaman {depth} tingkat. Jika Anda tidak tahu lokasi NIKKE, atau mungkin ada salinan lama di folder yang lebih dalam, pemindaian penuh membuka setiap folder di setiap drive lokal. Pemindaian ini bisa memakan waktu lama pada drive berukuran besar.
+step.full_scan.powershell = Di PowerShell, dari folder tempat program ini berada:
+step.full_scan.terminal = Di terminal: nikke-check --cli --full
+step.close.title_launcher = Tutup launcher
+step.close.title_programs = Tutup program yang menjalankan malware
+step.close.launcher = Launcher NIKKE sedang berjalan. Selama launcher berjalan, penyerang dapat mengirim perintah ke komputer ini. Tutup launcher sekarang dan putuskan koneksi komputer ini dari jaringan.
+step.close.dll_loaded_one = {programs} sedang memuat DLL malware. Tutup program itu jika bisa. Memulai ulang Windows di langkah selanjutnya akan melepas DLL dari semua program.
+step.close.dll_loaded_other = {programs} sedang memuat DLL malware. Tutup program-program itu jika bisa. Memulai ulang Windows di langkah selanjutnya akan melepas DLL dari semua program.
+step.close.explorer = Jangan akhiri explorer.exe: program ini menjalankan bilah tugas dan desktop. Memulai ulang Windows akan melepas DLL dari explorer.exe.
+step.close.programs = Program yang harus diakhiri: {programs}.
+step.close.task_manager = Jika program tidak mau tertutup, buka Pengelola Tugas (Ctrl+Shift+Esc), cari program itu di tab Detail, pilih, lalu klik Akhiri tugas.
+step.close.pkill = Jika launcher tidak mau tertutup, jalankan perintah ini di terminal:
+step.save.title = Simpan laporan sebelum Anda menghapus apa pun
+# The first text of this step is these sentences, one after the other.
+step.save.record = Laporan ini adalah catatan dari apa yang ditemukan pemindaian ini.
+step.save.agent_state = Menghapus tbs_cache juga menghapus jejak k2f.agent.state.
+step.save.cache_traces = Menghapus tbs_cache juga menghapus jejak yang ditemukan pemindaian ini di dalamnya.
+step.save.restart = Memulai ulang Windows di langkah berikutnya akan menutup jendela ini.
+step.save.hide = Aktifkan "Sembunyikan info saya" (--redact di baris perintah) sebelum Anda membagikan laporan: opsi ini mengganti nama komputer, nama pengguna, ID agen, dan folder home Anda di laporan yang disalin atau disimpan. Jendela tetap menampilkannya.
+step.dll.title_files = Hapus DLL {browsers}
+step.dll.title_leftover = Hapus sisa kunci registri
+step.dll.title_key = Hapus kunci registri
+step.dll.offline_loaded = Biarkan komputer ini tetap offline sampai langkah ini selesai: saat ini ada program yang memuat DLL tersebut.
+step.dll.offline_key = Biarkan komputer ini tetap offline sampai langkah ini selesai: selama kunci ini terpasang, browser memuat DLL setiap kali dijalankan.
+step.dll.order = Lakukan langkah-langkah ini sesuai urutan. Windows mengunci DLL sampai Windows dimulai ulang, jadi hapus kunci registri lebih dulu.
+step.dll.delete_key = Hapus kunci registri. Buka Editor Registri (tekan Win+R, ketik regedit, lalu tekan Enter), tempel jalur kunci di bawah ini ke bilah alamat di bagian atas, lalu tekan Enter. Klik kanan kunci yang terpilih di panel kiri, lalu pilih Hapus.
+step.dll.leftover = Kunci yang kosong adalah sisa: malware menghapus jalur DLL tetapi membiarkan kuncinya. Hapus kunci itu dengan cara yang sama.
+step.dll.restart = Mulai ulang Windows. Lalu buka alat ini lagi dan jalankan pemindaian: hasilnya menunjukkan apa yang masih perlu dihapus.
+step.dll.wine_files = File ini berada di dalam prefiks Wine. Tutup dulu launcher dan semua program lain dari prefiks itu.
+step.dll.wine_key = Kunci ini berada di dalam prefiks Wine. Tutup dulu launcher dan semua program lain dari prefiks itu.
+step.dll.drive = File ini berada di drive Windows yang terlihat dari sistem ini. Windows tersebut tidak sedang berjalan, jadi DLL tidak terkunci dan Anda dapat menghapusnya dari sini. Jika sistem ini tidak dapat menghapus file di drive itu (fitur Startup cepat atau Fast Startup Windows membuat drive itu hanya bisa dibaca), lakukan langkah ini dari Windows tersebut: hapus kunci, mulai ulang, lalu hapus file.
+step.dll.delete_folder = Hapus folder DLL di bawah ini, yang namanya terdiri dari 64 karakter heksadesimal. Biarkan isi lain folder PlatformExperienceHelper: Chrome menyimpan platform_experience_helper.exe dan LoadFeatures miliknya sendiri di sana.
+step.dll.delete_folder_after_restart = Setelah Windows dimulai ulang, hapus folder DLL di bawah ini, yang namanya terdiri dari 64 karakter heksadesimal. Biarkan isi lain folder PlatformExperienceHelper: Chrome menyimpan platform_experience_helper.exe dan LoadFeatures miliknya sendiri di sana.
+step.dll.delete_legacy = Di folder di bawah ini, hapus hanya platform_experience_helper.dll, platform_experience_helper.dll.old, dan old-clsid.txt, mana saja yang ada. Jangan hapus platform_experience_helper.exe: file itu milik Chrome.
+step.dll.delete_legacy_after_restart = Di folder di bawah ini, setelah Windows dimulai ulang, hapus hanya platform_experience_helper.dll, platform_experience_helper.dll.old, dan old-clsid.txt, mana saja yang ada. Jangan hapus platform_experience_helper.exe: file itu milik Chrome.
+step.dll.delete_file = Hapus file DLL di bawah ini.
+step.dll.delete_file_after_restart = Setelah Windows dimulai ulang, hapus file DLL di bawah ini.
+# Follows one of the three "delete" texts above, on Windows.
+step.dll.in_use = Jika Windows menyatakan file sedang digunakan, mulai ulang Windows lalu hapus file itu lagi.
+step.dll.wine_regedit = Hapus kunci registri di file user.reg milik prefiks itu. Buka regedit Wine di prefiks itu dengan perintah di bawah ini, masuk ke HKEY_CURRENT_USER\\Software\\Classes\\CLSID, lalu hapus kunci {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+step.dll.protontricks = Tanpa Wine terinstal, seperti di Steam Deck, protontricks membuka regedit di prefiks Proton ini:
+step.dll.drive_key = Jalankan Windows tersebut, lalu hapus kunci registri di bawah ini, juga salinan WOW6432Node jika ada: pemindaian ini tidak dapat membaca registri Windows tersebut. Buka Editor Registri (tekan Win+R, ketik regedit, lalu tekan Enter), tempel jalur kunci ke bilah alamat di bagian atas, lalu tekan Enter. Klik kanan kunci yang terpilih di panel kiri, lalu pilih Hapus.
+step.dll.scan_again = Setelah itu, pindai lagi: temuan ini seharusnya sudah hilang.
+step.dll.defender = Microsoft Defender tidak mendeteksi DLL ini di satu komputer yang terinfeksi, jadi hasil pemindaian antivirus yang bersih tidak menunjukkan bahwa DLL ini sudah hilang.
+step.cache.title = Bersihkan cache launcher
+step.cache.intro = Tutup launcher terlebih dahulu. Lalu hapus folder tbs_cache, yaitu cache browser bawaan launcher. Folder ini masih dapat menyimpan skrip berbahaya dari sebelum perbaikan, dan launcher akan memuatnya lagi.
+step.cache.none = Pemindaian ini tidak menemukan folder data launcher. Di Windows, lokasinya adalah %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt untuk launcher HMT), atau drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache di dalam prefiks Proton atau Wine.
+step.password.title = Ubah kata sandi Anda dari perangkat lain
+step.password.intro_infected = Gunakan ponsel atau komputer lain yang tidak pernah menjalankan launcher NIKKE. Selama agen berjalan, perintahnya dapat membaca file dan data browser di komputer ini. Ubah atau ganti hal-hal berikut:
+step.password.intro_exposed = Agen dikirim paling lambat mulai 23 Oktober 2026, dan hanya pada beberapa kali launcher dibuka. Jika launcher dibuka pada tanggal itu atau sesudahnya, anggap agen sudah berjalan: dari ponsel atau komputer lain yang tidak pernah menjalankan launcher, ubah atau ganti hal-hal berikut:
+step.password.title_maybe = Ubah kata sandi NIKKE Anda jika launcher dibuka pada 23 Oktober atau sesudahnya
+step.password.maybe = Jika launcher dibuka pada 23 Oktober 2026 atau sesudahnya, tetap ubah kata sandi NIKKE / Level Infinite Anda, dari ponsel atau komputer lain yang tidak pernah menjalankan launcher.
+step.password.not_opened = Pemindaian ini hanya memeriksa apakah file-file ini ada, tanpa membukanya.
+# The list of accounts and secrets to change ("Copy this list" copies it).
+step.password.first = Akun NIKKE / Level Infinite Anda terlebih dahulu, lalu email, Discord, dan layanan perbankan.
+step.password.browsers = Semua kata sandi yang tersimpan di browser Anda.
+step.password.browser_one = Semua kata sandi yang tersimpan di {browser} (profil {profiles}).
+step.password.browser_other = Semua kata sandi yang tersimpan di {browser} (profil {profiles}).
+step.password.sessions = Keluar dari semua sesi di layanan tersebut. Agen dapat mengumpulkan cookie browser, dan cookie yang dicuri bisa dipakai tanpa kata sandi.
+step.password.crypto = Jika Anda memiliki mata uang kripto, pindahkan ke dompet baru dengan frasa pemulihan (seed phrase) baru yang dibuat di perangkat lain itu.
+step.password.wallet = {wallet} di {browser} (profil {profile}): pindahkan dana ke dompet baru dengan frasa pemulihan (seed phrase) baru, yang dibuat di perangkat lain itu.
+step.password.tokens = Cabut token API dan kunci SSH yang tersimpan di komputer ini.
+step.password.secret = Cabut dan ganti: {what}, {path}.
+step.password.other = Kata sandi, token API, kunci SSH, atau dompet lain yang tersimpan di komputer ini.
+step.password.wine = Di Wine, agen dapat membaca seluruh folder home Anda melalui drive Z:, serta variabel lingkungan proses launcher, bukan hanya prefiks Wine.
+step.block.title_domains = Blokir domain
+step.block.title_ips = Blokir alamat IP penyerang
+step.block.all_blocked = File hosts Anda memblokir ketiga domain.
+step.block.notepad = Buka menu Mulai, ketik Notepad, klik kanan Notepad, lalu pilih "Jalankan sebagai administrator". Di Notepad, pilih File > Buka, tempel jalur file hosts di bawah ini ke kotak Nama file, lalu tekan Enter.
+step.block.paste = Tempel baris berikut di akhir file, lalu simpan:
+step.block.tee = Jalankan perintah ini di terminal. Perintah ini menambahkan baris ke /etc/hosts dan meminta kata sandi Anda.
+# Follows the text above, outside macOS.
+step.block.deck = Di Steam Deck, atur kata sandi dengan passwd terlebih dahulu jika Anda belum pernah melakukannya.
+step.block.scan_again = Setelah itu, pindai lagi: bagian Perlindungan di Detail akan menampilkan setiap domain sebagai diblokir.
+step.block.ips = File hosts tidak dapat memblokir alamat IP. Blokir 89.127.233.127 dan 89.126.250.172 di firewall atau router Anda.
+step.block.firewall = Untuk menambahkan aturan firewall Windows, klik kanan tombol Mulai, pilih Terminal (Admin) atau Windows PowerShell (Admin), lalu jalankan:
+step.block.macos = Di macOS, blokir alamat itu di pengaturan router Anda.
+step.block.ufw = Dengan ufw, jalankan perintah ini. Aturan ini tidak memblokir apa pun selama ufw nonaktif: sudo ufw status harus menampilkan "Status: active", dan sudo ufw enable akan mengaktifkannya. Tanpa ufw, blokir alamat itu di pengaturan router Anda.
+step.wait.title = Jangan buka launcher sampai Level Infinite mengonfirmasi perbaikannya
+step.wait.servers = Beberapa server Level Infinite masih mengirim file berbahaya pada 3 November 2026. Jika launcher dibuka sebelum perbaikan, skrip itu dapat dimuat lagi.
+step.wait.reinstall = Agen dapat menjalankan perintah apa pun, jadi menginstal ulang sistem operasi adalah cara paling aman untuk memastikan komputer ini bersih.
+
+# Details: the groups of findings.
+section.proof = Bukti malware sudah berjalan
+section.cleanup = Yang perlu dibersihkan
+section.signs = Tanda terpapar
+section.info = Informasi
+section.coverage = Yang tidak dapat diperiksa pemindaian ini
+
+# Details: "What this means: ..." for each kind of finding.
+meaning.agent_ran = Agen berjalan di dalam launcher. Selama launcher terbuka, penyerang dapat mengendalikan komputer ini.
+meaning.payload_downloaded = Launcher menerima agen dari server penyerang.
+meaning.payload_file = Salinan agen masih ada di folder log launcher.
+meaning.agent_state = Agen menyimpan ID-nya di penyimpanan browser launcher, jadi agen sudah berjalan setidaknya sekali.
+meaning.agent_server = Launcher menghubungi server yang mengirim agen, jadi launcher setidaknya sudah sampai tahap meminta agen.
+meaning.loader_cached = Skrip berbahaya berjalan di launcher. Hal ini saja tidak menunjukkan bahwa agen sudah dikirim.
+meaning.launcher_contacted = Launcher menghubungi domain penyerang.
+meaning.chrome_dll = Browser memuat DLL ini saat dijalankan, sehingga malware dapat berjalan lagi tanpa launcher. Malware membuat folder Chrome meskipun Chrome tidak terinstal.
+meaning.registry_key = Kunci ini membuat browser memuat DLL malware.
+meaning.registry_leftover = Jalur DLL sudah dihapus dari kunci ini, tetapi kuncinya masih ada. Hapus kunci ini.
+meaning.legacy_dll = Versi agen yang lebih lama menaruh DLL-nya di sini.
+meaning.dll_loaded = Program-program ini sedang menjalankan DLL malware. Windows tetap memuatnya sampai program ditutup atau Windows dimulai ulang.
+meaning.temp_file = Agen menulis file ini saat mengumpulkan kredensial browser atau tangkapan layar.
+meaning.launcher_running = Selama launcher berjalan, penyerang dapat mengirim perintah kepadanya.
+meaning.coverage = Sebagian pemindaian ini tidak dapat dilakukan. Teks di atas menjelaskan apa yang harus dilakukan.
+meaning.info = Hanya konteks. Tidak mengubah kesimpulan.
+
+# Details: "Your data the malware could reach".
+exposure.title = Data Anda yang dapat dijangkau malware
+exposure.note = Pemindaian ini hanya memeriksa apakah file-file ini ada, tanpa membukanya. Selama agen berjalan, perintahnya dapat membaca file-file ini.
+exposure.home_note = Folder home komputer ini diperiksa karena ditemukan prefiks Wine. Jika prefiks yang dipindai pernah berjalan di komputer lain, periksa komputer tersebut.
+exposure.saved_passwords = Kata sandi tersimpan
+exposure.wallets = Ekstensi dompet kripto
+exposure.secrets = File rahasia
+# {files} are file names such as "Login Data, key4.db".
+exposure.login = {browser}, profil {profile} ({files})
+exposure.wallet = {wallet} ({id}) di {browser}, profil {profile}
+# What each secret file found holds.
+secret.aws = Kredensial AWS
+secret.github_cli = Token GitHub CLI
+secret.git = Kredensial Git
+secret.npm = Konfigurasi npm, dapat berisi token
+secret.docker = Login registri Docker
+secret.kubernetes = Konfigurasi Kubernetes
+secret.gcloud = Kredensial Google Cloud
+secret.azure = Token Azure CLI
+secret.claude = Kredensial Claude Code
+secret.codex = Kredensial Codex CLI
+secret.gemini = Kredensial Gemini CLI
+secret.copilot = Konfigurasi MCP GitHub Copilot CLI
+secret.opencode = Kredensial opencode
+secret.filezilla = Server tersimpan FileZilla
+secret.netrc = Login netrc
+secret.pypi = Token PyPI
+secret.crates = Token crates.io
+secret.vault = Token HashiCorp Vault
+secret.terraform = Token Terraform
+secret.pulumi = Kredensial Pulumi
+secret.kaggle = Kunci API Kaggle
+secret.huggingface = Token Hugging Face
+secret.rclone = Konfigurasi rclone
+secret.s3cmd = Konfigurasi s3cmd
+secret.databricks = Konfigurasi Databricks
+secret.oci = Konfigurasi Oracle Cloud
+secret.gnupg = Kunci privat GnuPG
+secret.env = File .env
+secret.ssh = Kunci privat SSH
+
+# Findings: a title and a detail each. {file} is a log file name, {files} is a count such as "2 files".
+finding.no_install.title = Folder instalasi NIKKE tidak ditemukan
+finding.no_install.detail = Data launcher ditemukan, tetapi folder instalasinya tidak, jadi debug.log dan log unduhan tidak diperiksa. Jika Anda tahu lokasi instalasi NIKKE, pindai folder itu: "Pindai folder..." di jendela, atau nikke-check --cli <folder>.
+finding.quick_scan.title = Ini adalah pemindaian cepat
+finding.quick_scan.detail_windows = Pemindaian ini membaca jalur instalasi yang dicatat launcher di registri, data launcher, dan setiap folder hingga {depth} tingkat di bawah root setiap drive lokal. Folder NIKKE yang lebih dalam dari {depth} tingkat dan tidak lagi dicatat launcher hanya dapat ditemukan dengan pemindaian penuh ("Pemindaian penuh" di jendela, atau nikke-check --cli --full) atau dengan "Pindai folder...".
+finding.quick_scan.detail_macos = Pemindaian ini membaca folder prefiks Wine yang umum, jalur instalasi yang dicatat prefiks tersebut, dan setiap folder hingga {depth} tingkat di bawah /. Folder NIKKE yang lebih dalam dari {depth} tingkat dan tidak lagi dicatat launcher hanya dapat ditemukan dengan pemindaian penuh ("Pemindaian penuh" di jendela, atau nikke-check --cli --full) atau dengan "Pindai folder...".
+finding.quick_scan.detail_linux = Pemindaian ini membaca folder prefiks Wine yang umum, jalur instalasi yang dicatat prefiks tersebut, dan setiap folder hingga {depth} tingkat di bawah /, folder home Anda, serta setiap drive di /mnt, /media, dan /run/media. Folder NIKKE yang lebih dalam dari {depth} tingkat dan tidak lagi dicatat launcher hanya dapat ditemukan dengan pemindaian penuh ("Pemindaian penuh" di jendela, atau nikke-check --cli --full) atau dengan "Pindai folder...".
+finding.unreadable.title = Beberapa folder tidak dapat dibaca
+finding.unreadable.detail = Pemindaian tidak diizinkan membuka folder ini, jadi isinya tidak diperiksa. Di macOS, berikan Akses Disk Penuh kepada Terminal (atau aplikasi yang Anda gunakan untuk menjalankan alat ini) di Pengaturan Sistem > Privasi & Keamanan, lalu pindai lagi. Di sistem lain, pindai lagi sebagai pengguna yang dapat membacanya.
+finding.network.title = Drive jaringan tidak dipindai
+finding.network.detail = Pemindaian komputer melewati drive jaringan dan mount jarak jauh, karena membacanya lambat dan drive yang terputus dapat menghentikan pemindaian. Jika NIKKE terinstal di salah satunya, pindai drive itu dengan "Pindai folder..." atau nikke-check --cli <folder>.
+finding.log_server.title = {file} menyebut server agen
+finding.log_server.detail = {file} menyebut analytics.insightjs.com atau insight.bundle. Server itu mengirim agen, jadi launcher setidaknya sudah sampai tahap memintanya.
+finding.log_mention.title = {file} menyebut insightjs
+finding.log_mention.detail = {file} menyebut insightjs, domain skrip loader berbahaya. Tidak ada baris yang menyebut server agen (analytics.insightjs.com atau insight.bundle), jadi hal ini saja tidak menunjukkan bahwa agen sudah diunduh.
+finding.debug_unreadable.title = debug.log tidak dapat dibaca
+finding.debug_unreadable.detail = Launcher/intl_service/debug.log ada, tetapi pemindaian ini tidak diizinkan membukanya, jadi tidak dapat diperiksa apakah agen sudah berjalan. Pindai lagi sebagai pengguna yang dapat membacanya.
+finding.agent_ran.title = Agen malware sudah berjalan
+finding.agent_ran.detail = debug.log menunjukkan agen akses jarak jauh mulai berjalan di dalam launcher (k2f_chan registered). Selama launcher terbuka, penyerang dapat menjalankan perintah di komputer ini.
+finding.payload_file.title = File malware masih ada di disk
+finding.payload_file.detail = File di folder log launcher ini berisi bytecode LuaJIT. Launcher menyimpan agen yang diunduh (insight.bundle) dengan nama file log tinyget.
+finding.downloaded.title = Launcher mengunduh malware
+finding.downloaded.detail = {file} mencatat launcher mengunduh insight.bundle dari analytics.insightjs.com. File itu adalah agen akses jarak jauh.
+finding.download_attempt.title = Launcher meminta malware, tetapi tidak ada unduhan yang selesai
+finding.download_attempt.detail = {file} mencatat permintaan insight.bundle dari analytics.insightjs.com, tetapi tidak ada baris yang menunjukkan permintaan itu selesai. Permintaan yang gagal mencatat curl_error dan total=0. Loader meminta agen, tetapi hal ini saja tidak menunjukkan bahwa agen sudah diterima: debug.log menunjukkan apakah agen berjalan.
+finding.install_found.title = Instalasi NIKKE ditemukan di {path}
+finding.install_found.debug_missing = Launcher/intl_service/debug.log tidak ditemukan. File itu mungkin sudah dihapus, atau launcher tidak pernah dijalankan dari folder ini.
+finding.install_found.debug_unreadable = Launcher/intl_service/debug.log ada, tetapi tidak dapat dibaca (tidak ada izin).
+finding.install_found.debug_checked = Launcher/intl_service/debug.log sudah diperiksa. File ini mencatat setiap kali launcher dibuka sejak file ini dibuat.
+# {note} is one of the three texts above.
+finding.install_found.written = {note} Terakhir ditulis pada {time}.
+finding.data_link.title = Folder data launcher berupa tautan dan tidak dibaca
+finding.data_link.detail = Folder ini mengarah ke {target}, yang tidak ada, berupa root drive, atau berupa folder di atas tautan ini, jadi file di dalamnya tidak diperiksa. Pindai folder data launcher yang sebenarnya dengan "Pindai folder..." atau nikke-check --cli <folder>.
+finding.data_link.unknown_target = target yang tidak diketahui
+finding.agent_state.title = Agen malware meninggalkan jejak di data launcher
+finding.agent_state.detail = k2f_chan (nama saluran jembatan milik agen) atau k2f.agent.state (ID yang disimpan agen) muncul di {files} dalam data launcher. Ini menunjukkan bahwa agen sudah berjalan.
+finding.agent_server.title = Launcher menghubungi server agen
+finding.agent_server.detail = analytics.insightjs.com tercatat di {files} status jaringan. Server itu mengirim agen (insight.bundle) dan menerima laporan rutinnya (check-in). Saat launcher dibuka dan loader berjalan tanpa agen, yang tercatat hanya insightjs.com.
+finding.loader_cached.title = Launcher memuat skrip berbahaya
+finding.loader_cached.detail = Alamat loader insightjs.com muncul di {files} cache browser bawaan launcher. Skrip sisipan itu sudah berjalan; hal ini saja tidak menunjukkan bahwa agen sudah diunduh.
+finding.network_state.title = Launcher terhubung ke insightjs.com
+finding.network_state.detail = insightjs.com tercatat di {files} status jaringan, jadi browser bawaan launcher pernah menghubunginya.
+finding.data_mention.title = Data launcher menyebut insightjs.com
+finding.data_mention.detail = insightjs.com muncul di {files} dalam data launcher.
+finding.data_clean.title = Tidak ada jejak di data launcher
+finding.data_clean.detail = {files} diperiksa.
+# {browser} is a browser name such as Chrome or Edge.
+finding.persistence.title = Persistensi {browser} terpasang
+finding.persistence.dll = Folder malware ada di data pengguna {browser} dan berisi platform_experience_helper.dll, yang dimuat {browser} melalui pendaftaran COM HKCU yang dibajak.
+finding.persistence.hash_dir = Folder malware ada di data pengguna {browser}: subfolder yang namanya terdiri dari 64 karakter heksadesimal (SHA-256), tempat malware menaruh platform_experience_helper.dll. DLL itu sendiri tidak ditemukan, jadi mungkin sudah dihapus.
+# For Chrome, {text} is one of the two texts above.
+finding.persistence.chrome = {text} Malware membuat folder ini meskipun Chrome tidak terinstal.
+finding.helper_folder.title = Folder Platform Experience Helper {browser}
+finding.helper_folder.chrome = Folder ini tidak berisi platform_experience_helper.dll dan tidak ada subfolder yang namanya terdiri dari 64 karakter heksadesimal. Hal ini sesuai dengan Platform Experience Helper milik Chrome sendiri (platform_experience_helper.exe, LoadFeatures), yang disimpan di sini oleh instalasi Chrome per pengguna. Ini bukan tanda infeksi.
+finding.helper_folder.other = Folder ini tidak berisi platform_experience_helper.dll dan tidak ada subfolder yang namanya terdiri dari 64 karakter heksadesimal, jadi tidak cocok dengan susunan folder malware. Ini bukan tanda infeksi.
+finding.legacy.title = File persistensi Chrome versi lama terpasang
+finding.legacy.detail = Folder Application\\PlatformExperienceHelper milik Chrome berisi file yang dihapus oleh kode pembersihan agen: platform_experience_helper.dll, platform_experience_helper.dll.old, atau old-clsid.txt. Versi agen yang lebih lama menaruh DLL-nya di sini. platform_experience_helper.exe milik Chrome sendiri di folder ini adalah file normal.
+finding.temp.title = File yang ditinggalkan malware di Temp
+finding.temp.detail = Agen menamai file sementaranya k2f-bcreds-* (kredensial browser yang dikumpulkan), k2f-keyscan-* (versi awal), dan k2f_screen_* (tangkapan layar .jpg, atau .png pada versi awal).
+finding.hex_id.title = File ID heksadesimal di Temp
+finding.hex_id.detail = File .tmp berukuran 22 byte di Temp berisi ID heksadesimal 22 karakter. Di komputer terinfeksi yang diteliti, file seperti ini ditulis satu detik sebelum agen diunduh. Perangkat lunak Tencent lain menulis file dengan nama yang sama (terlihat di prefiks Delta Force bertanggal 20 September 2026, sebelum file CDN diubah), jadi file ini saja bukan tanda infeksi.
+finding.registry.title = Persistensi registri ditemukan (pembajakan CLSID HKCU)
+# {detail} is one of the two "where" texts below.
+finding.registry.detail = {detail} Malware mendaftarkannya agar Google Chrome memuat DLL-nya. Salinan HKLM yang mengarah ke wpc.dll adalah bagian dari Windows dan normal.
+finding.registry_leftover.title = Sisa persistensi di registri (CLSID HKCU)
+finding.registry_leftover.detail = {detail} Nilai default-nya kosong atau tidak ada: agen memasang DLL lalu mencopotnya, yang mengosongkan nilai tetapi menyisakan kunci. DLL mungkin masih ada di disk. Salinan HKLM yang mengarah ke wpc.dll adalah bagian dari Windows dan normal.
+finding.registry.where_windows = Kunci {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32 ada di bawah HKCU (lihat di bawah).
+finding.registry.where_wine = user.reg, hive HKCU dari prefiks Wine ini, berisi kunci {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+finding.launcher_running.title = Launcher NIKKE sedang berjalan sekarang
+finding.launcher_running.detail = Segera tutup launcher (akhiri prosesnya jika tidak mau tertutup) dan putuskan koneksi dari jaringan. Selama launcher berjalan, penyerang dapat mengirim perintah ke komputer ini.
+finding.dll_loaded.title = DLL persistensi sedang dimuat sekarang
+finding.dll_loaded.detail = Program-program ini memuat platform_experience_helper.dll milik malware. Windows mengunci file itu sampai program ditutup, dan Chrome memuatnya lagi saat dijalankan berikutnya selama kunci HKCU masih ada. Hapus kunci registri, mulai ulang Windows, lalu hapus folder DLL.
+
+# "Show technical details": lines the tool writes among the lines quoted from files.
+evidence.luajit = Header bytecode LuaJIT (1B 4C 4A), {size} byte. Versi yang dikenal berukuran 205.135 byte, dan versi 23 Okt yang disimpan sebagai k2f.lua berukuran 165.108 byte.
+# One TransportSecurity entry. {host} is a domain, {time} a UTC time.
+evidence.hsts = Entri HSTS untuk {host}, terakhir diterima {time}
+evidence.hsts_no_time = Entri HSTS untuk {host}
+evidence.in_file = {file}: {text}
+evidence.empty_folder = (folder kosong)
+evidence.registry_value = {key}\\InprocServer32 (Default) = {value}
+evidence.value_not_set = (nilai tidak diatur)
+evidence.dll_loaded = PID {pid}: {program} ({exe}) memuat {dll}
+# The last line of a list that was cut.
+evidence.total = ... total {total}
+
+# "Open folder" and the other buttons that open a window, when it fails.
+open.gone = {path} sudah tidak ada.
+open.windows_only = {program} hanya ada di Windows.
+open.failed = pengelola file tidak dapat dibuka ({status})
+open.shell_execute = Kesalahan ShellExecute {code}
+
+# The window.
+ui.tab.happened = Apa yang terjadi
+ui.tab.todo = Yang harus dilakukan
+ui.tab.details = Detail
+ui.copied = Disalin
+ui.button.scan_computer = Pindai komputer ini
+ui.button.full_scan = Pemindaian penuh
+ui.button.scan_folder = Pindai folder...
+ui.button.scan_again = Pindai lagi
+ui.button.new_scan = Pemindaian baru
+ui.button.stop = Hentikan pemindaian
+ui.button.copy_report = Salin laporan
+ui.button.save_report = Simpan laporan...
+ui.button.see_todo = Lihat yang harus dilakukan
+ui.button.open_folder = Buka folder
+ui.button.task_manager = Buka Pengelola Tugas
+ui.button.registry_editor = Buka Editor Registri
+ui.button.copy_path = Salin jalur
+ui.button.copy_link = Salin tautan
+ui.button.open_link = Buka tautan
+ui.button.show = Tampilkan
+ui.button.hide = Sembunyikan
+ui.button.show_details = Tampilkan detail teknis
+ui.button.hide_details = Sembunyikan detail teknis
+ui.hide_info = Sembunyikan info saya
+ui.hide_info_note = "Sembunyikan info saya" berlaku untuk "Salin laporan" dan "Simpan laporan...". Jendela tetap menampilkan semuanya.
+ui.done = Selesai
+# File dialogs.
+ui.dialog.pick_folder = Pilih folder yang akan dipindai
+ui.dialog.save = Simpan laporan
+ui.dialog.text_files = Teks
+# One line shown above the screen.
+ui.notice.only_folders = Hanya folder yang dapat dipindai. Seret folder yang berisi file tersebut ke sini.
+ui.notice.stopped = Pemindaian dihentikan.
+ui.notice.saved = Laporan disimpan ke {path}.
+ui.notice.save_failed = Tidak dapat menyimpan laporan: {error}
+ui.notice.save_failed_plain = Tidak dapat menyimpan laporan.
+ui.notice.open_failed = Tidak dapat membukanya: {error}
+ui.notice.open_failed_plain = Tidak dapat membukanya.
+# Start screen. The helper's speech bubble comes first.
+ui.home.hint = Hai, saya MotherSphere. Mulailah dengan "Pindai komputer ini". Alat ini hanya membaca file: tidak menghapus apa pun dan tidak mengirim apa pun melalui jaringan.
+ui.home.title = Belum dipindai
+ui.home.computer = Pemindaian komputer
+ui.home.quick_windows = Membaca jalur instalasi yang dicatat launcher di registri, profil pengguna Anda, data launcher, serta setiap folder hingga kedalaman 5 tingkat di setiap drive lokal. Biasanya selesai dalam hitungan detik.
+ui.home.quick_macos = Membaca prefiks Wine, CrossOver, Whisky, Wineskin, dan Heroic serta jalur instalasi yang dicatatnya, dan setiap folder hingga 5 tingkat di bawah /, termasuk volume lokal. Volume jaringan dilewati.
+ui.home.quick_linux = Membaca setiap prefiks Wine dari Steam, Lutris, Heroic, Bottles, dan Faugus serta jalur instalasi yang dicatatnya, dan setiap folder hingga 5 tingkat di bawah /, folder home Anda, serta setiap drive di /mnt, /media, dan /run/media. Mount jaringan dilewati.
+ui.home.full = Pemindaian penuh membuka setiap folder di setiap drive lokal, untuk mencari folder NIKKE yang lebih dalam dari 5 tingkat dan tidak lagi dicatat launcher. Pemindaian ini bisa memakan waktu lama pada drive berukuran besar.
+ui.home.folder = Pemindaian folder
+ui.home.folder_text = Memindai satu folder beserta seluruh isinya, termasuk prefiks Wine di dalamnya.
+ui.home.drop = Anda juga dapat menyeret folder ke jendela ini.
+ui.home.no_dialog = Jika dialog pemilihan folder tidak terbuka, jalankan nikke-check --cli <folder> di terminal.
+# Scan screen.
+ui.scan.title = Memindai {target}
+ui.scan.elapsed = waktu berlalu
+ui.scan.searching = Mencari instalasi NIKKE dan prefiks Wine
+ui.scan.programs = Memeriksa program yang berjalan
+ui.scan.locations = Memeriksa lokasi yang ditemukan
+ui.scan.locations_one = Memeriksa 1 lokasi
+ui.scan.locations_other = Memeriksa {n} lokasi
+ui.scan.progress = {done} dari {total}
+ui.scan.hosts = Memeriksa file hosts
+ui.tile.items = Item dipindai
+ui.tile.folders = Folder
+ui.tile.locations = Lokasi ditemukan
+ui.tile.findings = Temuan sejauh ini
+ui.failed.windows = Pemindaian berhenti karena kesalahan internal. Coba lagi, atau jalankan {command} di PowerShell, dari folder tempat program ini berada, untuk melihat laporannya.
+ui.failed.other = Pemindaian berhenti karena kesalahan internal. Coba lagi, atau jalankan nikke-check --cli untuk melihat laporan di terminal.
+# Result screen.
+ui.happened.payload_build = Versi file agen
+ui.happened.agent_runs = Aktivitas agen di log
+ui.todo.hint = Lakukan langkah-langkah ini satu per satu, sesuai urutan. Tombol-tombolnya membuka folder atau alat yang tepat untuk Anda, tetapi Anda sendiri yang menghapus file. Program ini tidak pernah menghapus apa pun.
+ui.todo.note = Langkah-langkah ini disusun dari temuan pemindaian ini, sesuai urutan pengerjaannya. Tanda "Selesai" tidak disimpan.
+ui.tile.critical = Kritis
+ui.tile.warnings = Peringatan
+ui.tile.info = Info
+ui.tile.duration = Durasi
+ui.details.checked = Diperiksa: {summary}. Yang dipindai: {scope}.
+# A section title and its number of findings: "Information (3)".
+ui.details.section_count = {title} ({n})
+ui.details.hosts = File hosts: {path}. Ini bukan pemeriksaan infeksi: bagian ini menunjukkan apakah domain diblokir.
+ui.details.protection = Perlindungan
+ui.details.limits = Batasan pemeriksaan ini
+ui.details.locations = Lokasi yang diperiksa
+ui.details.none_found = Tidak ditemukan.
+ui.details.folders_checked = Folder yang diperiksa

@@ -3,48 +3,49 @@
 
 use std::fmt::Write;
 
-use crate::guide::{self, Action, EXPOSURE_NOTE, EXPOSURE_TITLE, Part, Section};
+use crate::guide::{self, Action, Part, Section};
+use crate::i18n::{Lang, msg, tr};
 use crate::locate::TargetKind;
-use crate::scan::{ATTACKER_IPS, COMPUTER_SCOPE, Finding, FindingKind, Group, HostsStatus, ScanResult, Verdict};
+use crate::scan::{COMPUTER_SCOPE, Finding, FindingKind, Group, HostsStatus, ScanResult, Verdict};
 
 pub const APP_NAME: &str = "NIKKE Launcher Check";
 pub const GIST_URL: &str = "https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5";
 
 /// What was scanned, with "quick scan" or "full scan" for this computer.
-pub fn scope(r: &ScanResult) -> String {
+pub fn scope(r: &ScanResult, lang: Lang) -> String {
     match (r.scope == COMPUTER_SCOPE, r.stats.depth_limit) {
-        (true, Some(_)) => format!("{} (quick scan)", r.scope),
-        (true, None) => format!("{} (full scan)", r.scope),
+        (true, Some(_)) => tr(lang, "report.scope.quick").into(),
+        (true, None) => tr(lang, "report.scope.full").into(),
         _ => r.scope.clone(),
     }
 }
 
-pub const ABOUT: &str = "On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.";
-
-pub const READ_ONLY: &str = "Read-only. No network access.";
-
-pub const CAVEATS: [&str; 3] = [
-    "debug.log is lost when the NIKKE folder is deleted or reinstalled. The k2f.agent.state check in the launcher data does not depend on it.",
-    "Finding nothing is not proof that the computer is clean.",
-    "The commands the agent ran leave no logs, so this tool cannot tell what the attacker did.",
-];
-
-pub fn headline(verdict: Verdict) -> &'static str {
-    match verdict {
-        Verdict::Infected => "Infected",
-        Verdict::Exposed => "Exposed",
-        Verdict::NoTraces => "No traces found",
-        Verdict::NotFound => "NIKKE not found",
-    }
+pub fn caveats(lang: Lang) -> [&'static str; 3] {
+    ["report.caveat.debug_log", "report.caveat.not_proof", "report.caveat.no_logs"].map(|k| tr(lang, k))
 }
 
-pub fn summary(verdict: Verdict) -> &'static str {
-    match verdict {
-        Verdict::Infected => "Critical traces were found: the agent was downloaded or ran, it left persistence, or the launcher is running now. Treat this computer as compromised.",
-        Verdict::Exposed => "The launcher loaded the malicious script or contacted insightjs.com, but no sign that the agent ran was found.",
-        Verdict::NoTraces => "No trace of the malicious script or the agent was found in the NIKKE files this scan located.",
-        Verdict::NotFound => "No NIKKE install or launcher data was found in the places this scan checked.",
-    }
+pub fn headline(verdict: Verdict, lang: Lang) -> &'static str {
+    tr(
+        lang,
+        match verdict {
+            Verdict::Infected => "verdict.infected.title",
+            Verdict::Exposed => "verdict.exposed.title",
+            Verdict::NoTraces => "verdict.no_traces.title",
+            Verdict::NotFound => "verdict.not_found.title",
+        },
+    )
+}
+
+pub fn summary(verdict: Verdict, lang: Lang) -> &'static str {
+    tr(
+        lang,
+        match verdict {
+            Verdict::Infected => "verdict.infected.summary",
+            Verdict::Exposed => "verdict.exposed.summary",
+            Verdict::NoTraces => "verdict.no_traces.summary",
+            Verdict::NotFound => "verdict.not_found.summary",
+        },
+    )
 }
 
 /// Lines to paste into the hosts file, for the domains it does not block yet.
@@ -56,26 +57,19 @@ pub fn block_lines(h: &HostsStatus) -> Vec<String> {
         .collect()
 }
 
-pub fn block_state(blocked: Option<bool>) -> &'static str {
-    match blocked {
-        Some(true) => "blocked",
-        Some(false) => "not blocked",
-        None => "unknown",
-    }
-}
-
-pub const BLOCK_LINES_INTRO: &str = "To block the domains that are not shown as blocked, add these lines to the hosts file:";
-
-pub const HOSTS_NOTE: &str = "Editing the hosts file needs administrator rights. This tool never edits it.";
-
-pub fn ip_note() -> String {
-    format!(
-        "The IPs {} and {} cannot be blocked in the hosts file. Block them in your firewall or router.",
-        ATTACKER_IPS[0], ATTACKER_IPS[1]
+pub fn block_state(blocked: Option<bool>, lang: Lang) -> &'static str {
+    tr(
+        lang,
+        match blocked {
+            Some(true) => "hosts.blocked",
+            Some(false) => "hosts.not_blocked",
+            None => "hosts.unknown",
+        },
     )
 }
 
 /// 1234567 to "1,234,567".
+// shortcut: comma groups in every language, use the language's separator if translators ask.
 pub fn thousands(n: u64) -> String {
     let digits = n.to_string();
     let mut out = String::with_capacity(digits.len() + digits.len() / 3);
@@ -89,43 +83,42 @@ pub fn thousands(n: u64) -> String {
 }
 
 /// "1 NIKKE install, 2 Wine prefixes, ..." for the targets that were checked.
-pub fn checked_summary(r: &ScanResult) -> String {
+pub fn checked_summary(r: &ScanResult, lang: Lang) -> String {
     let kinds = [
-        (TargetKind::InstallDir, "NIKKE install", "NIKKE installs"),
-        (TargetKind::LauncherData, "launcher data folder", "launcher data folders"),
-        (TargetKind::WinePrefix, "Wine prefix", "Wine prefixes"),
-        (TargetKind::UserProfile, "user profile", "user profiles"),
+        (TargetKind::InstallDir, "report.checked.install_one", "report.checked.install_other"),
+        (TargetKind::LauncherData, "report.checked.launcher_data_one", "report.checked.launcher_data_other"),
+        (TargetKind::WinePrefix, "report.checked.wine_prefix_one", "report.checked.wine_prefix_other"),
+        (TargetKind::UserProfile, "report.checked.user_profile_one", "report.checked.user_profile_other"),
     ];
     let parts: Vec<String> = kinds
         .iter()
         .filter_map(|(kind, one, many)| {
             let n = r.targets.iter().filter(|t| t.kind == *kind).count();
-            match n {
-                0 => None,
-                1 => Some(format!("1 {one}")),
-                _ => Some(format!("{n} {many}")),
-            }
+            (n > 0).then(|| msg(if n == 1 { one } else { many }).arg("n", n.to_string()).render(lang))
         })
         .collect();
-    if parts.is_empty() { "nothing to check".into() } else { parts.join(", ") }
+    if parts.is_empty() { tr(lang, "report.checked.nothing").into() } else { parts.join(", ") }
 }
 
-pub fn stats_line(r: &ScanResult) -> String {
+pub fn stats_line(r: &ScanResult, lang: Lang) -> String {
     let s = &r.stats;
-    let cap = if s.cap_hit {
-        " The entry limit was reached, so some folders were not visited."
-    } else {
-        ""
-    };
     let skipped = match s.skipped_mounts.len() {
         0 => String::new(),
-        1 => ", 1 network drive skipped".into(),
-        n => format!(", {n} network drives skipped"),
+        1 => tr(lang, "report.stats.skipped_one").into(),
+        n => msg("report.stats.skipped_other").arg("n", n.to_string()).render(lang),
     };
-    format!(
-        "{} entries visited ({} folders), {} permission errors{skipped}, {:.1} s.{cap}",
-        s.entries, s.folders, s.permission_errors, r.seconds
-    )
+    let mut line = msg("report.stats")
+        .arg("entries", s.entries.to_string())
+        .arg("folders", s.folders.to_string())
+        .arg("errors", s.permission_errors.to_string())
+        .arg("skipped", skipped)
+        .arg("seconds", format!("{:.1}", r.seconds))
+        .render(lang);
+    if s.cap_hit {
+        line.push(' ');
+        line.push_str(tr(lang, "report.stats.cap"));
+    }
+    line
 }
 
 /// The findings of one Details section, with the location group of each.
@@ -142,52 +135,53 @@ pub fn section(r: &ScanResult, s: Section) -> Vec<(usize, usize, &Group, &Findin
 }
 
 /// "NIKKE install: /path", the location a finding was found in.
-pub fn location(g: &Group) -> String {
+pub fn location(g: &Group, lang: Lang) -> String {
     match &g.path {
-        Some(p) => format!("{}: {}", g.label, p.display()),
-        None => g.label.clone(),
+        Some(p) => msg("report.location").arg("label", g.label.clone()).arg("path", p.display().to_string()).render(lang),
+        None => g.label.render(lang),
     }
 }
 
 /// The label of a finding's copy text.
-pub fn copy_label(f: &Finding) -> &'static str {
+pub fn copy_label(f: &Finding, lang: Lang) -> &'static str {
     match f.kind {
-        FindingKind::RegistryKey | FindingKind::RegistryLeftover => "Registry key",
-        _ => "Text",
+        FindingKind::RegistryKey | FindingKind::RegistryLeftover => tr(lang, "details.copy_label.registry"),
+        _ => tr(lang, "details.copy_label.text"),
     }
 }
 
-pub fn render(r: &ScanResult) -> String {
+pub fn render(r: &ScanResult, lang: Lang) -> String {
+    let t = |key| tr(lang, key);
     let mut out = String::new();
     let o = &mut out;
     let _ = writeln!(o, "{APP_NAME} {}", env!("CARGO_PKG_VERSION"));
-    let _ = writeln!(o, "Scan of: {}", scope(r));
-    let _ = writeln!(o, "Started: {}", r.started);
+    let _ = writeln!(o, "{}", msg("report.scan_of").arg("scope", scope(r, lang)).render(lang));
+    let _ = writeln!(o, "{}", msg("report.started").arg("time", r.started.as_str()).render(lang));
     let _ = writeln!(o);
-    let _ = writeln!(o, "VERDICT: {}", headline(r.verdict).to_uppercase());
-    let _ = writeln!(o, "{}", summary(r.verdict));
+    let _ = writeln!(o, "{}", msg("report.verdict").arg("verdict", headline(r.verdict, lang).to_uppercase()).render(lang));
+    let _ = writeln!(o, "{}", summary(r.verdict, lang));
     let _ = writeln!(o);
 
-    let _ = writeln!(o, "WHAT HAPPENED");
-    for a in guide::answers(r) {
-        let _ = writeln!(o, "  {} {}.", a.question, a.reply);
+    let _ = writeln!(o, "{}", t("report.what_happened"));
+    for a in guide::answers(r, lang) {
+        let _ = writeln!(o, "  {}", msg("report.answer").arg("question", a.question).arg("reply", a.reply).render(lang));
         for line in &a.lines {
             let _ = writeln!(o, "    - {line}");
         }
         if !a.runs.is_empty() {
-            let _ = writeln!(o, "    Agent runs in the logs:");
+            let _ = writeln!(o, "    {}", t("report.agent_runs"));
             for run in &a.runs {
                 let _ = writeln!(o, "      {run}");
             }
         }
     }
     for b in &r.builds {
-        let _ = writeln!(o, "  Payload build: {}", guide::build_line(b));
+        let _ = writeln!(o, "  {}", msg("report.payload_build").arg("build", guide::build_line(b, lang)).render(lang));
     }
     let _ = writeln!(o);
 
-    let _ = writeln!(o, "WHAT TO DO");
-    for (i, s) in guide::steps(r).iter().enumerate() {
+    let _ = writeln!(o, "{}", t("report.what_to_do"));
+    for (i, s) in guide::steps(r, lang).iter().enumerate() {
         let _ = writeln!(o, "  {}. {}", i + 1, s.title);
         for part in &s.parts {
             match part {
@@ -208,7 +202,7 @@ pub fn render(r: &ScanResult) -> String {
                         if let Action::Reveal(p) = a
                             && !s.parts.iter().any(|q| matches!(q, Part::Code(c) if *c == p.display().to_string()))
                         {
-                            let _ = writeln!(o, "     Open: {}", p.display());
+                            let _ = writeln!(o, "     {}", msg("report.open").arg("path", p.display().to_string()).render(lang));
                         }
                     }
                 }
@@ -217,31 +211,32 @@ pub fn render(r: &ScanResult) -> String {
         let _ = writeln!(o);
     }
 
-    let _ = writeln!(o, "DETAILS");
-    let _ = writeln!(o, "  Locations checked: {}", checked_summary(r));
-    for t in &r.targets {
-        let _ = writeln!(o, "    [{}] {}", t.kind.label(), t.path.display());
+    let _ = writeln!(o, "{}", t("report.details"));
+    let _ = writeln!(o, "  {}", msg("report.locations_checked").arg("summary", checked_summary(r, lang)).render(lang));
+    for target in &r.targets {
+        let _ = writeln!(o, "    [{}] {}", target.kind.label(lang), target.path.display());
     }
     for s in Section::ALL {
         if s == Section::Info
             && let Some(e) = &r.exposure
         {
-            let _ = writeln!(o, "\n  {EXPOSURE_TITLE}");
-            let _ = writeln!(o, "    {EXPOSURE_NOTE}");
-            if let Some(note) = guide::home_note(r) {
+            let _ = writeln!(o, "\n  {}", t("exposure.title"));
+            let _ = writeln!(o, "    {}", t("exposure.note"));
+            if let Some(note) = guide::home_note(r, lang) {
                 let _ = writeln!(o, "    {note}");
             }
-            for (heading, items) in guide::exposure_lists(e) {
+            for (heading, items) in guide::exposure_lists(e, lang) {
                 if items.is_empty() {
-                    let _ = writeln!(o, "    {heading}: none found.");
+                    let _ = writeln!(o, "    {}", msg("report.exposure_none").arg("heading", heading).render(lang));
                     continue;
                 }
-                let _ = writeln!(o, "    {heading}:");
+                let _ = writeln!(o, "    {}", msg("report.exposure_heading").arg("heading", heading).render(lang));
                 for (what, path) in items {
-                    let _ = writeln!(o, "      {what}: {}", path.display());
+                    let item = msg("report.exposure_item").arg("what", what).arg("path", path.display().to_string());
+                    let _ = writeln!(o, "      {}", item.render(lang));
                 }
             }
-            let _ = writeln!(o, "    Folders checked:");
+            let _ = writeln!(o, "    {}", t("report.folders_checked"));
             for p in &e.checked {
                 let _ = writeln!(o, "      {}", p.display());
             }
@@ -250,65 +245,67 @@ pub fn render(r: &ScanResult) -> String {
         if found.is_empty() {
             continue;
         }
-        let _ = writeln!(o, "\n  {}", s.title());
+        let _ = writeln!(o, "\n  {}", s.title(lang));
         for (_, _, g, f) in found {
-            write_finding(o, g, f);
+            write_finding(o, g, f, lang);
         }
     }
     if r.groups.is_empty() {
-        let _ = writeln!(o, "\n  No findings.");
+        let _ = writeln!(o, "\n  {}", t("report.no_findings"));
     }
     let _ = writeln!(o);
 
     if let Some(h) = &r.hosts {
-        let _ = writeln!(o, "PROTECTION (hosts file: {})", h.path.display());
-        let _ = writeln!(o, "  This is not an infection check. It shows whether the domains are blocked.");
-        if let Some(note) = h.note {
-            let _ = writeln!(o, "  {note}");
+        let _ = writeln!(o, "{}", msg("report.protection").arg("path", h.path.display().to_string()).render(lang));
+        let _ = writeln!(o, "  {}", t("report.protection_note"));
+        if let Some(note) = &h.note {
+            let _ = writeln!(o, "  {}", note.render(lang));
         }
         for (domain, blocked) in &h.domains {
-            let _ = writeln!(o, "  {domain}: {}", block_state(*blocked));
+            let state = msg("report.domain_state").arg("domain", *domain).arg("state", block_state(*blocked, lang));
+            let _ = writeln!(o, "  {}", state.render(lang));
         }
         let lines = block_lines(h);
         if !lines.is_empty() {
-            let _ = writeln!(o, "  {BLOCK_LINES_INTRO}");
+            let _ = writeln!(o, "  {}", t("hosts.block_lines_intro"));
             for line in lines {
                 let _ = writeln!(o, "    {line}");
             }
         }
-        let _ = writeln!(o, "  {HOSTS_NOTE}");
-        let _ = writeln!(o, "  {}", ip_note());
+        let _ = writeln!(o, "  {}", t("hosts.note"));
+        let _ = writeln!(o, "  {}", t("hosts.ip_note"));
         let _ = writeln!(o);
     }
 
-    let _ = writeln!(o, "LIMITS OF THIS CHECK");
-    for c in CAVEATS {
+    let _ = writeln!(o, "{}", t("report.limits"));
+    for c in caveats(lang) {
         let _ = writeln!(o, "  - {c}");
     }
-    let _ = writeln!(o, "  Write-up: {GIST_URL}");
+    let _ = writeln!(o, "  {}", msg("report.write_up").arg("url", GIST_URL).render(lang));
     let _ = writeln!(o);
-    let _ = writeln!(o, "Scan stats: {}", stats_line(r));
+    let _ = writeln!(o, "{}", msg("report.scan_stats").arg("stats", stats_line(r, lang)).render(lang));
     out
 }
 
-fn write_finding(o: &mut String, g: &Group, f: &Finding) {
-    let _ = writeln!(o, "    [{}] {}", f.severity.tag(), f.title);
-    let _ = writeln!(o, "      {}", f.detail);
-    let _ = writeln!(o, "      What this means: {}", guide::meaning(f.kind));
-    let _ = writeln!(o, "      Found in: {}", location(g));
+fn write_finding(o: &mut String, g: &Group, f: &Finding, lang: Lang) {
+    let path = |key, p: &std::path::Path| msg(key).arg("path", p.display().to_string()).render(lang);
+    let _ = writeln!(o, "    [{}] {}", f.severity.tag(lang), f.title.render(lang));
+    let _ = writeln!(o, "      {}", f.detail.render(lang));
+    let _ = writeln!(o, "      {}", msg("details.meaning").arg("text", guide::meaning(f.kind, lang)).render(lang));
+    let _ = writeln!(o, "      {}", msg("details.found_in").arg("location", location(g, lang)).render(lang));
     if let Some(p) = &f.path {
-        let _ = writeln!(o, "      Path: {}", p.display());
+        let _ = writeln!(o, "      {}", path("details.path", p));
     }
     if let Some(p) = f.open_path.as_ref().filter(|p| f.path.as_ref() != Some(*p)) {
-        let _ = writeln!(o, "      Open: {}", p.display());
+        let _ = writeln!(o, "      {}", path("report.open", p));
     }
     if let Some(t) = &f.time {
-        let _ = writeln!(o, "      Time: {t}");
+        let _ = writeln!(o, "      {}", msg("details.time").arg("time", t.clone()).render(lang));
     }
     for line in f.copy_text.iter().flat_map(|t| t.lines()) {
-        let _ = writeln!(o, "      {}: {line}", copy_label(f));
+        let _ = writeln!(o, "      {}", msg("details.copy").arg("label", copy_label(f, lang)).arg("text", line).render(lang));
     }
-    for e in &f.evidence {
+    for e in f.evidence_lines(lang) {
         let _ = writeln!(o, "      | {e}");
     }
 }

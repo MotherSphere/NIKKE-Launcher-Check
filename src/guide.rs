@@ -1,13 +1,14 @@
 //! The result in plain words, for the window and the report: four answers
 //! ("What happened") and the steps to take ("What to do"), built only from
-//! what the scan found.
+//! what the scan found, in the language asked for.
 
 use std::path::{Path, PathBuf};
 
 use crate::exposure::Exposure;
+use crate::i18n::{Lang, msg, tr};
 use crate::locate::TargetKind;
 use crate::report;
-use crate::scan::{self, ATTACKER_IPS, CLSID, Finding, FindingKind as K, ScanResult, Verdict};
+use crate::scan::{self, ATTACKER_IPS, Finding, FindingKind as K, ScanResult, Verdict};
 use crate::timeline::{AgentRun, KNOWN_BUILDS, PayloadBuild, RunKind};
 
 /// How an answer reads for the user.
@@ -67,175 +68,198 @@ fn has_target(r: &ScanResult, kind: TargetKind) -> bool {
     r.targets.iter().any(|t| t.kind == kind)
 }
 
-pub fn answers(r: &ScanResult) -> [Answer; 4] {
-    [did_it_run(r), still_active(r), to_clean(r), protected(r)]
+/// Sentences of the catalog, one after the other.
+// shortcut: joined with a space in every language, add a separator text if CJK translators ask.
+fn sentences(lang: Lang, keys: &[&'static str]) -> String {
+    keys.iter().map(|k| tr(lang, k)).collect::<Vec<_>>().join(" ")
+}
+
+/// "A and B and C".
+fn and(lang: Lang, items: &[String]) -> String {
+    let mut items = items.iter();
+    let first = items.next().cloned().unwrap_or_default();
+    items.fold(first, |a, b| msg("common.and").arg("a", a).arg("b", b.as_str()).render(lang))
+}
+
+/// A finding title as one reason of an answer: "The malware agent ran."
+fn title_line(f: &Finding, lang: Lang) -> String {
+    msg("answer.finding").arg("title", f.title.clone()).render(lang)
+}
+
+pub fn answers(r: &ScanResult, lang: Lang) -> [Answer; 4] {
+    [did_it_run(r, lang), still_active(r, lang), to_clean(r, lang), protected(r, lang)]
 }
 
 fn answer(question: &'static str, reply: &'static str, tone: Tone, lines: Vec<String>) -> Answer {
     Answer { question, reply, tone, lines, runs: Vec::new() }
 }
 
-fn did_it_run(r: &ScanResult) -> Answer {
-    const Q: &str = "Did the malware run on this computer?";
+fn did_it_run(r: &ScanResult, lang: Lang) -> Answer {
+    let t = |key| tr(lang, key);
+    let q = t("answer.ran.question");
     let mut lines = Vec::new();
     if any(r, &RAN) {
         for f in of(r, &RAN) {
-            push_new(&mut lines, format!("{}.", f.title));
+            push_new(&mut lines, title_line(f, lang));
         }
-        let mut a = answer(Q, "Yes", Tone::Bad, lines);
-        a.runs = r.runs.iter().map(run_line).collect();
+        let mut a = answer(q, t("answer.yes"), Tone::Bad, lines);
+        a.runs = r.runs.iter().map(|run| run_line(run, lang)).collect();
         return a;
     }
     let loader = any(r, &[K::LoaderCached, K::LauncherContacted]);
     if r.verdict == Verdict::NotFound {
-        lines.push("No NIKKE install or launcher data was found, so there was nothing to check.".into());
-        return answer(Q, "Cannot tell", Tone::Unsure, lines);
+        lines.push(t("answer.ran.nothing_checked").into());
+        return answer(q, t("answer.cannot_tell"), Tone::Unsure, lines);
     }
     if r.verdict == Verdict::Infected {
         for f in findings(r).filter(|f| f.severity == scan::Severity::Critical) {
-            push_new(&mut lines, format!("{}.", f.title));
+            push_new(&mut lines, title_line(f, lang));
         }
-        lines.push("No log shows the agent itself starting, but logs can be deleted or cut.".into());
-        return answer(Q, "Cannot tell", Tone::Unsure, lines);
+        lines.push(t("answer.ran.no_agent_log").into());
+        return answer(q, t("answer.cannot_tell"), Tone::Unsure, lines);
     }
     if loader {
-        lines.push("The launcher loaded the malicious script, but no trace of the agent was found.".into());
-        lines.push("The agent was sent only on some launches, from October 23, 2026 at the latest. If the launcher was open on or after that date, act as if it ran.".into());
+        lines.push(t("answer.ran.loader").into());
+        lines.push(t("answer.ran.act_as_if").into());
     } else {
-        lines.push("No trace of the malicious script or the agent was found.".into());
+        lines.push(t("answer.ran.nothing").into());
     }
     if !has_target(r, TargetKind::InstallDir) {
-        lines.push("The NIKKE install folder was not found, so debug.log and the download logs were not checked.".into());
+        lines.push(t("answer.ran.no_install").into());
     }
     let gaps = any(r, &[K::Coverage]);
     if gaps {
-        lines.push("Part of this scan could not be done. See \"What this scan could not check\" in Details.".into());
+        lines.push(t("answer.ran.gaps").into());
     }
     // A quick scan can miss an old install deeper down, so its "No" is not a clean result.
     if let Some(depth) = r.stats.depth_limit {
-        lines.push(format!("This was a quick scan, which opens folders only {depth} levels deep. The full scan also checks deeper folders."));
+        lines.push(msg("answer.ran.quick").arg("depth", depth.to_string()).render(lang));
     }
     if !loader {
-        lines.push("Finding nothing is not proof that the computer is clean.".into());
+        lines.push(t("report.caveat.not_proof").into());
     }
     let unsure = loader || gaps || r.stats.depth_limit.is_some();
-    answer(Q, "No", if unsure { Tone::Unsure } else { Tone::Good }, lines)
+    answer(q, t("answer.no"), if unsure { Tone::Unsure } else { Tone::Good }, lines)
 }
 
 /// One logged step of an agent run. "Hide my info" replaces the computer name
 /// in the copied or saved report.
-pub fn run_line(run: &AgentRun) -> String {
-    let time = run.time.as_deref().unwrap_or("time not logged");
+pub fn run_line(run: &AgentRun, lang: Lang) -> String {
+    let time = run.time.clone().unwrap_or_else(|| msg("run.no_time"));
     let what = match run.kind {
         RunKind::Downloaded => match &run.file {
-            Some(file) => format!("the launcher downloaded the agent and saved it as {file}"),
-            None => "the launcher downloaded the agent".into(),
+            Some(file) => msg("run.downloaded_as").arg("file", file.as_str()),
+            None => msg("run.downloaded"),
         },
-        RunKind::Adopted => "the agent started for the first time on this computer and created its ID".into(),
-        RunKind::Resumed => "the agent started again with the ID it saved".into(),
+        RunKind::Adopted => msg("run.adopted"),
+        RunKind::Resumed => msg("run.resumed"),
         RunKind::Started => match &run.host {
-            Some(host) => format!("the agent sent the computer name {host} to the attacker"),
-            None => "the agent sent the computer name to the attacker".into(),
+            Some(host) => msg("run.started_as").arg("host", host.as_str()),
+            None => msg("run.started"),
         },
     };
-    let source = run.source.file_name().map(|n| format!(" (from {})", n.to_string_lossy())).unwrap_or_default();
-    format!("{time}: {what}{source}")
+    let line = match run.source.file_name() {
+        Some(n) => msg("run.line_from").arg("file", n.to_string_lossy().into_owned()),
+        None => msg("run.line"),
+    };
+    line.arg("time", time).arg("what", what).render(lang)
 }
 
-fn still_active(r: &ScanResult) -> Answer {
-    const Q: &str = "Is anything still active?";
+fn still_active(r: &ScanResult, lang: Lang) -> Answer {
+    let t = |key| tr(lang, key);
     let mut lines = Vec::new();
     for f in findings(r) {
         let line = match f.kind {
-            K::LauncherRunning => "The NIKKE launcher is running now. While it runs, the attacker can send it commands.".to_string(),
-            K::DllLoaded => format!("The malware's DLL is loaded now in {}.", program_names(f).join(", ")),
-            K::RegistryKey => "The registry key that makes the browser load the malware's DLL is set.".to_string(),
-            K::ChromeDll | K::LegacyDll => format!("{}.", f.title),
+            K::LauncherRunning => t("answer.active.launcher").to_string(),
+            K::DllLoaded => msg("answer.active.dll_loaded").arg("programs", program_names(f, lang).join(", ")).render(lang),
+            K::RegistryKey => t("answer.active.registry").to_string(),
+            K::ChromeDll | K::LegacyDll => title_line(f, lang),
             _ => continue,
         };
         push_new(&mut lines, line);
     }
+    let q = t("answer.active.question");
     if lines.is_empty() {
-        lines.push("The launcher is not running, and no DLL is installed or set to load.".into());
-        return answer(Q, "No", Tone::Good, lines);
+        lines.push(t("answer.active.none").into());
+        return answer(q, t("answer.no"), Tone::Good, lines);
     }
-    answer(Q, "Yes", Tone::Bad, lines)
+    answer(q, t("answer.yes"), Tone::Bad, lines)
 }
 
-fn to_clean(r: &ScanResult) -> Answer {
-    const Q: &str = "Is there something to clean up?";
+fn to_clean(r: &ScanResult, lang: Lang) -> Answer {
+    let t = |key| tr(lang, key);
+    let path = |key, p: &Path| msg(key).arg("path", p.display().to_string()).render(lang);
     let mut lines = Vec::new();
     for f in findings(r) {
         let line = match f.kind {
-            K::ChromeDll => format!("The {} DLL folder: {}", browser(f), dll_folder(f).display()),
-            K::RegistryKey => format!("The HKCU registry key {CLSID}."),
-            K::RegistryLeftover => format!("The empty HKCU registry key {CLSID}, left after the malware cleared the DLL path from it."),
-            K::LegacyDll => format!("Older DLL files in {}", shown(f.path.as_deref())),
-            K::TempFile => format!("k2f files in {}", shown(f.path.as_deref().and_then(Path::parent))),
+            K::ChromeDll => msg("answer.clean.dll_folder")
+                .arg("browser", browser(f, lang))
+                .arg("path", dll_folder(f).display().to_string())
+                .render(lang),
+            K::RegistryKey => t("answer.clean.registry").into(),
+            K::RegistryLeftover => t("answer.clean.leftover").into(),
+            K::LegacyDll => path("answer.clean.legacy", f.path.as_deref().unwrap_or(Path::new(""))),
+            K::TempFile => path("answer.clean.temp", f.path.as_deref().and_then(Path::parent).unwrap_or(Path::new(""))),
             _ => continue,
         };
         push_new(&mut lines, line);
     }
     for c in caches(r).iter().filter(|c| c.traces) {
-        push_new(&mut lines, format!("The launcher cache, which holds traces of the malware: {}", c.tbs.display()));
+        push_new(&mut lines, path("answer.clean.cache", &c.tbs));
     }
+    let q = t("answer.clean.question");
     if !lines.is_empty() {
-        return answer(Q, "Yes", Tone::Bad, lines);
+        return answer(q, t("answer.yes"), Tone::Bad, lines);
     }
     if has_target(r, TargetKind::LauncherData) {
-        lines.push("No file left by the malware was found. Delete the launcher cache (tbs_cache) anyway before you open the launcher again: it can still hold the malicious script from before the fix.".into());
+        lines.push(t("answer.clean.none_cache").into());
     } else {
-        lines.push("Nothing left by the malware was found.".into());
+        lines.push(t("answer.clean.none").into());
     }
-    answer(Q, "No", Tone::Good, lines)
+    answer(q, t("answer.no"), Tone::Good, lines)
 }
 
-fn ip_line() -> String {
-    format!(
-        "The hosts file cannot block IP addresses, and this scan cannot check a firewall. Block {} and {} in your firewall or router.",
-        ATTACKER_IPS[0], ATTACKER_IPS[1]
-    )
-}
-
-fn protected(r: &ScanResult) -> Answer {
-    const Q: &str = "Are you protected for next time?";
+fn protected(r: &ScanResult, lang: Lang) -> Answer {
+    let t = |key| tr(lang, key);
+    let q = t("answer.protected.question");
+    let ip_line = t("answer.protected.ip").to_string();
     let Some(h) = &r.hosts else {
-        return answer(Q, "Cannot tell", Tone::Unsure, vec!["The hosts file was not checked.".into(), ip_line()]);
+        return answer(q, t("answer.cannot_tell"), Tone::Unsure, vec![t("answer.protected.not_checked").into(), ip_line]);
     };
-    let mut lines: Vec<String> = h.note.iter().map(|n| n.to_string()).collect();
-    lines.extend(h.domains.iter().map(|(d, b)| format!("{d}: {} in the hosts file.", report::block_state(*b))));
-    lines.push(ip_line());
+    let mut lines: Vec<String> = h.note.iter().map(|n| n.render(lang)).collect();
+    lines.extend(h.domains.iter().map(|(d, b)| {
+        msg("answer.protected.domain").arg("domain", *d).arg("state", report::block_state(*b, lang)).render(lang)
+    }));
+    lines.push(ip_line);
     let blocked = h.domains.iter().filter(|(_, b)| *b == Some(true)).count();
     let (reply, tone) = if h.domains.iter().any(|(_, b)| b.is_none()) {
-        ("Cannot tell", Tone::Unsure)
+        ("answer.cannot_tell", Tone::Unsure)
     } else if blocked == h.domains.len() {
-        ("Yes", Tone::Good)
+        ("answer.yes", Tone::Good)
     } else if blocked > 0 {
-        ("Partly", Tone::Unsure)
+        ("answer.partly", Tone::Unsure)
     } else {
-        ("No", Tone::Bad)
+        ("answer.no", Tone::Bad)
     };
-    answer(Q, reply, tone, lines)
+    answer(q, t(reply), tone, lines)
 }
 
 /// "6ae90538-3214f, uploaded ..., 205,135 bytes, one of the 5 known builds."
-pub fn build_line(b: &PayloadBuild) -> String {
-    let mut s = b.etag.clone().unwrap_or_else(|| "No ETag".into());
+pub fn build_line(b: &PayloadBuild, lang: Lang) -> String {
+    let mut s = b.etag.clone().unwrap_or_else(|| tr(lang, "build.no_etag").into());
     match (&b.uploaded, &b.last_modified) {
-        (Some(t), _) => s += &format!(", uploaded {t}"),
-        (None, Some(t)) => s += &format!(", last modified {t}"),
+        (Some(t), _) => s += &msg("build.uploaded").arg("time", t.as_str()).render(lang),
+        (None, Some(t)) => s += &msg("build.last_modified").arg("time", t.as_str()).render(lang),
         _ => {}
     }
     if let Some(size) = b.size {
-        s += &format!(", {} bytes", report::thousands(size));
+        s += &msg("build.size").arg("size", report::thousands(size)).render(lang);
     }
-    s += &if b.known {
-        format!(", one of the {} known builds.", KNOWN_BUILDS.len())
-    } else {
-        format!(". It is not one of the {} known builds.", KNOWN_BUILDS.len())
-    };
+    let known = if b.known { "build.known" } else { "build.unknown" };
+    s += &msg(known).arg("n", KNOWN_BUILDS.len().to_string()).render(lang);
     if let Some(t) = &b.time {
-        s += &format!(" The launcher received it {t}.");
+        s.push(' ');
+        s += &msg("build.received").arg("time", t.clone()).render(lang);
     }
     s
 }
@@ -263,7 +287,8 @@ pub enum Part {
 pub enum Action {
     /// Shows this file or folder selected in the file manager.
     Reveal(PathBuf),
-    Copy(&'static str, String),
+    /// (button label, text to copy).
+    Copy(String, String),
     TaskManager,
     RegistryEditor,
     SaveReport,
@@ -272,8 +297,13 @@ pub enum Action {
     FullScan,
 }
 
-fn text(s: impl Into<String>) -> Part {
-    Part::Text(s.into())
+/// A text part from the catalog.
+fn text(lang: Lang, key: &'static str) -> Part {
+    Part::Text(tr(lang, key).into())
+}
+
+fn copy(lang: Lang, label: &'static str, what: impl Into<String>) -> Action {
+    Action::Copy(tr(lang, label).into(), what.into())
 }
 
 fn step(title: impl Into<String>, parts: Vec<Part>) -> Step {
@@ -285,40 +315,40 @@ pub fn act_now(r: &ScanResult) -> bool {
     any(r, &[K::LauncherRunning, K::DllLoaded])
 }
 
-pub fn steps(r: &ScanResult) -> Vec<Step> {
+pub fn steps(r: &ScanResult, lang: Lang) -> Vec<Step> {
     let found = r.verdict != Verdict::NotFound;
     // Scanning the install reads debug.log, which can turn the result into Infected.
     let rescan = found && !has_target(r, TargetKind::InstallDir);
     let mut out = Vec::new();
     if !found {
-        out.push(scan_folder_step(r));
+        out.push(scan_folder_step(r, lang));
     }
     if act_now(r) {
-        out.push(close_step(r));
+        out.push(close_step(r, lang));
     }
     if matches!(r.verdict, Verdict::Infected | Verdict::Exposed) {
         // Before the DLL step: its restart closes this window.
-        out.push(save_step(r, restart_first(r)));
+        out.push(save_step(r, restart_first(r), lang));
     }
     // After a quick scan without proof of the agent, the full scan is the next check.
     let quick_unsure = matches!(r.verdict, Verdict::NoTraces | Verdict::Exposed) && r.stats.depth_limit.is_some();
     if rescan && r.verdict != Verdict::Infected {
-        out.push(scan_folder_step(r));
+        out.push(scan_folder_step(r, lang));
     } else if quick_unsure {
-        out.push(step("Run the full scan", full_scan_parts(r)));
+        out.push(step(tr(lang, "step.full_scan.title"), full_scan_parts(r, lang)));
     }
     if any(r, &PERSISTENCE) {
-        out.push(dll_step(r));
+        out.push(dll_step(r, lang));
     }
     if found {
-        out.push(cache_step(r));
-        out.push(password_step(r));
+        out.push(cache_step(r, lang));
+        out.push(password_step(r, lang));
     }
-    out.push(block_step(r));
+    out.push(block_step(r, lang));
     if rescan && r.verdict == Verdict::Infected {
-        out.push(scan_folder_step(r));
+        out.push(scan_folder_step(r, lang));
     }
-    out.push(wait_step(r.verdict == Verdict::Infected && any(r, &RAN)));
+    out.push(wait_step(r.verdict == Verdict::Infected && any(r, &RAN), lang));
     out
 }
 
@@ -336,55 +366,51 @@ fn ps_command(exe: &str, args: &str) -> String {
     format!("& '.\\{}' --cli{args} | Out-Host", exe.replace('\'', "''"))
 }
 
-fn scan_folder_step(r: &ScanResult) -> Step {
-    const INTRO: &str = "If NIKKE is installed somewhere this scan did not look, such as another drive, scan that folder";
+fn scan_folder_step(r: &ScanResult, lang: Lang) -> Step {
     let mut parts = if cfg!(windows) {
         let cmd = powershell_cli(r" 'D:\Games\NIKKE'");
         vec![
-            text(format!("{INTRO} with \"Scan a folder...\". In PowerShell, from the folder that holds this program, this command scans it too. Put your NIKKE folder in place of D:\\Games\\NIKKE.")),
+            text(lang, "step.scan_folder.windows"),
             Part::Code(cmd.clone()),
-            Part::Actions(vec![Action::ScanFolder, Action::Copy("Copy command", cmd)]),
+            Part::Actions(vec![Action::ScanFolder, copy(lang, "common.copy_command", cmd)]),
         ]
     } else {
-        vec![
-            text(format!("{INTRO}: \"Scan a folder...\" in the window, or nikke-check --cli <folder> in a terminal.")),
-            Part::Actions(vec![Action::ScanFolder]),
-        ]
+        vec![text(lang, "step.scan_folder.other"), Part::Actions(vec![Action::ScanFolder])]
     };
-    parts.extend(full_scan_parts(r));
-    step("Scan the folder where NIKKE is installed", parts)
+    parts.extend(full_scan_parts(r, lang));
+    step(tr(lang, "step.scan_folder.title"), parts)
 }
 
 /// After a quick scan: what the full scan adds, its button and its command.
-fn full_scan_parts(r: &ScanResult) -> Vec<Part> {
+fn full_scan_parts(r: &ScanResult, lang: Lang) -> Vec<Part> {
     let Some(depth) = r.stats.depth_limit else {
         return Vec::new();
     };
-    let mut parts = vec![text(format!("This was a quick scan, which opens folders only {depth} levels deep. If you do not know where NIKKE is, or an older copy may be deeper, the full scan opens every folder on every local drive. It can take a long time on large drives."))];
+    let mut parts = vec![Part::Text(msg("step.full_scan.intro").arg("depth", depth.to_string()).render(lang))];
     if cfg!(windows) {
         let cmd = powershell_cli(" --full");
-        parts.push(text("In PowerShell, from the folder that holds this program:"));
+        parts.push(text(lang, "step.full_scan.powershell"));
         parts.push(Part::Code(cmd.clone()));
-        parts.push(Part::Actions(vec![Action::FullScan, Action::Copy("Copy command", cmd)]));
+        parts.push(Part::Actions(vec![Action::FullScan, copy(lang, "common.copy_command", cmd)]));
     } else {
-        parts.push(text("In a terminal: nikke-check --cli --full"));
+        parts.push(text(lang, "step.full_scan.terminal"));
         parts.push(Part::Actions(vec![Action::FullScan]));
     }
     parts
 }
 
-fn close_step(r: &ScanResult) -> Step {
+fn close_step(r: &ScanResult, lang: Lang) -> Step {
     let mut parts = Vec::new();
     let mut programs = Vec::new();
     if any(r, &[K::LauncherRunning]) {
-        parts.push(text("The NIKKE launcher is running. While it runs, the attacker can send commands to this computer. Close it now and disconnect this computer from the network."));
+        parts.push(text(lang, "step.close.launcher"));
         programs.push("nikke_launcher.exe".to_string());
     }
     let mut explorer = false;
     for f in of(r, &[K::DllLoaded]) {
-        let names = program_names(f);
-        let (has, them) = if names.len() == 1 { ("has", "it") } else { ("have", "them") };
-        parts.push(text(format!("{} {has} the malware's DLL loaded. Close {them} if you can. The restart in a later step unloads the DLL from every program.", names.join(", "))));
+        let names = program_names(f, lang);
+        let key = if names.len() == 1 { "step.close.dll_loaded_one" } else { "step.close.dll_loaded_other" };
+        parts.push(Part::Text(msg(key).arg("programs", names.join(", ")).render(lang)));
         for name in names {
             if name.eq_ignore_ascii_case("explorer.exe") {
                 explorer = true;
@@ -394,49 +420,49 @@ fn close_step(r: &ScanResult) -> Step {
         }
     }
     if explorer {
-        parts.push(text("Do not end explorer.exe: it runs the taskbar and the desktop. The restart unloads the DLL from it."));
+        parts.push(text(lang, "step.close.explorer"));
     }
     if !programs.is_empty() {
-        parts.push(text(format!("Programs to end: {}.", programs.join(", "))));
+        parts.push(Part::Text(msg("step.close.programs").arg("programs", programs.join(", ")).render(lang)));
     }
     if cfg!(windows) {
         if !programs.is_empty() {
-            parts.push(text("If a program does not close, open Task Manager (Ctrl+Shift+Esc), find it on the Details tab, select it and click End task."));
+            parts.push(text(lang, "step.close.task_manager"));
             parts.push(Part::Actions(vec![Action::TaskManager]));
         }
     } else {
         let cmd = "pkill -f nikke_launcher.exe";
-        parts.push(text("If the launcher does not close, run this command in a terminal:"));
+        parts.push(text(lang, "step.close.pkill"));
         parts.push(Part::Code(cmd.into()));
-        parts.push(Part::Actions(vec![Action::Copy("Copy command", cmd.into())]));
+        parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
     }
-    let title = if any(r, &[K::LauncherRunning]) { "Close the launcher" } else { "Close the programs that run the malware" };
-    step(title, parts)
+    let title = if any(r, &[K::LauncherRunning]) { "step.close.title_launcher" } else { "step.close.title_programs" };
+    step(tr(lang, title), parts)
 }
 
-fn save_step(r: &ScanResult, restart: bool) -> Step {
-    let mut why = String::new();
+fn save_step(r: &ScanResult, restart: bool, lang: Lang) -> Step {
+    let mut why = vec!["step.save.record"];
     if any(r, &[K::AgentState]) {
-        why += " Deleting tbs_cache also deletes the k2f.agent.state trace.";
+        why.push("step.save.agent_state");
     } else if caches(r).iter().any(|c| c.traces) {
-        why += " Deleting tbs_cache also deletes the traces this scan found in it.";
+        why.push("step.save.cache_traces");
     }
     if restart {
-        why += " The restart in the next step closes this window.";
+        why.push("step.save.restart");
     }
     step(
-        "Save the report before you delete anything",
+        tr(lang, "step.save.title"),
         vec![
-            text(format!("The report is the record of what this scan found.{why}")),
-            text("Turn on \"Hide my info\" (--redact on the command line) before you share it: it replaces your computer name, user names, agent ID and home folder in the copied or saved report. The window still shows them."),
+            Part::Text(sentences(lang, &why)),
+            text(lang, "step.save.hide"),
             Part::Actions(vec![Action::SaveReport, Action::CopyReport]),
         ],
     )
 }
 
-/// The browser name from a ChromeDll title ("Edge persistence is installed").
-fn browser(f: &Finding) -> &str {
-    f.title.strip_suffix(" persistence is installed").unwrap_or("Chrome")
+/// The browser name kept in a ChromeDll title ("Edge persistence is installed").
+fn browser(f: &Finding, lang: Lang) -> String {
+    f.title.get("browser").map_or_else(|| "Chrome".into(), |b| b.render(lang))
 }
 
 /// The folder to delete for a ChromeDll finding: the 64-hex folder that holds the DLL.
@@ -484,15 +510,13 @@ fn steam_game_id(prefix: &Path) -> Option<String> {
         .map(|w| w[1].clone())
 }
 
-fn dll_step(r: &ScanResult) -> Step {
-    let mut browsers: Vec<&str> = Vec::new();
+fn dll_step(r: &ScanResult, lang: Lang) -> Step {
+    let mut browsers: Vec<String> = Vec::new();
     for f in of(r, &[K::ChromeDll]) {
-        if !browsers.contains(&browser(f)) {
-            browsers.push(browser(f));
-        }
+        push_new(&mut browsers, browser(f, lang));
     }
     if browsers.is_empty() {
-        browsers.push("Chrome");
+        browsers.push("Chrome".into());
     }
     let keys: Vec<String> = of(r, &[K::RegistryKey, K::RegistryLeftover])
         .filter_map(|f| f.copy_text.as_deref())
@@ -509,48 +533,52 @@ fn dll_step(r: &ScanResult) -> Step {
     let drive = !cfg!(windows) && of(r, &[K::ChromeDll, K::LegacyDll]).any(|f| !in_prefix(r, f));
     let mut parts = Vec::new();
     let mut n = 0;
-    let mut num = |s: &str| {
+    let mut num = |s: String| {
         n += 1;
-        text(format!("{n}. {s}"))
+        Part::Text(format!("{n}. {s}"))
     };
     if cfg!(windows) {
         if any(r, &[K::RegistryKey]) || loaded {
-            let why = if loaded { "a program has the DLL loaded now" } else { "while the key is set, the browser loads the DLL each time it starts" };
-            parts.push(text(format!("Keep this computer offline until this step is done: {why}.")));
+            parts.push(text(lang, if loaded { "step.dll.offline_loaded" } else { "step.dll.offline_key" }));
         }
         if restart && !keys.is_empty() {
-            parts.push(text("Do these in this order. Windows keeps the DLL locked until it restarts, so the registry key goes first."));
+            parts.push(text(lang, "step.dll.order"));
         }
         if !keys.is_empty() {
-            parts.push(num("Delete the registry key. Open Registry Editor (press Win+R, type regedit and press Enter), paste the key path below into the address bar at the top and press Enter. Right-click the selected key in the left pane and choose Delete."));
+            parts.push(num(tr(lang, "step.dll.delete_key").into()));
             for (i, key) in keys.iter().enumerate() {
                 parts.push(Part::Code(key.clone()));
-                let mut actions = vec![Action::Copy("Copy key path", key.clone())];
+                let mut actions = vec![copy(lang, "common.copy_key_path", key.as_str())];
                 if i == 0 {
                     actions.push(Action::RegistryEditor);
                 }
                 parts.push(Part::Actions(actions));
             }
             if leftover {
-                parts.push(text("An empty key is a leftover: the malware removed the DLL path but kept the key. Delete it the same way."));
+                parts.push(text(lang, "step.dll.leftover"));
             }
         }
         if restart {
-            parts.push(num("Restart Windows. Then open this tool again and scan: it shows what is left to delete."));
+            parts.push(num(tr(lang, "step.dll.restart").into()));
         }
     } else {
         if wine {
-            let what = if files { "These files are" } else { "The key is" };
-            parts.push(text(format!("{what} inside a Wine prefix. Close the launcher and every other program of that prefix first.")));
+            parts.push(text(lang, if files { "step.dll.wine_files" } else { "step.dll.wine_key" }));
         }
         if drive {
-            parts.push(text("These files are on a Windows drive seen from this system. That Windows is not running, so the DLL is not locked and you can delete it from here. If this system cannot delete files on that drive (Windows Fast Startup leaves it read-only), do this step from that Windows instead: delete the key, restart, then delete the files."));
+            parts.push(text(lang, "step.dll.drive"));
         }
     }
-    let delete = if restart { "After the restart, delete" } else { "Delete" };
-    let in_use = if cfg!(windows) && !restart { " If Windows says the file is in use, restart Windows and delete it again." } else { "" };
+    // "Delete ..." or "After the restart, delete ...", then on Windows a hint for a file in use.
+    let delete = |now: &'static str, after: &'static str| {
+        let mut keys = vec![if restart { after } else { now }];
+        if cfg!(windows) && !restart {
+            keys.push("step.dll.in_use");
+        }
+        sentences(lang, &keys)
+    };
     if dll {
-        parts.push(num(&format!("{delete} the DLL folder below, the one named with 64 hex characters. Leave the rest of the PlatformExperienceHelper folder alone: Chrome keeps its own platform_experience_helper.exe and LoadFeatures there.{in_use}")));
+        parts.push(num(delete("step.dll.delete_folder", "step.dll.delete_folder_after_restart")));
         for f in of(r, &[K::ChromeDll]) {
             let folder = dll_folder(f);
             parts.push(Part::Code(folder.display().to_string()));
@@ -558,7 +586,7 @@ fn dll_step(r: &ScanResult) -> Step {
         }
     }
     if legacy {
-        parts.push(num(&format!("In the folder below, {} only platform_experience_helper.dll, platform_experience_helper.dll.old and old-clsid.txt, the ones that are there. Keep platform_experience_helper.exe: it belongs to Chrome.{in_use}", delete.to_lowercase())));
+        parts.push(num(delete("step.dll.delete_legacy", "step.dll.delete_legacy_after_restart")));
         for f in of(r, &[K::LegacyDll]) {
             parts.push(Part::Code(shown(f.path.as_deref())));
             parts.extend(f.open_path.clone().map(|p| Part::Actions(vec![Action::Reveal(p)])));
@@ -566,14 +594,14 @@ fn dll_step(r: &ScanResult) -> Step {
     }
     // The files can be gone while a program still has the DLL loaded.
     if loaded && !dll && !legacy {
-        parts.push(num(&format!("{delete} the DLL file below.{in_use}")));
+        parts.push(num(delete("step.dll.delete_file", "step.dll.delete_file_after_restart")));
         for f in of(r, &[K::DllLoaded]) {
             parts.push(Part::Code(shown(f.open_path.as_deref())));
             parts.extend(f.open_path.clone().map(|p| Part::Actions(vec![Action::Reveal(p)])));
         }
     }
     if wine && !keys.is_empty() {
-        parts.push(num(&format!("Delete the registry key in the prefix's user.reg file. Open Wine's regedit in that prefix with the command below, go to HKEY_CURRENT_USER\\Software\\Classes\\CLSID and delete the {CLSID} key.")));
+        parts.push(num(tr(lang, "step.dll.wine_regedit").into()));
         for f in of(r, &[K::RegistryKey, K::RegistryLeftover]) {
             let Some(reg) = f.path.as_deref() else {
                 continue;
@@ -581,34 +609,31 @@ fn dll_step(r: &ScanResult) -> Step {
             let prefix = reg.parent().unwrap_or(reg);
             let cmd = format!("WINEPREFIX={} wine regedit", sh_quote(&prefix.display().to_string()));
             parts.push(Part::Code(cmd.clone()));
-            parts.push(Part::Actions(vec![Action::Copy("Copy command", cmd), Action::Reveal(reg.to_path_buf())]));
+            parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd), Action::Reveal(reg.to_path_buf())]));
             if let Some(id) = steam_game_id(prefix) {
                 let cmd = format!("protontricks -c 'wine regedit' {id}");
-                parts.push(text("Without Wine installed, as on a Steam Deck, protontricks opens regedit in this Proton prefix:"));
+                parts.push(text(lang, "step.dll.protontricks"));
                 parts.push(Part::Code(cmd.clone()));
-                parts.push(Part::Actions(vec![Action::Copy("Copy command", cmd)]));
+                parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
             }
         }
     }
     if drive {
-        parts.push(num("Start that Windows and delete the registry key below, and the WOW6432Node copy if it is there: this scan could not read that Windows' registry. Open Registry Editor (press Win+R, type regedit and press Enter), paste the key path into the address bar at the top and press Enter. Right-click the selected key in the left pane and choose Delete."));
+        parts.push(num(tr(lang, "step.dll.drive_key").into()));
         for key in scan::CLSID_KEYS {
             parts.push(Part::Code(key.into()));
-            parts.push(Part::Actions(vec![Action::Copy("Copy key path", key.into())]));
+            parts.push(Part::Actions(vec![copy(lang, "common.copy_key_path", key)]));
         }
     }
-    let defender = if cfg!(windows) || drive {
-        " Microsoft Defender did not detect this DLL on one infected computer, so a clean antivirus scan does not show that it is gone."
-    } else {
-        ""
-    };
-    parts.push(text(format!("Scan again afterwards: these findings should be gone.{defender}")));
+    let defender = cfg!(windows) || drive;
+    let again: &[&'static str] = if defender { &["step.dll.scan_again", "step.dll.defender"] } else { &["step.dll.scan_again"] };
+    parts.push(Part::Text(sentences(lang, again)));
     let title = if files {
-        format!("Remove the {} DLL", browsers.join(" and "))
+        msg("step.dll.title_files").arg("browsers", and(lang, &browsers)).render(lang)
     } else if leftover && !any(r, &[K::RegistryKey]) {
-        "Delete the leftover registry key".into()
+        tr(lang, "step.dll.title_leftover").into()
     } else {
-        "Delete the registry key".into()
+        tr(lang, "step.dll.title_key").into()
     };
     step(title, parts)
 }
@@ -635,24 +660,25 @@ fn caches(r: &ScanResult) -> Vec<Cache> {
         .collect()
 }
 
-fn cache_step(r: &ScanResult) -> Step {
-    let mut parts = vec![text("Close the launcher first. Then delete the tbs_cache folder, the cache of the launcher's built-in browser. It can still hold the malicious script from before the fix, and the launcher would load it again.")];
+fn cache_step(r: &ScanResult, lang: Lang) -> Step {
+    let mut parts = vec![text(lang, "step.cache.intro")];
     let caches = caches(r);
     if caches.is_empty() {
-        parts.push(text("This scan found no launcher data folder. It is %APPDATA%\\nikke_launcher\\tbs_cache on Windows (nikke_launcher_hmt for the HMT launcher), or drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache inside the Proton or Wine prefix."));
+        parts.push(text(lang, "step.cache.none"));
     }
     for c in caches {
         parts.push(Part::Code(c.tbs.display().to_string()));
         parts.push(Part::Actions(vec![Action::Reveal(c.tbs)]));
     }
-    step("Clear the launcher cache", parts)
+    step(tr(lang, "step.cache.title"), parts)
 }
 
 /// The accounts and secrets to change, from what the agent could read.
-pub fn password_list(r: &ScanResult) -> Vec<String> {
+pub fn password_list(r: &ScanResult, lang: Lang) -> Vec<String> {
+    let t = |key| tr(lang, key).to_string();
     let none = Exposure::default();
     let e = r.exposure.as_ref().unwrap_or(&none);
-    let mut out = vec!["Your NIKKE / Level Infinite account first, then email, Discord and banking.".to_string()];
+    let mut out = vec![t("step.password.first")];
     let mut browsers: Vec<(&str, Vec<&str>)> = Vec::new();
     for l in &e.logins {
         match browsers.iter_mut().find(|(b, _)| *b == l.browser) {
@@ -661,129 +687,121 @@ pub fn password_list(r: &ScanResult) -> Vec<String> {
         }
     }
     if browsers.is_empty() {
-        out.push("Every password saved in your browsers.".into());
+        out.push(t("step.password.browsers"));
     }
     for (b, profiles) in browsers {
-        let label = if profiles.len() == 1 { "profile" } else { "profiles" };
-        out.push(format!("Every password saved in {b} ({label} {}).", profiles.join(", ")));
+        let key = if profiles.len() == 1 { "step.password.browser_one" } else { "step.password.browser_other" };
+        out.push(msg(key).arg("browser", b).arg("profiles", profiles.join(", ")).render(lang));
     }
-    out.push("Log out of every session on those services. The agent can collect browser cookies, and a stolen cookie works without the password.".into());
+    out.push(t("step.password.sessions"));
     if e.wallets.is_empty() {
-        out.push("If you hold cryptocurrency, move it to a new wallet with a new seed phrase created on the other device.".into());
+        out.push(t("step.password.crypto"));
     }
     for w in &e.wallets {
-        out.push(format!("{} in {} (profile {}): move the funds to a new wallet with a new seed phrase, created on the other device.", w.name, w.browser, w.profile));
+        let line = msg("step.password.wallet").arg("wallet", w.name).arg("browser", w.browser).arg("profile", w.profile.as_str());
+        out.push(line.render(lang));
     }
     if e.secrets.is_empty() {
-        out.push("Revoke the API tokens and SSH keys stored on this computer.".into());
+        out.push(t("step.password.tokens"));
     }
     for s in &e.secrets {
-        out.push(format!("Revoke and replace: {}, {}.", s.what, s.path.display()));
+        let line = msg("step.password.secret").arg("what", msg(s.what)).arg("path", s.path.display().to_string());
+        out.push(line.render(lang));
     }
     if !e.wallets.is_empty() || !e.secrets.is_empty() {
-        out.push("Any other password, API token, SSH key or wallet stored on this computer.".into());
+        out.push(t("step.password.other"));
     }
     if cfg!(unix) && has_target(r, TargetKind::WinePrefix) {
-        out.push("Under Wine, the agent could read your whole home folder through the Z: drive, and the environment variables of the launcher process, not only the Wine prefix.".into());
+        out.push(t("step.password.wine"));
     }
-    out.extend(home_note(r).map(str::to_string));
+    out.extend(home_note(r, lang).map(str::to_string));
     out
 }
 
 /// A folder scan that found a Wine prefix also checks this computer's home
 /// folder, but the prefix may have been copied from another computer.
-pub fn home_note(r: &ScanResult) -> Option<&'static str> {
-    (cfg!(unix) && r.scope != scan::COMPUTER_SCOPE && r.exposure.is_some() && has_target(r, TargetKind::WinePrefix)).then_some(
-        "This computer's home folder was checked because a Wine prefix was found. If the scanned prefix ran on another computer, check that computer instead.",
-    )
+pub fn home_note(r: &ScanResult, lang: Lang) -> Option<&'static str> {
+    (cfg!(unix) && r.scope != scan::COMPUTER_SCOPE && r.exposure.is_some() && has_target(r, TargetKind::WinePrefix))
+        .then(|| tr(lang, "exposure.home_note"))
 }
 
-fn password_step(r: &ScanResult) -> Step {
+fn password_step(r: &ScanResult, lang: Lang) -> Step {
     let intro = match r.verdict {
-        Verdict::Infected => "Use a phone or another computer that never ran the NIKKE launcher. While the agent ran, its commands could read this computer's files and browser data. Change or replace these:",
-        Verdict::Exposed => "The agent was sent from October 23, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, act as if it ran: from a phone or another computer that never ran the launcher, change or replace these:",
-        _ => {
-            return step(
-                "Change your NIKKE password if the launcher was open on or after October 23",
-                vec![text("If the launcher was open on or after October 23, 2026, change your NIKKE / Level Infinite password anyway, from a phone or another computer that never ran the launcher.")],
-            );
-        }
+        Verdict::Infected => "step.password.intro_infected",
+        Verdict::Exposed => "step.password.intro_exposed",
+        _ => return step(tr(lang, "step.password.title_maybe"), vec![text(lang, "step.password.maybe")]),
     };
-    let list = password_list(r);
-    let mut parts = vec![text(intro)];
+    let list = password_list(r, lang);
+    let mut parts = vec![text(lang, intro)];
     parts.extend(list.iter().cloned().map(Part::Item));
     if r.exposure.as_ref().is_some_and(|e| !e.logins.is_empty() || !e.wallets.is_empty() || !e.secrets.is_empty()) {
-        parts.push(text("This scan only checked that these files exist. It did not open them."));
+        parts.push(text(lang, "step.password.not_opened"));
     }
-    parts.push(Part::Actions(vec![Action::Copy("Copy this list", list.join("\n"))]));
-    step("Change your passwords from another device", parts)
+    parts.push(Part::Actions(vec![copy(lang, "common.copy_list", list.join("\n"))]));
+    step(tr(lang, "step.password.title"), parts)
 }
 
-fn block_step(r: &ScanResult) -> Step {
+fn block_step(r: &ScanResult, lang: Lang) -> Step {
     let lines = match &r.hosts {
         Some(h) => report::block_lines(h),
         None => scan::DOMAINS.iter().map(|d| format!("0.0.0.0 {d}")).collect(),
     };
     let mut parts = Vec::new();
     let title = if lines.is_empty() {
-        parts.push(text("Your hosts file blocks the three domains."));
-        "Block the attacker's IP addresses"
+        parts.push(text(lang, "step.block.all_blocked"));
+        "step.block.title_ips"
     } else {
         if cfg!(windows) {
             let hosts = scan::hosts_path().display().to_string();
-            parts.push(text("Open the Start menu, type Notepad, right-click it and choose \"Run as administrator\". In Notepad, choose File > Open, paste the hosts file path below into the File name box and press Enter."));
+            parts.push(text(lang, "step.block.notepad"));
             parts.push(Part::Code(hosts.clone()));
-            parts.push(Part::Actions(vec![Action::Copy("Copy hosts path", hosts)]));
-            parts.push(text("Paste these lines at the end of the file and save:"));
+            parts.push(Part::Actions(vec![copy(lang, "common.copy_hosts_path", hosts)]));
+            parts.push(text(lang, "step.block.paste"));
             parts.push(Part::Code(lines.join("\n")));
-            parts.push(Part::Actions(vec![Action::Copy("Copy these lines", lines.join("\n"))]));
+            parts.push(Part::Actions(vec![copy(lang, "common.copy_lines", lines.join("\n"))]));
         } else {
             let cmd = format!("printf '\\n{}\\n' | sudo tee -a /etc/hosts", lines.join("\\n"));
-            let deck = if cfg!(target_os = "macos") { "" } else { " On a Steam Deck, set a password with passwd first if you never did." };
-            parts.push(text(format!("Run this command in a terminal. It adds the lines to /etc/hosts and asks for your password.{deck}")));
+            let deck: &[&'static str] = if cfg!(target_os = "macos") { &["step.block.tee"] } else { &["step.block.tee", "step.block.deck"] };
+            parts.push(Part::Text(sentences(lang, deck)));
             parts.push(Part::Code(cmd.clone()));
-            parts.push(Part::Actions(vec![Action::Copy("Copy command", cmd)]));
+            parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
         }
-        parts.push(text("Scan again afterwards: Protection, in Details, then shows each domain as blocked."));
-        "Block the domains"
+        parts.push(text(lang, "step.block.scan_again"));
+        "step.block.title_domains"
     };
     let [a, b] = ATTACKER_IPS;
-    parts.push(text(format!("The hosts file cannot block IP addresses. Block {a} and {b} in your firewall or router.")));
+    parts.push(text(lang, "step.block.ips"));
     if cfg!(windows) {
         let cmd = format!("New-NetFirewallRule -DisplayName \"Block NIKKE malware servers\" -Direction Outbound -RemoteAddress {a},{b} -Action Block");
-        parts.push(text("To add a Windows firewall rule, right-click the Start button, choose Terminal (Admin) or Windows PowerShell (Admin), and run:"));
+        parts.push(text(lang, "step.block.firewall"));
         parts.push(Part::Code(cmd.clone()));
-        parts.push(Part::Actions(vec![Action::Copy("Copy command", cmd)]));
+        parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
     } else if cfg!(target_os = "macos") {
-        parts.push(text("On macOS, block them in your router's settings."));
+        parts.push(text(lang, "step.block.macos"));
     } else {
         let cmd = format!("sudo ufw deny out to {a} && sudo ufw deny out to {b}");
-        parts.push(text("With ufw, run this command. The rules block nothing while ufw is off: sudo ufw status must show \"Status: active\", and sudo ufw enable turns it on. Without ufw, block them in your router's settings."));
+        parts.push(text(lang, "step.block.ufw"));
         parts.push(Part::Code(cmd.clone()));
-        parts.push(Part::Actions(vec![Action::Copy("Copy command", cmd)]));
+        parts.push(Part::Actions(vec![copy(lang, "common.copy_command", cmd)]));
     }
-    step(title, parts)
+    step(tr(lang, title), parts)
 }
 
-fn wait_step(agent_ran: bool) -> Step {
-    let mut parts = vec![text("Some of Level Infinite's servers still sent the malicious file on November 3, 2026. A launch before the fix can load the script again.")];
+fn wait_step(agent_ran: bool, lang: Lang) -> Step {
+    let mut parts = vec![text(lang, "step.wait.servers")];
     if agent_ran {
-        parts.push(text("The agent could run any command, so reinstalling the operating system is the safest way to be sure this computer is clean."));
+        parts.push(text(lang, "step.wait.reinstall"));
     }
-    step("Do not open the launcher until Level Infinite confirms a fix", parts)
+    step(tr(lang, "step.wait.title"), parts)
 }
 
 fn shown(path: Option<&Path>) -> String {
     path.map(|p| p.display().to_string()).unwrap_or_default()
 }
 
-/// Program names from DllLoaded evidence ("PID 12: chrome.exe (C:\...) has ... loaded").
-fn program_names(f: &Finding) -> Vec<String> {
-    let mut names: Vec<String> = f
-        .evidence
-        .iter()
-        .filter_map(|e| e.strip_prefix("PID ")?.split_once(": ")?.1.split(" (").next().map(str::to_string))
-        .collect();
+/// Program names from the DllLoaded evidence lines.
+fn program_names(f: &Finding, lang: Lang) -> Vec<String> {
+    let mut names: Vec<String> = f.evidence.iter().filter_map(|e| e.get("program")).map(|p| p.render(lang)).collect();
     names.sort();
     names.dedup();
     names
@@ -816,70 +834,78 @@ impl Section {
         }
     }
 
-    pub fn title(self) -> &'static str {
-        match self {
-            Section::Proof => "Proof the malware ran",
-            Section::Cleanup => "Things to clean up",
-            Section::Signs => "Signs of exposure",
-            Section::Info => "Information",
-            Section::Coverage => "What this scan could not check",
-        }
+    pub fn title(self, lang: Lang) -> &'static str {
+        tr(
+            lang,
+            match self {
+                Section::Proof => "section.proof",
+                Section::Cleanup => "section.cleanup",
+                Section::Signs => "section.signs",
+                Section::Info => "section.info",
+                Section::Coverage => "section.coverage",
+            },
+        )
     }
 }
 
-pub const EXPOSURE_TITLE: &str = "Your data the malware could reach";
-
 /// One line on what a finding means for the user.
-pub fn meaning(kind: K) -> &'static str {
-    match kind {
-        K::AgentRan => "The agent ran inside the launcher. While the launcher was open, the attacker could control this computer.",
-        K::PayloadDownloaded => "The launcher received the agent from the attacker's server.",
-        K::PayloadFile => "A copy of the agent is still in the launcher's log folder.",
-        K::AgentState => "The agent saved its ID in the launcher's browser storage, so it ran at least once.",
-        K::AgentServerContacted => "The launcher reached the server that sends the agent, so it got as far as asking for the agent.",
-        K::LoaderCached => "The malicious script ran in the launcher. This alone does not show that the agent was sent.",
-        K::LauncherContacted => "The launcher contacted the attacker's domain.",
-        K::ChromeDll => "The browser loads this DLL when it starts, so the malware can run again without the launcher. The malware creates Chrome's folder even when Chrome is not installed.",
-        K::RegistryKey => "This key makes the browser load the malware's DLL.",
-        K::RegistryLeftover => "The DLL path was removed from this key, but the key is still there. Delete it.",
-        K::LegacyDll => "An earlier version of the agent put its DLL here.",
-        K::DllLoaded => "These programs run the malware's DLL now. Windows keeps it loaded until they exit or Windows restarts.",
-        K::TempFile => "The agent wrote these files while it collected browser credentials or screenshots.",
-        K::LauncherRunning => "While the launcher runs, the attacker can send it commands.",
-        K::Coverage => "Part of this scan could not be done. The text above says what to do.",
-        K::Info => "Context only. It does not change the verdict.",
-    }
+pub fn meaning(kind: K, lang: Lang) -> &'static str {
+    tr(
+        lang,
+        match kind {
+            K::AgentRan => "meaning.agent_ran",
+            K::PayloadDownloaded => "meaning.payload_downloaded",
+            K::PayloadFile => "meaning.payload_file",
+            K::AgentState => "meaning.agent_state",
+            K::AgentServerContacted => "meaning.agent_server",
+            K::LoaderCached => "meaning.loader_cached",
+            K::LauncherContacted => "meaning.launcher_contacted",
+            K::ChromeDll => "meaning.chrome_dll",
+            K::RegistryKey => "meaning.registry_key",
+            K::RegistryLeftover => "meaning.registry_leftover",
+            K::LegacyDll => "meaning.legacy_dll",
+            K::DllLoaded => "meaning.dll_loaded",
+            K::TempFile => "meaning.temp_file",
+            K::LauncherRunning => "meaning.launcher_running",
+            K::Coverage => "meaning.coverage",
+            K::Info => "meaning.info",
+        },
+    )
 }
 
 /// The exposure lists of the Details tab: (heading, [(what, path)]).
-pub fn exposure_lists(e: &Exposure) -> [(&'static str, Vec<(String, PathBuf)>); 3] {
+pub fn exposure_lists(e: &Exposure, lang: Lang) -> [(&'static str, Vec<(String, PathBuf)>); 3] {
+    let login = |l: &crate::exposure::BrowserLogins| {
+        msg("exposure.login").arg("browser", l.browser).arg("profile", l.profile.as_str()).arg("files", l.files.join(", "))
+    };
+    let wallet = |w: &crate::exposure::Wallet| {
+        msg("exposure.wallet").arg("wallet", w.name).arg("id", w.id).arg("browser", w.browser).arg("profile", w.profile.as_str())
+    };
     [
-        (
-            "Saved passwords",
-            e.logins.iter().map(|l| (format!("{}, profile {} ({})", l.browser, l.profile, l.files.join(", ")), l.path.clone())).collect(),
-        ),
-        (
-            "Wallet extensions",
-            e.wallets.iter().map(|w| (format!("{} ({}) in {}, profile {}", w.name, w.id, w.browser, w.profile), w.path.clone())).collect(),
-        ),
-        ("Secret files", e.secrets.iter().map(|s| (s.what.to_string(), s.path.clone())).collect()),
+        (tr(lang, "exposure.saved_passwords"), e.logins.iter().map(|l| (login(l).render(lang), l.path.clone())).collect()),
+        (tr(lang, "exposure.wallets"), e.wallets.iter().map(|w| (wallet(w).render(lang), w.path.clone())).collect()),
+        (tr(lang, "exposure.secrets"), e.secrets.iter().map(|s| (tr(lang, s.what).to_string(), s.path.clone())).collect()),
     ]
 }
-
-pub const EXPOSURE_NOTE: &str = "This scan only checked that these files exist. It did not open them. While the agent ran, its commands could read them.";
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::locate::{Target, WalkStats};
     use crate::scan::{Group, HostsStatus, Severity};
 
+    const EN: Lang = Lang::En;
+
     fn finding(kind: K, severity: Severity, title: &str) -> Finding {
+        // A ChromeDll title keeps the browser name, as the scan writes it.
+        let title = match title.strip_suffix(" persistence is installed") {
+            Some(browser) if kind == K::ChromeDll => scan::persistence_title(browser),
+            _ => title.into(),
+        };
         Finding {
             kind,
             severity,
-            title: title.into(),
-            detail: String::new(),
+            title,
+            detail: "".into(),
             path: None,
             open_path: None,
             copy_text: None,
@@ -909,7 +935,7 @@ mod tests {
     }
 
     fn titles(r: &ScanResult) -> Vec<String> {
-        steps(r).into_iter().map(|s| s.title).collect()
+        steps(r, EN).into_iter().map(|s| s.title).collect()
     }
 
     #[test]
@@ -919,7 +945,10 @@ mod tests {
         dll.path = Some(PathBuf::from("/p/PlatformExperienceHelper"));
         dll.open_path = Some(PathBuf::from(format!("/p/PlatformExperienceHelper/{hash}/platform_experience_helper.dll")));
         let mut loaded = finding(K::DllLoaded, Severity::Critical, "The persistence DLL is loaded now");
-        loaded.evidence = vec!["PID 9: msedge.exe (C:\\e\\msedge.exe) has C:\\x.dll loaded".into(), "PID 4: explorer.exe (C:\\explorer.exe) has C:\\x.dll loaded".into()];
+        loaded.evidence = vec![
+            scan::dll_loaded_line(9, "msedge.exe", "C:\\e\\msedge.exe", "C:\\x.dll"),
+            scan::dll_loaded_line(4, "explorer.exe", "C:\\explorer.exe", "C:\\x.dll"),
+        ];
         let infected = result(
             Verdict::Infected,
             vec![dll, loaded, finding(K::AgentState, Severity::Critical, "Agent state")],
@@ -937,21 +966,21 @@ mod tests {
                 "Do not open the launcher until Level Infinite confirms a fix",
             ]
         );
-        let all = steps(&infected);
+        let all = steps(&infected, EN);
         let codes: Vec<&str> = all.iter().flat_map(|s| &s.parts).filter_map(|p| if let Part::Code(c) = p { Some(c.as_str()) } else { None }).collect();
         assert!(codes.contains(&format!("/p/PlatformExperienceHelper/{hash}").as_str()), "{codes:?}");
         let cache = Path::new("/d/nikke_launcher").join("tbs_cache").display().to_string();
         assert!(codes.contains(&cache.as_str()), "{codes:?}");
         let close = format!("{:?}", all[0].parts);
         assert!(close.contains("Programs to end: msedge.exe.") && close.contains("Do not end explorer.exe"), "{close}");
-        let [ran, active, clean, protect] = answers(&infected);
+        let [ran, active, clean, protect] = answers(&infected, EN);
         assert_eq!((ran.reply, active.reply, clean.reply, protect.reply), ("Yes", "Yes", "Yes", "Partly"));
         assert!(clean.lines.iter().any(|l| l.contains("tbs_cache")), "{:?}", clean.lines);
 
         // A quick scan's "No" is unsure, and its steps offer the full scan.
         let mut quick_clean = result(Verdict::NoTraces, vec![], vec![(TargetKind::InstallDir, "/n"), (TargetKind::LauncherData, "/d/nikke_launcher")]);
         quick_clean.stats.depth_limit = Some(5);
-        let [ran, ..] = answers(&quick_clean);
+        let [ran, ..] = answers(&quick_clean, EN);
         assert_eq!((ran.reply, ran.tone), ("No", Tone::Unsure));
         assert_eq!(titles(&quick_clean)[0], "Run the full scan");
 
@@ -965,7 +994,7 @@ mod tests {
                 "Do not open the launcher until Level Infinite confirms a fix",
             ]
         );
-        let [ran, active, clean, _] = answers(&clean_scan);
+        let [ran, active, clean, _] = answers(&clean_scan, EN);
         assert_eq!((ran.reply, active.reply, clean.reply), ("No", "No", "No"));
         assert_eq!(ran.tone, Tone::Good);
 
@@ -974,16 +1003,16 @@ mod tests {
         // Scanning the install can change the result, so it comes before the cleanup.
         assert_eq!(t[..3], ["Save the report before you delete anything", "Scan the folder where NIKKE is installed", "Clear the launcher cache"]);
         assert!(t.contains(&"Change your passwords from another device".to_string()));
-        let ran = &answers(&exposed)[0];
+        let ran = &answers(&exposed, EN)[0];
         assert_eq!(ran.reply, "No");
         assert!(!ran.lines.iter().any(|l| l.starts_with("Finding nothing")), "{:?}", ran.lines);
 
         let none = result(Verdict::NotFound, vec![], vec![]);
         assert_eq!(titles(&none)[0], "Scan the folder where NIKKE is installed");
-        assert_eq!(answers(&none)[0].reply, "Cannot tell");
+        assert_eq!(answers(&none, EN)[0].reply, "Cannot tell");
         // Only a quick scan offers the full scan.
         let offers_full = |r: &ScanResult| {
-            steps(r)[0].parts.iter().any(|p| matches!(p, Part::Actions(a) if a.iter().any(|a| matches!(a, Action::FullScan))))
+            steps(r, EN)[0].parts.iter().any(|p| matches!(p, Part::Actions(a) if a.iter().any(|a| matches!(a, Action::FullScan))))
         };
         let mut quick = result(Verdict::NotFound, vec![], vec![]);
         quick.stats.depth_limit = Some(5);
@@ -995,7 +1024,7 @@ mod tests {
             vec![finding(K::Coverage, Severity::Info, "debug.log could not be read")],
             vec![(TargetKind::InstallDir, "/n")],
         );
-        assert_eq!(answers(&gap)[0].tone, Tone::Unsure);
+        assert_eq!(answers(&gap, EN)[0].tone, Tone::Unsure);
     }
 
     fn texts(s: &Step) -> String {
@@ -1023,7 +1052,7 @@ mod tests {
             dll_at("Chrome persistence is installed", b),
         ];
         let drive = result(Verdict::Infected, found, vec![(TargetKind::UserProfile, "/mnt/win/Users/A")]);
-        let step = dll_step(&drive);
+        let step = dll_step(&drive, EN);
         assert_eq!(step.title, "Remove the Chrome and Edge DLL");
         let t = texts(&step);
         assert!(t.contains("on a Windows drive seen from this system") && !t.contains("Wine prefix"), "{t}");
@@ -1039,21 +1068,21 @@ mod tests {
         key.path = Some(PathBuf::from(format!("{pfx}/user.reg")));
         key.copy_text = Some(scan::CLSID_KEYS[0].into());
         let wine = result(Verdict::Infected, vec![key], vec![(TargetKind::WinePrefix, pfx)]);
-        let step = dll_step(&wine);
+        let step = dll_step(&wine, EN);
         assert_eq!(step.title, "Delete the leftover registry key");
         let t = texts(&step);
         assert!(t.contains("The key is inside a Wine prefix") && !t.contains("Windows drive"), "{t}");
         assert!(t.contains("WINEPREFIX='/s/steamapps/compatdata/123/pfx' wine regedit"), "{t}");
         assert!(t.contains("protontricks -c 'wine regedit' 123"), "{t}");
         assert!(!t.contains("Defender"), "{t}");
-        let [_, active, clean, _] = answers(&wine);
+        let [_, active, clean, _] = answers(&wine, EN);
         assert_eq!(active.reply, "No");
         assert!(clean.lines[0].contains("left after the malware cleared the DLL path"), "{:?}", clean.lines);
 
         // Only the files of the older version: no 64-hex folder to point at.
         let mut legacy = finding(K::LegacyDll, Severity::Critical, "Files of an older Chrome persistence are installed");
         legacy.path = Some(PathBuf::from(format!("{pfx}/drive_c/Program Files/Google/Chrome/Application/PlatformExperienceHelper")));
-        let step = dll_step(&result(Verdict::Infected, vec![legacy], vec![(TargetKind::WinePrefix, pfx)]));
+        let step = dll_step(&result(Verdict::Infected, vec![legacy], vec![(TargetKind::WinePrefix, pfx)]), EN);
         let t = texts(&step);
         assert!(!t.contains("64 hex") && t.contains("1. In the folder below, delete only platform_experience_helper.dll"), "{t}");
     }
@@ -1062,13 +1091,13 @@ mod tests {
     fn password_list_keeps_the_general_lines() {
         use crate::exposure::SecretFile;
         let mut r = result(Verdict::Infected, vec![finding(K::AgentRan, Severity::Critical, "The malware agent ran")], vec![(TargetKind::InstallDir, "/n")]);
-        let step = password_step(&r);
+        let step = password_step(&r, EN);
         assert!(!texts(&step).contains("only checked that these files exist"), "{}", texts(&step));
         r.exposure = Some(Exposure { secrets: vec![SecretFile { what: "npm token", path: PathBuf::from("/h/.npmrc") }], ..Exposure::default() });
-        let list = password_list(&r);
+        let list = password_list(&r, EN);
         assert!(list.iter().any(|l| l == "Revoke and replace: npm token, /h/.npmrc."), "{list:?}");
         assert!(list.iter().any(|l| l.starts_with("Any other password, API token, SSH key or wallet")), "{list:?}");
-        assert!(texts(&password_step(&r)).contains("only checked that these files exist"));
+        assert!(texts(&password_step(&r, EN)).contains("only checked that these files exist"));
     }
 
     #[test]
@@ -1080,8 +1109,8 @@ mod tests {
     #[test]
     fn run_lines() {
         let run = AgentRun { kind: RunKind::Started, time: Some("11-03 01:47:36".into()), agent_id: None, host: Some("COLONY".into()), file: None, source: PathBuf::new() };
-        assert_eq!(run_line(&run), "11-03 01:47:36: the agent sent the computer name COLONY to the attacker");
+        assert_eq!(run_line(&run, EN), "11-03 01:47:36: the agent sent the computer name COLONY to the attacker");
         let run = AgentRun { source: PathBuf::from("/n/debug.log"), host: None, ..run };
-        assert_eq!(run_line(&run), "11-03 01:47:36: the agent sent the computer name to the attacker (from debug.log)");
+        assert_eq!(run_line(&run, EN), "11-03 01:47:36: the agent sent the computer name to the attacker (from debug.log)");
     }
 }

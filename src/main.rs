@@ -3,6 +3,7 @@
 mod exposure;
 mod guide;
 mod hsts;
+mod i18n;
 mod ldb;
 mod locate;
 mod open;
@@ -17,80 +18,88 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-const USAGE: &str = "\
-NIKKE Launcher Check: looks for traces of the November 2026 NIKKE PC launcher compromise.
-Read-only. No network access.
-
-Usage:
-  nikke-check                  Open the window
-  nikke-check PATH             Open the window and scan this folder
-  nikke-check --cli            Quick scan of this computer, printed as a report
-  nikke-check --cli --full     Full scan: open every folder on every local drive
-  nikke-check --cli PATH...    Scan only these folders, in full, and print a report
-  nikke-check --cli --redact   Replace the computer name, user names, agent IDs
-                               and home folder in the report (any --cli form)
-  nikke-check --help           Show this help
-
-Exit codes (--cli):
-  0  no traces found
-  1  exposed (warnings only)
-  2  infected (critical traces)
-  3  no NIKKE install or launcher data found
-  4  invalid arguments, or a folder that cannot be read
-";
+use crate::i18n::{Lang, Text, msg};
 
 fn main() -> ExitCode {
     quiet_drive_errors();
-    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let mut args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let lang = match take_lang(&mut args) {
+        Ok(lang) => lang.unwrap_or_else(Lang::detect),
+        Err(err) => {
+            attach_console();
+            eprintln!("{}", err.render(Lang::detect()));
+            return ExitCode::from(4);
+        }
+    };
+    let usage = || msg("cli.usage").arg("codes", Lang::codes()).render(lang);
     let Some(first) = args.first() else {
-        return window(None);
+        return window(None, lang);
     };
     match first.to_str() {
         Some("--help" | "-h") => {
             attach_console();
-            print!("{USAGE}");
+            print!("{}", usage());
             ExitCode::SUCCESS
         }
         Some("--cli") => {
             attach_console();
-            cli(&args[1..])
+            cli(&args[1..], lang)
         }
         // Items dropped on the .exe in Explorer arrive here with no console to print to,
         // so the window opens and says what is wrong with a path that is not a folder.
         // shortcut: only the first dropped item is scanned, take a list if users drop several.
         arg if !arg.is_some_and(|a| a.starts_with('-')) => {
             let path = PathBuf::from(first);
-            window(Some(std::path::absolute(&path).unwrap_or(path)))
+            window(Some(std::path::absolute(&path).unwrap_or(path)), lang)
         }
         _ => {
             attach_console();
-            eprintln!("Unknown argument: {}\n\n{USAGE}", first.to_string_lossy());
+            let unknown = msg("cli.unknown_argument").arg("arg", first.to_string_lossy().into_owned());
+            eprintln!("{}\n\n{}", unknown.render(lang), usage());
             ExitCode::from(4)
         }
     }
 }
 
-fn window(folder: Option<PathBuf>) -> ExitCode {
+/// Takes every `--lang CODE` out of `args`; the last one counts. Without one,
+/// the window and the report use the system language.
+fn take_lang(args: &mut Vec<OsString>) -> Result<Option<Lang>, Text> {
+    let mut lang = None;
+    while let Some(i) = args.iter().position(|a| a == "--lang") {
+        args.remove(i);
+        if i == args.len() {
+            return Err(msg("cli.lang_missing").arg("codes", Lang::codes()));
+        }
+        let code = args.remove(i).to_string_lossy().into_owned();
+        match Lang::from_code(&code) {
+            Some(l) => lang = Some(l),
+            None => return Err(msg("cli.lang_unknown").arg("code", code).arg("codes", Lang::codes())),
+        }
+    }
+    Ok(lang)
+}
+
+fn window(folder: Option<PathBuf>, lang: Lang) -> ExitCode {
     skip_opengl();
-    match run_window(folder) {
+    match run_window(folder, lang) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
-            eprintln!("Could not open the window: {err}");
-            error_box(&err);
+            eprintln!("{}", msg("cli.window_failed").arg("error", err.as_str()).render(lang));
+            error_box(&err, lang);
             ExitCode::FAILURE
         }
     }
 }
 
 #[cfg(not(windows))]
-fn run_window(folder: Option<PathBuf>) -> Result<(), String> {
-    ui::run(folder).map_err(|e| e.to_string())
+fn run_window(folder: Option<PathBuf>, lang: Lang) -> Result<(), String> {
+    ui::run(folder, lang).map_err(|e| e.to_string())
 }
 
 /// The Windows build has no console, so a panic would close the window without
 /// a word. The hook keeps the panic message for the error box.
 #[cfg(windows)]
-fn run_window(folder: Option<PathBuf>) -> Result<(), String> {
+fn run_window(folder: Option<PathBuf>, lang: Lang) -> Result<(), String> {
     use std::sync::{Arc, Mutex};
     let message = Arc::new(Mutex::new(String::new()));
     let kept = message.clone();
@@ -101,19 +110,16 @@ fn run_window(folder: Option<PathBuf>) -> Result<(), String> {
         }
         default(info);
     }));
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| ui::run(folder)))
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| ui::run(folder, lang)))
         .map_err(|_| message.lock().map(|m| m.clone()).unwrap_or_default())?
         .map_err(|e| e.to_string())
 }
 
 /// Says what went wrong when the window cannot open, and how to get the report anyway.
 #[cfg(windows)]
-fn error_box(err: &str) {
+fn error_box(err: &str, lang: Lang) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
-    let text = format!(
-        "The window could not open:\n{err}\n\nTo get the report without the window, open PowerShell in the folder that holds this program and run:\n\n{}",
-        guide::powershell_cli("")
-    );
+    let text = msg("cli.error_box").arg("error", err).arg("command", guide::powershell_cli("")).render(lang);
     let wide = |s: &str| s.encode_utf16().chain([0]).collect::<Vec<u16>>();
     let (text, title) = (wide(&text), wide(report::APP_NAME));
     // SAFETY: both strings are NUL-terminated and outlive the call; no owner window.
@@ -123,33 +129,34 @@ fn error_box(err: &str) {
 }
 
 #[cfg(not(windows))]
-fn error_box(_: &str) {}
+fn error_box(_: &str, _: Lang) {}
 
 /// The absolute path of a folder argument, or exit code 4.
-fn folder(path: &OsString) -> Result<PathBuf, ExitCode> {
+fn folder(path: &OsString, lang: Lang) -> Result<PathBuf, ExitCode> {
     let path = PathBuf::from(path);
+    let shown = path.display().to_string();
     match std::path::absolute(&path) {
         Ok(full) if full.is_dir() => {
             // A folder that cannot be listed would otherwise read as "NIKKE not found".
             if let Err(err) = std::fs::read_dir(&full) {
-                eprintln!("Cannot read folder {}: {err}", path.display());
+                eprintln!("{}", msg("cli.cannot_read_folder").arg("path", shown).arg("error", err.to_string()).render(lang));
                 return Err(ExitCode::from(4));
             }
             Ok(full)
         }
         _ => {
-            eprintln!("Not a folder: {}", path.display());
+            eprintln!("{}", msg("cli.not_a_folder").arg("path", shown).render(lang));
             Err(ExitCode::from(4))
         }
     }
 }
 
-fn cli(args: &[OsString]) -> ExitCode {
+fn cli(args: &[OsString], lang: Lang) -> ExitCode {
     let redact = args.iter().any(|a| a == "--redact");
     let full = args.iter().any(|a| a == "--full");
     let mut folders = Vec::new();
     for path in args.iter().filter(|a| *a != "--redact" && *a != "--full") {
-        match folder(path) {
+        match folder(path, lang) {
             Ok(full) => folders.push(full),
             Err(code) => return code,
         }
@@ -160,7 +167,7 @@ fn cli(args: &[OsString]) -> ExitCode {
     } else {
         scan::scan_folders(&folders, &progress)
     };
-    let mut text = report::render(&result);
+    let mut text = report::render(&result, lang);
     if redact {
         text = redact::Secrets::of(&result).apply(&text);
     }

@@ -12,6 +12,7 @@ use walkdir::WalkDir;
 
 use crate::exposure::{self, Exposure};
 use crate::hsts;
+use crate::i18n::{Lang, Text, msg, tr};
 use crate::ldb;
 use crate::locate::{self, Discovery, Progress, Stage, TargetKind, WalkStats, find_ci};
 use crate::timeline::{self, AgentRun, PayloadBuild, RunKind};
@@ -37,12 +38,15 @@ pub enum Severity {
 }
 
 impl Severity {
-    pub fn tag(self) -> &'static str {
-        match self {
-            Severity::Info => "INFO",
-            Severity::Warning => "WARNING",
-            Severity::Critical => "CRITICAL",
-        }
+    pub fn tag(self, lang: Lang) -> &'static str {
+        tr(
+            lang,
+            match self {
+                Severity::Info => "severity.info",
+                Severity::Warning => "severity.warning",
+                Severity::Critical => "severity.critical",
+            },
+        )
     }
 }
 
@@ -84,28 +88,30 @@ pub enum FindingKind {
     Info,
 }
 
+/// Titles, details, tool-written evidence lines and times are messages, so a
+/// result shows in any language after the scan. Lines quoted from files stay raw.
 #[derive(Debug, Clone)]
 pub struct Finding {
     pub kind: FindingKind,
     pub severity: Severity,
-    pub title: String,
-    pub detail: String,
+    pub title: Text,
+    pub detail: Text,
     pub path: Option<PathBuf>,
     /// What "Open folder" shows: a file to select, or a folder.
     pub open_path: Option<PathBuf>,
     /// Text for a copy button, such as the registry key to delete.
     pub copy_text: Option<String>,
-    pub evidence: Vec<String>,
-    pub time: Option<String>,
+    pub evidence: Vec<Text>,
+    pub time: Option<Text>,
 }
 
 impl Finding {
-    fn new(kind: FindingKind, severity: Severity, title: impl Into<String>, detail: impl Into<String>) -> Self {
+    fn new(kind: FindingKind, severity: Severity, title: Text, detail: Text) -> Self {
         Self {
             kind,
             severity,
-            title: title.into(),
-            detail: detail.into(),
+            title,
+            detail,
             path: None,
             open_path: None,
             copy_text: None,
@@ -131,21 +137,26 @@ impl Finding {
         self
     }
 
-    fn evidence(mut self, lines: impl IntoIterator<Item = String>) -> Self {
-        self.evidence = lines.into_iter().take(MAX_EVIDENCE).map(|l| clip(&l)).collect();
+    fn evidence<T: Into<Text>>(mut self, lines: impl IntoIterator<Item = T>) -> Self {
+        self.evidence = lines.into_iter().take(MAX_EVIDENCE).map(Into::into).collect();
         self
     }
 
-    fn time(mut self, time: Option<String>) -> Self {
-        self.time = time;
+    fn time<T: Into<Text>>(mut self, time: Option<T>) -> Self {
+        self.time = time.map(Into::into);
         self
+    }
+
+    /// The evidence as shown, each line cut to EVIDENCE_CHARS.
+    pub fn evidence_lines(&self, lang: Lang) -> Vec<String> {
+        self.evidence.iter().map(|e| clip(&e.render(lang))).collect()
     }
 }
 
 /// Findings for one location.
 #[derive(Debug, Clone)]
 pub struct Group {
-    pub label: String,
+    pub label: Text,
     pub path: Option<PathBuf>,
     pub findings: Vec<Finding>,
 }
@@ -173,7 +184,7 @@ impl Verdict {
 pub struct HostsStatus {
     pub path: PathBuf,
     /// Shown when the file is missing or could not be read.
-    pub note: Option<&'static str>,
+    pub note: Option<Text>,
     /// (domain, blocked). `None` when the file could not be read.
     pub domains: Vec<(&'static str, Option<bool>)>,
 }
@@ -197,6 +208,7 @@ pub struct ScanResult {
 }
 
 /// The `scope` of a computer scan, quick or full; a folder scan has its paths.
+/// Only compared: the window and the report show a translated text in its place.
 pub const COMPUTER_SCOPE: &str = "this computer";
 
 /// `full` opens every folder; otherwise the walk stops [`locate::QUICK_DEPTH`] levels down.
@@ -253,7 +265,7 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         if !findings.is_empty() {
             findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
             groups.push(Group {
-                label: target.kind.label().into(),
+                label: msg(target.kind.key()),
                 path: Some(target.path.clone()),
                 findings,
             });
@@ -267,12 +279,12 @@ pub fn run(scope: String, discovery: Discovery, system_checks: bool, start: Inst
         running.extend(loaded);
     }
     if !running.is_empty() {
-        groups.insert(0, Group { label: "Running programs".into(), path: None, findings: running });
+        groups.insert(0, Group { label: msg("group.running"), path: None, findings: running });
     }
     let coverage = check_coverage(&discovery);
     tally(&coverage);
     if !coverage.is_empty() {
-        groups.push(Group { label: "Scan coverage".into(), path: None, findings: coverage });
+        groups.push(Group { label: msg("group.coverage"), path: None, findings: coverage });
     }
     let worst = groups.iter().flat_map(|g| &g.findings).map(|f| f.severity).max();
     let has = |kind| discovery.targets.iter().any(|t| t.kind == kind);
@@ -322,25 +334,25 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
         out.push(Finding::new(
             FindingKind::Coverage,
             Severity::Info,
-            "The NIKKE install folder was not found",
-            "Launcher data was found, but not the install folder, so debug.log and the download logs were not checked. If you know where NIKKE is installed, scan that folder: \"Scan a folder...\" in the window, or nikke-check --cli <folder>.",
+            msg("finding.no_install.title"),
+            msg("finding.no_install.detail"),
         ));
     }
     let shown = |paths: &[PathBuf]| capped(paths.iter().map(|p| p.display().to_string()).collect());
     let stats = &discovery.stats;
     if let Some(depth) = stats.depth_limit {
-        let read = if cfg!(windows) {
-            format!("the install paths the launcher records in the registry, the launcher data and every folder up to {depth} levels below the root of each local drive")
+        let detail = if cfg!(windows) {
+            msg("finding.quick_scan.detail_windows")
         } else if cfg!(target_os = "macos") {
-            format!("the usual Wine prefix folders, the install paths those prefixes record, and every folder up to {depth} levels below /")
+            msg("finding.quick_scan.detail_macos")
         } else {
-            format!("the usual Wine prefix folders, the install paths those prefixes record, and every folder up to {depth} levels below /, your home folder and each drive under /mnt, /media and /run/media")
+            msg("finding.quick_scan.detail_linux")
         };
         out.push(Finding::new(
             FindingKind::Info,
             Severity::Info,
-            "This was a quick scan",
-            format!("It read {read}. A NIKKE folder more than {depth} levels deep that the launcher no longer records is found only by the full scan (\"Full scan\" in the window, or nikke-check --cli --full) or by \"Scan a folder...\"."),
+            msg("finding.quick_scan.title"),
+            detail.arg("depth", depth.to_string()),
         ));
     }
     if !stats.unreadable.is_empty() {
@@ -348,8 +360,8 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
             Finding::new(
                 FindingKind::Coverage,
                 Severity::Info,
-                "Some folders could not be read",
-                "The scan was not allowed to open these folders, so nothing in them was checked. On macOS, give Terminal (or the app you started this tool from) Full Disk Access in System Settings > Privacy & Security, then scan again. Elsewhere, scan again as a user who can read them.",
+                msg("finding.unreadable.title"),
+                msg("finding.unreadable.detail"),
             )
             .evidence(shown(&stats.unreadable)),
         );
@@ -359,8 +371,8 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
             Finding::new(
                 FindingKind::Coverage,
                 Severity::Info,
-                "Network drives were not scanned",
-                "A computer scan skips network drives and remote mounts, because reading them is slow and a disconnected one can stop the scan. If NIKKE is installed on one, scan it with \"Scan a folder...\" or nikke-check --cli <folder>.",
+                msg("finding.network.title"),
+                msg("finding.network.detail"),
             )
             .evidence(shown(&stats.skipped_mounts)),
         );
@@ -378,23 +390,13 @@ const MENTIONS: [&[u8]; 1] = [b"insightjs"];
 const AGENT_SERVER: [&[u8]; 2] = [b"analytics.insightjs.com", b"insight.bundle"];
 
 /// The finding for a launcher log that names insightjs: critical with the agent server, a warning without it.
-fn log_mention(name: &str, lines: Vec<String>, time: Option<String>, server: bool) -> Finding {
+fn log_mention(name: &str, lines: Vec<String>, time: Option<Text>, server: bool) -> Finding {
     let (kind, severity, title, detail) = if server {
-        (
-            FindingKind::AgentServerContacted,
-            Severity::Critical,
-            format!("{name} names the agent server"),
-            format!("{name} names analytics.insightjs.com or insight.bundle. That server sends the agent, so the launcher got as far as asking for it."),
-        )
+        (FindingKind::AgentServerContacted, Severity::Critical, "finding.log_server.title", "finding.log_server.detail")
     } else {
-        (
-            FindingKind::LauncherContacted,
-            Severity::Warning,
-            format!("{name} mentions insightjs"),
-            format!("{name} names insightjs, the domain of the malicious loader script. No line names the agent server (analytics.insightjs.com or insight.bundle), so this alone does not show that the agent was downloaded."),
-        )
+        (FindingKind::LauncherContacted, Severity::Warning, "finding.log_mention.title", "finding.log_mention.detail")
     };
-    Finding::new(kind, severity, title, detail).evidence(lines).time(time)
+    Finding::new(kind, severity, msg(title).arg("file", name), msg(detail).arg("file", name)).evidence(lines).time(time)
 }
 
 fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<PayloadBuild>) -> Vec<Finding> {
@@ -405,7 +407,7 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
 
     // A1: read line by line, because the launcher appends to debug.log at every launch.
     let debug_note = match debug.as_deref() {
-        None => "No Launcher/intl_service/debug.log was found. It may have been deleted, or the launcher was never started from this folder.".to_string(),
+        None => msg("finding.install_found.debug_missing"),
         Some(path) => {
             let (mut ran, mut server, mut agent, mut mentions) = (false, false, Vec::new(), Vec::new());
             let read = each_line(path, |line| {
@@ -427,12 +429,12 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                     Finding::new(
                         FindingKind::Coverage,
                         Severity::Info,
-                        "debug.log could not be read",
-                        "Launcher/intl_service/debug.log exists, but this scan was not allowed to open it, so it could not check whether the agent ran. Scan again as a user who can read it.",
+                        msg("finding.debug_unreadable.title"),
+                        msg("finding.debug_unreadable.detail"),
                     )
                     .at(path),
                 );
-                "Launcher/intl_service/debug.log exists but could not be read (no permission).".to_string()
+                msg("finding.install_found.debug_unreadable")
             } else {
                 if ran {
                     let time = agent.iter().find_map(|l| cef_time(l));
@@ -440,8 +442,8 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                         Finding::new(
                             FindingKind::AgentRan,
                             Severity::Critical,
-                            "The malware agent ran",
-                            "debug.log shows the remote-access agent starting inside the launcher (k2f_chan registered). While the launcher was open, the attacker could run commands on this computer.",
+                            msg("finding.agent_ran.title"),
+                            msg("finding.agent_ran.detail"),
                         )
                         .at(path)
                         .evidence(agent)
@@ -452,7 +454,7 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                     let time = mentions.iter().find_map(|l| cef_time(l));
                     out.push(log_mention("debug.log", mentions, time, server).at(path));
                 }
-                "Launcher/intl_service/debug.log was checked. It holds the launches since the file was created.".to_string()
+                msg("finding.install_found.debug_checked")
             }
         }
     };
@@ -469,14 +471,11 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                     Finding::new(
                         FindingKind::PayloadFile,
                         Severity::Critical,
-                        "The malware file is still on disk",
-                        "This file in the launcher's log folder is LuaJIT bytecode. The launcher saved the downloaded agent (insight.bundle) under a tinyget log name.",
+                        msg("finding.payload_file.title"),
+                        msg("finding.payload_file.detail"),
                     )
                     .at(&path)
-                    .evidence([format!(
-                        "LuaJIT bytecode header (1B 4C 4A), {} bytes. The known builds are 205,135 bytes, and an Oct 23 build saved as k2f.lua was 165,108 bytes.",
-                        bytes.len()
-                    )])
+                    .evidence([msg("evidence.luajit").arg("size", bytes.len().to_string())])
                     .time(mtime(&path)),
                 );
                 continue;
@@ -506,15 +505,15 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                 Finding::new(
                     FindingKind::PayloadDownloaded,
                     Severity::Critical,
-                    "The launcher downloaded the malware",
-                    format!("{name} records the launcher downloading insight.bundle from analytics.insightjs.com. That file is the remote-access agent."),
+                    msg("finding.downloaded.title"),
+                    msg("finding.downloaded.detail").arg("file", name),
                 )
             } else {
                 Finding::new(
                     FindingKind::LauncherContacted,
                     Severity::Warning,
-                    "The launcher asked for the malware, but no download finished",
-                    format!("{name} records a request for insight.bundle from analytics.insightjs.com, but no line shows it finishing. A failed request logs curl_error and total=0. The loader asked for the agent, which alone does not show that the agent arrived: debug.log shows whether it ran."),
+                    msg("finding.download_attempt.title"),
+                    msg("finding.download_attempt.detail").arg("file", name),
                 )
             };
             out.push(finding.at(&path).evidence(lines).time(time));
@@ -531,11 +530,12 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
 
     // A3
     let debug_time = debug.as_deref().and_then(mtime);
-    let detail = match &debug_time {
-        Some(t) => format!("{debug_note} Last written {t}."),
+    let detail = match debug_time {
+        Some(t) => msg("finding.install_found.written").arg("note", debug_note).arg("time", t),
         None => debug_note,
     };
-    out.push(Finding::new(FindingKind::Info, Severity::Info, format!("NIKKE install found at {}", dir.display()), detail).at(dir));
+    let title = msg("finding.install_found.title").arg("path", dir.display().to_string());
+    out.push(Finding::new(FindingKind::Info, Severity::Info, title, detail).at(dir));
     out
 }
 
@@ -545,30 +545,33 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
 struct Hits {
     files: usize,
     first: Option<PathBuf>,
-    evidence: Vec<String>,
+    evidence: Vec<Text>,
     newest: Option<SystemTime>,
     /// A logged time that replaces the file times.
     observed: Option<String>,
 }
 
 impl Hits {
-    fn add(&mut self, path: &Path, rel: &str, snippet: Option<String>) {
+    /// `snippet` is a line quoted from the file, or a line the scan wrote.
+    fn add(&mut self, path: &Path, rel: &str, snippet: Option<Text>) {
         self.files += 1;
         self.first.get_or_insert_with(|| path.to_path_buf());
         if self.evidence.len() < MAX_EVIDENCE {
             self.evidence.push(match snippet {
-                Some(s) => format!("{rel}: {s}"),
-                None => rel.to_string(),
+                Some(Text::Raw(s)) => Text::Raw(format!("{rel}: {s}")),
+                Some(text) => msg("evidence.in_file").arg("file", rel).arg("text", text),
+                None => rel.into(),
             });
         }
         let modified = fs::metadata(path).and_then(|m| m.modified()).ok();
         self.newest = self.newest.max(modified);
     }
 
-    fn finding(self, kind: FindingKind, severity: Severity, title: &str, detail: String) -> Option<Finding> {
+    /// The finding for these hits; `detail` gets their file count as `{files}`.
+    fn finding(self, kind: FindingKind, severity: Severity, title: &'static str, detail: &'static str) -> Option<Finding> {
         let first = self.first?;
         Some(
-            Finding::new(kind, severity, title, detail)
+            Finding::new(kind, severity, msg(title), msg(detail).arg("files", files(self.files)))
                 .at(&first)
                 .evidence(self.evidence)
                 .time(self.observed.or_else(|| self.newest.and_then(utc))),
@@ -576,19 +579,20 @@ impl Hits {
     }
 }
 
-fn plural(n: usize, word: &str) -> String {
-    if n == 1 { format!("1 {word}") } else { format!("{n} {word}s") }
+/// "1 file", "2 files".
+fn files(n: usize) -> Text {
+    msg(if n == 1 { "common.files_one" } else { "common.files_other" }).arg("n", n.to_string())
 }
 
 fn check_launcher_data(dir: &Path) -> Vec<Finding> {
     let Some(real) = linked_dir(dir) else {
-        let shown = fs::read_link(dir).map_or_else(|_| "an unknown target".into(), |t| t.display().to_string());
+        let shown = fs::read_link(dir).map_or_else(|_| msg("finding.data_link.unknown_target"), |t| t.display().to_string().into());
         return vec![
             Finding::new(
                 FindingKind::Coverage,
                 Severity::Info,
-                "Launcher data folder is a link and was not read",
-                format!("This folder links to {shown}, which is missing, a drive root or a folder above the link, so its files were not checked. Scan the real launcher data folder with \"Scan a folder...\" or nikke-check --cli <folder>."),
+                msg("finding.data_link.title"),
+                msg("finding.data_link.detail").arg("target", shown),
             )
             .at(dir),
         ];
@@ -611,21 +615,22 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
             // The key name only: the saved state that follows holds the agent's password.
             let snippet = snippets(&bytes, &[b"k2f_chan", b"k2f.agent"], 1)
                 .pop()
-                .map(|s| s.split("agent_pass").next().unwrap_or_default().to_string());
+                .map(|s| s.split("agent_pass").next().unwrap_or_default().into());
             agent.add(&path, &rel, snippet);
         }
         // TransportSecurity stores hashed host names, so it never contains "insightjs".
         if name == "TransportSecurity" {
             let entries = hsts::entries(&String::from_utf8_lossy(&bytes));
             let when = |seen: Option<u64>| seen.and_then(|s| UNIX_EPOCH.checked_add(Duration::from_secs(s))).and_then(utc);
-            let line = entries
-                .iter()
-                .map(|(host, seen)| match when(*seen) {
-                    Some(t) => format!("HSTS entry for {host}, last received {t}"),
-                    None => format!("HSTS entry for {host}"),
-                })
-                .collect::<Vec<_>>()
-                .join("; ");
+            let line = Text::List(
+                entries
+                    .iter()
+                    .map(|(host, seen)| match when(*seen) {
+                        Some(t) => msg("evidence.hsts").arg("host", *host).arg("time", t),
+                        None => msg("evidence.hsts_no_time").arg("host", *host),
+                    })
+                    .collect(),
+            );
             if let Some((_, seen)) = entries.iter().find(|(host, _)| *host == "analytics.insightjs.com") {
                 server.add(&path, &rel, Some(line));
                 server.observed = when(*seen);
@@ -639,7 +644,7 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
                 c.eq_ignore_ascii_case("Code Cache") || c.eq_ignore_ascii_case("Cache")
             });
             if name == "Network Persistent State" && contains(&bytes, b"analytics.insightjs.com") {
-                server.add(&path, &rel, snippets(&bytes, &[b"analytics.insightjs.com"], 1).pop());
+                server.add(&path, &rel, snippets(&bytes, &[b"analytics.insightjs.com"], 1).pop().map(Text::Raw));
                 continue;
             }
             let bucket = if ["Network Persistent State", "Reporting and NEL"].contains(&name.as_str()) {
@@ -649,46 +654,28 @@ fn check_launcher_data(dir: &Path) -> Vec<Finding> {
             } else {
                 &mut other
             };
-            bucket.add(&path, &rel, snippets(&bytes, &[b"insightjs"], 1).pop());
+            bucket.add(&path, &rel, snippets(&bytes, &[b"insightjs"], 1).pop().map(Text::Raw));
         }
     }
     let mut out = Vec::new();
-    let (a, s, c, n, o) = (agent.files, server.files, cache.files, network.files, other.files);
-    out.extend(agent.finding(
-        FindingKind::AgentState,
-        Severity::Critical,
-        "The malware agent left traces in the launcher data",
-        format!("k2f_chan (the agent's bridge channel name) or k2f.agent.state (the ID the agent saves) appears in {} in the launcher data. This shows that the agent ran.", plural(a, "file")),
-    ));
+    out.extend(agent.finding(FindingKind::AgentState, Severity::Critical, "finding.agent_state.title", "finding.agent_state.detail"));
     out.extend(server.finding(
         FindingKind::AgentServerContacted,
         Severity::Critical,
-        "The launcher contacted the agent server",
-        format!("analytics.insightjs.com is recorded in {} of network state. That server sends the agent (insight.bundle) and receives its check-ins. A launch where the loader ran without the agent recorded only insightjs.com.", plural(s, "file")),
+        "finding.agent_server.title",
+        "finding.agent_server.detail",
     ));
-    out.extend(cache.finding(
-        FindingKind::LoaderCached,
-        Severity::Warning,
-        "The launcher loaded the malicious script",
-        format!("The insightjs.com loader address appears in {} cached by the launcher's built-in browser. The injected script ran; this alone does not show that the agent was downloaded.", plural(c, "file")),
-    ));
+    out.extend(cache.finding(FindingKind::LoaderCached, Severity::Warning, "finding.loader_cached.title", "finding.loader_cached.detail"));
     out.extend(network.finding(
         FindingKind::LauncherContacted,
         Severity::Warning,
-        "The launcher connected to insightjs.com",
-        format!("insightjs.com is recorded in {} of network state, so the launcher's built-in browser contacted it.", plural(n, "file")),
+        "finding.network_state.title",
+        "finding.network_state.detail",
     ));
-    out.extend(other.finding(
-        FindingKind::LauncherContacted,
-        Severity::Warning,
-        "Launcher data mentions insightjs.com",
-        format!("insightjs.com appears in {} in the launcher data.", plural(o, "file")),
-    ));
+    out.extend(other.finding(FindingKind::LauncherContacted, Severity::Warning, "finding.data_mention.title", "finding.data_mention.detail"));
     if out.is_empty() {
-        out.push(
-            Finding::new(FindingKind::Info, Severity::Info, "No traces in the launcher data", format!("Checked {}.", plural(checked, "file")))
-                .at(dir),
-        );
+        let detail = msg("finding.data_clean.detail").arg("files", files(checked));
+        out.push(Finding::new(FindingKind::Info, Severity::Info, msg("finding.data_clean.title"), detail).at(dir));
     }
     out
 }
@@ -773,32 +760,32 @@ fn check_helper(browser: &str, helper: &Path) -> Finding {
         .map(|e| e.path().strip_prefix(helper).unwrap_or(e.path()).display().to_string())
         .collect();
     contents.sort();
-    if contents.is_empty() {
-        contents.push("(empty folder)".into());
+    let mut evidence = capped(contents);
+    if evidence.is_empty() {
+        evidence.push(msg("evidence.empty_folder"));
     }
     let finding = if dll.is_some() || hash_dir.is_some() {
-        let mut detail = if dll.is_some() {
-            format!("The malware's folder exists in {browser}'s user data and holds platform_experience_helper.dll, which a hijacked HKCU COM registration makes {browser} load.")
-        } else {
-            format!("The malware's folder exists in {browser}'s user data: a subfolder named with 64 hex characters (a SHA-256), where the malware puts platform_experience_helper.dll. The DLL itself was not found, so it may already have been removed.")
-        };
+        let key = if dll.is_some() { "finding.persistence.dll" } else { "finding.persistence.hash_dir" };
+        let mut detail = msg(key).arg("browser", browser);
         // chrome_install creates the folder without checking that Chrome is installed.
         if browser == "Chrome" {
-            detail += " The malware creates this folder even when Chrome is not installed.";
+            detail = msg("finding.persistence.chrome").arg("text", detail);
         }
         let target = dll.or(hash_dir).map_or(helper, |e| e.path());
-        Finding::new(FindingKind::ChromeDll, Severity::Critical, format!("{browser} persistence is installed"), detail)
+        Finding::new(FindingKind::ChromeDll, Severity::Critical, persistence_title(browser), detail)
             .at(helper)
             .open(target)
     } else {
-        let detail = if browser == "Chrome" {
-            "This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters. That matches Chrome's own Platform Experience Helper (platform_experience_helper.exe, LoadFeatures), which per-user Chrome installs keep here. It is not a sign of infection."
-        } else {
-            "This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters, so it does not match the malware's layout. It is not a sign of infection."
-        };
-        Finding::new(FindingKind::Info, Severity::Info, format!("{browser}'s Platform Experience Helper folder"), detail).at(helper)
+        let detail = msg(if browser == "Chrome" { "finding.helper_folder.chrome" } else { "finding.helper_folder.other" });
+        let title = msg("finding.helper_folder.title").arg("browser", browser);
+        Finding::new(FindingKind::Info, Severity::Info, title, detail).at(helper)
     };
-    finding.evidence(capped(contents)).time(mtime(helper))
+    finding.evidence(evidence).time(mtime(helper))
+}
+
+/// The title of a ChromeDll finding, which keeps the browser name for the steps.
+pub fn persistence_title(browser: &str) -> Text {
+    msg("finding.persistence.title").arg("browser", browser)
 }
 
 /// Files the agent's cleanup code deletes from `<Chrome Application>/PlatformExperienceHelper`,
@@ -822,8 +809,8 @@ fn check_legacy(apps: Vec<PathBuf>, out: &mut Vec<Finding>) {
             Finding::new(
                 FindingKind::LegacyDll,
                 Severity::Critical,
-                "Files of an older Chrome persistence are installed",
-                "Chrome's Application\\PlatformExperienceHelper folder holds files that the agent's cleanup code deletes: platform_experience_helper.dll, platform_experience_helper.dll.old or old-clsid.txt. An earlier version of the agent put its DLL here. Chrome's own platform_experience_helper.exe in this folder is normal.",
+                msg("finding.legacy.title"),
+                msg("finding.legacy.detail"),
             )
             .at(&helper)
             .open(first)
@@ -860,8 +847,8 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
             Finding::new(
                 FindingKind::TempFile,
                 Severity::Critical,
-                "Files left by the malware in Temp",
-                "The agent names its temporary files k2f-bcreds-* (collected browser credentials), k2f-keyscan-* (an early build) and k2f_screen_* (screenshots, .jpg, or .png in the early build).",
+                msg("finding.temp.title"),
+                msg("finding.temp.detail"),
             )
             .at(first)
             .evidence(evidence)
@@ -880,8 +867,8 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
             Finding::new(
                 FindingKind::Info,
                 Severity::Info,
-                "Hex ID file in Temp",
-                "A 22-byte .tmp file in Temp holds a 22-character hex ID. On the infected computer studied, a file like this was written one second before the agent download. Other Tencent software writes a file with the same name (seen in a Delta Force prefix dated 2026-09-20, before the CDN files were changed), so on its own it is not a sign of infection.",
+                msg("finding.hex_id.title"),
+                msg("finding.hex_id.detail"),
             )
             .at(first)
             .evidence(evidence)
@@ -898,12 +885,14 @@ pub const CLSID_KEYS: [&str; 2] = [
 
 /// The registry finding for the CLSID key: the DLL it names, or the empty key
 /// the agent's chrome_uninstall leaves (it clears the default value only).
-fn clsid_finding(installed: bool, detail: &str) -> Finding {
-    if installed {
-        Finding::new(FindingKind::RegistryKey, Severity::Critical, "Registry persistence found (HKCU CLSID hijack)", format!("{detail} The malware registers it so Google Chrome loads its DLL. The HKLM copy that points to wpc.dll is part of Windows and is normal."))
+/// `detail` says where the key is.
+fn clsid_finding(installed: bool, detail: Text) -> Finding {
+    let (kind, title, text) = if installed {
+        (FindingKind::RegistryKey, "finding.registry.title", "finding.registry.detail")
     } else {
-        Finding::new(FindingKind::RegistryLeftover, Severity::Critical, "Registry leftover of the persistence (HKCU CLSID)", format!("{detail} Its default value is empty or missing: the agent installed the DLL and later uninstalled it, which clears the value but leaves the key. The DLL may still be on disk. The HKLM copy that points to wpc.dll is part of Windows and is normal."))
-    }
+        (FindingKind::RegistryLeftover, "finding.registry_leftover.title", "finding.registry_leftover.detail")
+    };
+    Finding::new(kind, Severity::Critical, msg(title), msg(text).arg("detail", detail))
 }
 
 /// HKCU only: HKLM has the normal wpc.dll entry.
@@ -918,17 +907,18 @@ fn check_host_registry() -> Vec<Finding> {
         let Some(value) = locate::reg_string(HKEY_CURRENT_USER, &key, None, view) else {
             continue;
         };
-        let line = format!("{copy}\\InprocServer32 (Default) = {}", value.as_deref().unwrap_or("(value not set)"));
+        let shown = value.clone().map_or_else(|| msg("evidence.value_not_set"), Text::Raw);
+        let line = msg("evidence.registry_value").arg("key", copy).arg("value", shown);
         let bucket = if value.is_some_and(|v| !v.trim().is_empty()) { &mut installed } else { &mut leftover };
         bucket.push((line, copy));
     }
-    let detail = format!("The key {CLSID}\\InprocServer32 exists under HKCU (see below).");
     [(true, installed), (false, leftover)]
         .into_iter()
         .filter(|(_, keys)| !keys.is_empty())
         .map(|(dll, keys)| {
             let copy = keys.iter().map(|(_, k)| *k).collect::<Vec<_>>().join("\n");
-            clsid_finding(dll, &detail).evidence(keys.into_iter().map(|(line, _)| line)).copy(copy)
+            let detail = msg("finding.registry.where_windows");
+            clsid_finding(dll, detail).evidence(keys.into_iter().map(|(line, _)| line)).copy(copy)
         })
         .collect()
 }
@@ -956,8 +946,8 @@ fn check_prefix(prefix: &Path) -> Vec<Finding> {
         return out;
     }
     let installed = evidence.iter().any(|l| l.strip_prefix("@=").is_some_and(|v| v.trim() != "\"\""));
-    let detail = format!("user.reg, the HKCU hive of this Wine prefix, holds the key {CLSID}.");
-    out.push(clsid_finding(installed, &detail).at(&user_reg).copy(CLSID_KEYS[0]).evidence(evidence).time(mtime(&user_reg)));
+    let detail = msg("finding.registry.where_wine");
+    out.push(clsid_finding(installed, detail).at(&user_reg).copy(CLSID_KEYS[0]).evidence(evidence).time(mtime(&user_reg)));
     out
 }
 
@@ -997,10 +987,10 @@ fn check_hosts() -> HostsStatus {
     let (note, domains) = match fs::read(&path) {
         Ok(bytes) => (None, known(parse_hosts(&String::from_utf8_lossy(&bytes)))),
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
-            (Some("The hosts file does not exist, so it blocks nothing."), known(parse_hosts("")))
+            (Some(msg("hosts.missing")), known(parse_hosts("")))
         }
         Err(_) => (
-            Some("The hosts file could not be read, so it is not known which domains it blocks."),
+            Some(msg("hosts.unreadable")),
             DOMAINS.iter().map(|&d| (d, None)).collect(),
         ),
     };
@@ -1059,8 +1049,8 @@ fn check_processes() -> Vec<Finding> {
         Finding::new(
             FindingKind::LauncherRunning,
             Severity::Critical,
-            "The NIKKE launcher is running now",
-            "Close the launcher immediately (end the process if it does not close) and disconnect from the network. While it runs, the attacker can send commands to this computer.",
+            msg("finding.launcher_running.title"),
+            msg("finding.launcher_running.detail"),
         )
         .evidence(evidence),
     ]
@@ -1132,7 +1122,7 @@ fn check_loaded_dlls() -> Vec<Finding> {
                     // The first module is the program itself.
                     if let Some(dll) = modules.iter().find(|m| is_persistence_dll(m, &registered)) {
                         let exe = modules.first().cloned().unwrap_or_default();
-                        evidence.push(format!("PID {pid}: {} ({exe}) has {dll} loaded", wide(&pe.szExeFile)));
+                        evidence.push(dll_loaded_line(pid, &wide(&pe.szExeFile), &exe, dll));
                         first_dll.get_or_insert_with(|| PathBuf::from(dll));
                     }
                 }
@@ -1144,17 +1134,23 @@ fn check_loaded_dlls() -> Vec<Finding> {
     let Some(dll) = first_dll else {
         return Vec::new();
     };
-    evidence.sort();
+    evidence.sort_by_cached_key(|line| line.render(Lang::En));
     vec![
         Finding::new(
             FindingKind::DllLoaded,
             Severity::Critical,
-            "The persistence DLL is loaded now",
-            "These programs have the malware's platform_experience_helper.dll loaded. Windows keeps the file locked until they exit, and Chrome loads it again at its next start while the HKCU key is there. Delete the registry key, restart Windows, then delete the DLL's folder.",
+            msg("finding.dll_loaded.title"),
+            msg("finding.dll_loaded.detail"),
         )
         .open(&dll)
-        .evidence(capped(evidence)),
+        .evidence(capped_text(evidence)),
     ]
+}
+
+/// One program with the DLL loaded. The steps read the program name back from it.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn dll_loaded_line(pid: u32, program: &str, exe: &str, dll: &str) -> Text {
+    msg("evidence.dll_loaded").arg("pid", pid.to_string()).arg("program", program).arg("exe", exe).arg("dll", dll)
 }
 
 /// A module path that is the malware's DLL: platform_experience_helper.dll in a
@@ -1181,11 +1177,15 @@ fn is_persistence_dll(path: &str, registered: &[String]) -> bool {
 // ------------------------------------------------------------- helpers
 
 /// At most MAX_EVIDENCE lines, the last one giving the total when some are left out.
-fn capped(mut lines: Vec<String>) -> Vec<String> {
+fn capped(lines: Vec<String>) -> Vec<Text> {
+    capped_text(lines.into_iter().map(Text::Raw).collect())
+}
+
+fn capped_text(mut lines: Vec<Text>) -> Vec<Text> {
     if lines.len() > MAX_EVIDENCE {
         let total = lines.len();
         lines.truncate(MAX_EVIDENCE - 1);
-        lines.push(format!("... {total} in total"));
+        lines.push(msg("evidence.total").arg("total", total.to_string()));
     }
     lines
 }
@@ -1291,7 +1291,7 @@ fn clip(line: &str) -> String {
 
 /// "[2026-11-03 01:47:35.556]..." (tinyget logs) to "2026-11-03 01:47:35 (local time)".
 /// Log lines carry the clock of the computer that ran the launcher, not UTC.
-pub(crate) fn log_time(line: &str) -> Option<String> {
+pub(crate) fn log_time(line: &str) -> Option<Text> {
     let start = line.find('[')? + 1;
     let s = line.get(start..start + 19)?;
     let ok = s.bytes().enumerate().all(|(i, c)| match i {
@@ -1300,16 +1300,16 @@ pub(crate) fn log_time(line: &str) -> Option<String> {
         13 | 16 => c == b':',
         _ => c.is_ascii_digit(),
     });
-    ok.then(|| format!("{s} (local time)"))
+    ok.then(|| msg("time.local").arg("time", s))
 }
 
 /// "[1103/014736.593:INFO..." (CEF debug.log, no year) to "11-03 01:47:36 (local time, ...)".
-pub(crate) fn cef_time(line: &str) -> Option<String> {
+pub(crate) fn cef_time(line: &str) -> Option<Text> {
     let start = line.find('[')? + 1;
     let s = line.get(start..start + 11)?;
     let b = s.as_bytes();
     let ok = b.iter().enumerate().all(|(i, c)| if i == 4 { *c == b'/' } else { c.is_ascii_digit() });
-    ok.then(|| format!("{}-{} {}:{}:{} (local time, year not logged)", &s[0..2], &s[2..4], &s[5..7], &s[7..9], &s[9..11]))
+    ok.then(|| msg("time.local_no_year").arg("time", format!("{}-{} {}:{}:{}", &s[0..2], &s[2..4], &s[5..7], &s[7..9], &s[9..11])))
 }
 
 fn mtime(path: &Path) -> Option<String> {
@@ -1390,7 +1390,7 @@ mod tests {
     }
 
     fn has(r: &ScanResult, severity: Severity, title: &str) -> bool {
-        findings(r).iter().any(|f| f.severity == severity && f.title == title)
+        findings(r).iter().any(|f| f.severity == severity && f.title.en() == title)
     }
 
     const DEBUG_LOG: &[u8] = b"[1103/014735.001:INFO:CONSOLE(1)] \"page loaded\", source:  (1)\r\n\
@@ -1432,19 +1432,19 @@ mod tests {
         fx.file("NIKKE/Launcher/log/tinyget/tinyget.20261103-014735-553.log", b"\x1bLJ\x02payload");
         let r = fx.scan();
         assert_eq!(r.verdict, Verdict::Infected);
-        let ran = findings(&r).into_iter().find(|f| f.title == "The malware agent ran").expect("A1");
+        let ran = findings(&r).into_iter().find(|f| f.title.en() == "The malware agent ran").expect("A1");
         assert_eq!(ran.severity, Severity::Critical);
         assert_eq!(ran.evidence.len(), 4);
-        assert!(ran.evidence.iter().any(|l| l.contains("agent started as TESTHOST")));
-        assert_eq!(ran.time.as_deref(), Some("11-03 01:47:36 (local time, year not logged)"));
+        assert!(ran.evidence_lines(Lang::En).iter().any(|l| l.contains("agent started as TESTHOST")));
+        assert_eq!(ran.time.as_ref().map(Text::en).as_deref(), Some("11-03 01:47:36 (local time, year not logged)"));
         let dl = findings(&r)
             .into_iter()
-            .find(|f| f.title == "The launcher downloaded the malware")
+            .find(|f| f.title.en() == "The launcher downloaded the malware")
             .expect("A2");
-        assert_eq!(dl.time.as_deref(), Some("2026-11-03 01:47:35 (local time)"));
-        assert!(dl.detail.contains("tinyget.20261103-014725-874.log"));
+        assert_eq!(dl.time.as_ref().map(Text::en).as_deref(), Some("2026-11-03 01:47:35 (local time)"));
+        assert!(dl.detail.en().contains("tinyget.20261103-014725-874.log"));
         assert!(has(&r, Severity::Critical, "The malware file is still on disk"));
-        assert!(findings(&r).iter().all(|f| f.evidence.len() <= 5 && f.evidence.iter().all(|e| e.chars().count() <= 240)));
+        assert!(findings(&r).iter().all(|f| f.evidence.len() <= 5 && f.evidence_lines(Lang::En).iter().all(|e| e.chars().count() <= 240)));
     }
 
     #[test]
@@ -1482,10 +1482,10 @@ mod tests {
         assert_eq!(r.verdict, Verdict::Exposed);
         let f = findings(&r)
             .into_iter()
-            .find(|f| f.title == "The launcher loaded the malicious script")
+            .find(|f| f.title.en() == "The launcher loaded the malicious script")
             .expect("B");
         assert_eq!(f.evidence.len(), 1, "{:?}", f.evidence);
-        assert!(f.evidence[0].contains("https://insightjs.com/l.js?f=aegis"), "{:?}", f.evidence);
+        assert!(f.evidence[0].en().contains("https://insightjs.com/l.js?f=aegis"), "{:?}", f.evidence);
         assert!(has(&r, Severity::Warning, "The launcher connected to insightjs.com"));
         // The install was found through the prefix's parent folder too.
         assert!(r.targets.iter().any(|t| t.kind == TargetKind::InstallDir));
@@ -1522,9 +1522,9 @@ mod tests {
         assert_eq!(r.verdict, Verdict::Infected);
         let f = findings(&r)
             .into_iter()
-            .find(|f| f.title == "Registry persistence found (HKCU CLSID hijack)")
+            .find(|f| f.title.en() == "Registry persistence found (HKCU CLSID hijack)")
             .expect("C4");
-        assert!(f.evidence.iter().any(|e| e.starts_with("@=") && e.contains("platform_experience_helper.dll")));
+        assert!(f.evidence_lines(Lang::En).iter().any(|e| e.starts_with("@=") && e.contains("platform_experience_helper.dll")));
     }
 
     #[test]
@@ -1547,9 +1547,9 @@ mod tests {
             b"MZ",
         );
         let r = fx.scan();
-        let f = findings(&r).into_iter().find(|f| f.title == "Chrome persistence is installed").expect("C1");
+        let f = findings(&r).into_iter().find(|f| f.title.en() == "Chrome persistence is installed").expect("C1");
         assert_eq!(f.severity, Severity::Critical);
-        assert!(f.evidence.iter().any(|e| e.contains("platform_experience_helper.dll")));
+        assert!(f.evidence_lines(Lang::En).iter().any(|e| e.contains("platform_experience_helper.dll")));
         assert_eq!(r.verdict, Verdict::Infected);
     }
 
@@ -1570,10 +1570,10 @@ mod tests {
         fx.file("pfx/drive_c/users/steamuser/AppData/Local/Temp/other.tmp", b"NOT-HEX-0123456789abcd");
         fx.file("pfx/drive_c/users/steamuser/AppData/Local/Temp/short.tmp", b"b8fd3eed");
         let r = fx.scan();
-        let f = findings(&r).into_iter().find(|f| f.title == "Hex ID file in Temp").expect("C3");
+        let f = findings(&r).into_iter().find(|f| f.title.en() == "Hex ID file in Temp").expect("C3");
         assert_eq!(f.severity, Severity::Info);
         assert_eq!(f.evidence.len(), 1);
-        assert!(f.evidence[0].starts_with("onominan.tmp: c8f9eef3c60a28fb67b716"));
+        assert!(f.evidence[0].en().starts_with("onominan.tmp: c8f9eef3c60a28fb67b716"));
         assert_eq!(r.verdict, Verdict::NotFound);
     }
 
@@ -1590,12 +1590,12 @@ mod tests {
         let r = fx.scan();
         let f = findings(&r)
             .into_iter()
-            .find(|f| f.title == "The malware agent left traces in the launcher data")
+            .find(|f| f.title.en() == "The malware agent left traces in the launcher data")
             .expect("B agent");
         assert_eq!(f.severity, Severity::Critical);
-        assert!(f.evidence.iter().any(|e| e.ends_with(": k2f.agent.state")), "{:?}", f.evidence);
+        assert!(f.evidence_lines(Lang::En).iter().any(|e| e.ends_with(": k2f.agent.state")), "{:?}", f.evidence);
         let all = findings(&r);
-        assert!(all.iter().flat_map(|f| &f.evidence).all(|e| !e.contains("agent_pass") && !e.contains("s3cret")));
+        assert!(all.iter().flat_map(|f| f.evidence_lines(Lang::En)).all(|e| !e.contains("agent_pass") && !e.contains("s3cret")));
         assert_eq!(r.verdict, Verdict::Infected);
         // The report says the install, with debug.log, was not checked.
         assert!(has(&r, Severity::Info, "The NIKKE install folder was not found"));
@@ -1610,7 +1610,7 @@ mod tests {
         let r = fx.scan();
         let f = findings(&r)
             .into_iter()
-            .find(|f| f.title == "Chrome's Platform Experience Helper folder")
+            .find(|f| f.title.en() == "Chrome's Platform Experience Helper folder")
             .expect("C1 info");
         assert_eq!(f.severity, Severity::Info);
         assert!(!has(&r, Severity::Critical, "Chrome persistence is installed"));
@@ -1619,8 +1619,8 @@ mod tests {
         // A 64-hex subfolder is the malware's layout even when the DLL is gone.
         fx.dir(&format!("{peh}/{}", "ab".repeat(32)));
         let r = fx.scan();
-        let f = findings(&r).into_iter().find(|f| f.title == "Chrome persistence is installed").expect("C1");
-        assert!(f.detail.contains("was not found"), "{}", f.detail);
+        let f = findings(&r).into_iter().find(|f| f.title.en() == "Chrome persistence is installed").expect("C1");
+        assert!(f.detail.en().contains("was not found"), "{:?}", f.detail);
         assert_eq!(r.verdict, Verdict::Infected);
     }
 
@@ -1688,10 +1688,10 @@ mod tests {
             utc(UNIX_EPOCH + Duration::from_secs(1_793_666_855)).as_deref(),
             Some("2026-11-03 00:47:35 UTC")
         );
-        assert_eq!(log_time("[2026-11-03 01:47:35.556][316]").as_deref(), Some("2026-11-03 01:47:35 (local time)"));
+        assert_eq!(log_time("[2026-11-03 01:47:35.556][316]").map(|t| t.en()).as_deref(), Some("2026-11-03 01:47:35 (local time)"));
         assert_eq!(log_time("[not a time]"), None);
         assert_eq!(
-            cef_time("[1103/014736.593:INFO").as_deref(),
+            cef_time("[1103/014736.593:INFO").map(|t| t.en()).as_deref(),
             Some("11-03 01:47:36 (local time, year not logged)")
         );
     }
@@ -1849,11 +1849,12 @@ mod tests {
         let r = fx.scan();
         assert_eq!(r.verdict, Verdict::Infected);
         let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentServerContacted).expect("server");
-        assert_eq!((f.severity, f.title.as_str()), (Severity::Critical, "The launcher contacted the agent server"));
+        assert_eq!((f.severity, f.title.en().as_str()), (Severity::Critical, "The launcher contacted the agent server"));
         assert_eq!(f.evidence.len(), 2, "{:?}", f.evidence);
-        assert!(f.evidence.iter().any(|e| e.contains("HSTS entry for analytics.insightjs.com, last received 2026-11-03 00:47:37 UTC")));
-        assert!(f.evidence.iter().any(|e| e.contains("https://analytics.insightjs.com")));
-        assert_eq!(f.time.as_deref(), Some("2026-11-03 00:47:37 UTC"));
+        let lines = f.evidence_lines(Lang::En);
+        assert!(lines.iter().any(|e| e.contains("HSTS entry for analytics.insightjs.com, last received 2026-11-03 00:47:37 UTC")));
+        assert!(lines.iter().any(|e| e.contains("https://analytics.insightjs.com")));
+        assert_eq!(f.time.as_ref().map(Text::en).as_deref(), Some("2026-11-03 00:47:37 UTC"));
         // Both files went to the critical finding, none to the warning.
         assert!(!has(&r, Severity::Warning, "The launcher connected to insightjs.com"));
     }
@@ -1871,7 +1872,7 @@ mod tests {
         let r = fx.scan();
         assert_eq!(r.verdict, Verdict::Infected);
         let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentServerContacted).expect("server");
-        assert!(f.evidence[0].contains("HSTS entry for analytics.insightjs.com") && !f.evidence[0].contains("last received"), "{:?}", f.evidence);
+        assert!(f.evidence[0].en().contains("HSTS entry for analytics.insightjs.com") && !f.evidence[0].en().contains("last received"), "{:?}", f.evidence);
         assert_eq!(r.builds.len(), 1);
         assert_eq!(r.builds[0].uploaded, None);
     }
@@ -1882,9 +1883,9 @@ mod tests {
         fx.file(&format!("{DATA}/TransportSecurity"), transport_security(&["insightjs.com", "www.google.com"]).as_bytes());
         let r = fx.scan();
         assert_eq!(r.verdict, Verdict::Exposed);
-        let f = findings(&r).into_iter().find(|f| f.title == "The launcher connected to insightjs.com").expect("warning");
+        let f = findings(&r).into_iter().find(|f| f.title.en() == "The launcher connected to insightjs.com").expect("warning");
         assert_eq!(f.kind, FindingKind::LauncherContacted);
-        assert!(f.evidence[0].contains("HSTS entry for insightjs.com,"), "{:?}", f.evidence);
+        assert!(f.evidence[0].en().contains("HSTS entry for insightjs.com,"), "{:?}", f.evidence);
     }
 
     #[test]
@@ -1930,7 +1931,7 @@ mod tests {
         let dll = format!("pfx/drive_c/users/steamuser/AppData/Local/Microsoft/Edge/User Data/PlatformExperienceHelper/{hash}/platform_experience_helper.dll");
         let dll = fx.file(&dll, b"MZ");
         let r = fx.scan();
-        let f = findings(&r).into_iter().find(|f| f.title == "Edge persistence is installed").expect("edge");
+        let f = findings(&r).into_iter().find(|f| f.title.en() == "Edge persistence is installed").expect("edge");
         assert_eq!((f.kind, f.severity), (FindingKind::ChromeDll, Severity::Critical));
         assert_eq!(f.open_path.as_deref(), Some(dll.as_path()));
         assert_eq!(r.verdict, Verdict::Infected);
@@ -1961,7 +1962,7 @@ mod tests {
         );
         assert_eq!(r.runs[2].host.as_deref(), Some("TESTHOST"));
         assert_eq!(r.runs[4].file.as_deref(), Some("tinyget.20261102-183410-000.log"));
-        assert_eq!(r.runs[4].time.as_deref(), Some("2026-11-02 18:34:10 (local time)"));
+        assert_eq!(r.runs[4].time.as_ref().map(Text::en).as_deref(), Some("2026-11-02 18:34:10 (local time)"));
         assert_eq!(r.builds.len(), 1);
         assert!(r.builds[0].known);
         assert_eq!(r.builds[0].uploaded.as_deref(), Some("2026-11-02 21:48:40 UTC"));

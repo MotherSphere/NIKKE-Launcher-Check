@@ -1,0 +1,527 @@
+# NIKKE Launcher Check: the Thai texts (th). The keys are the keys of en.txt.
+#
+# One entry per line: key = text. Lines that start with # are comments.
+# Translate only the text after "=". Do not change the keys.
+# In the text, \n starts a new line and \\ is one backslash.
+# {name} is a value the program fills in: a path, a number, a file name or another text.
+# Keep every {name} of the English text with the same name. You can move it in the sentence.
+# Other braces, such as the CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}, are plain text: keep them.
+# Keep file names, paths, registry keys, commands, domains, IP addresses and hashes as they are.
+# Text in quotes such as "Scan a folder..." names a button or a part of this window: use the
+# words of that button's own entry. Windows menus and buttons (Run as administrator, End task,
+# File > Open) are named as Windows shows them in your language.
+# An entry missing from a translation shows the English text.
+
+# Command line: nikke-check --help, and errors printed in the terminal.
+cli.usage = NIKKE Launcher Check: ค้นหาร่องรอยจากเหตุการณ์ที่ NIKKE PC launcher ถูกเจาะระบบในเดือนพฤศจิกายน 2026\nอ่านอย่างเดียว ไม่เชื่อมต่อเครือข่าย\n\nวิธีใช้:\n  nikke-check                  เปิดหน้าต่างโปรแกรม\n  nikke-check PATH             เปิดหน้าต่างและสแกนโฟลเดอร์นี้\n  nikke-check --cli            สแกนด่วนคอมพิวเตอร์เครื่องนี้ แล้วแสดงผลเป็นรายงาน\n  nikke-check --cli --full     สแกนเต็มรูปแบบ: เปิดทุกโฟลเดอร์ในทุกไดรฟ์ภายในเครื่อง\n  nikke-check --cli PATH...    สแกนเฉพาะโฟลเดอร์เหล่านี้แบบเต็ม แล้วแสดงรายงาน\n  nikke-check --cli --redact   แทนที่ชื่อคอมพิวเตอร์ ชื่อผู้ใช้ ID ของเอเจนต์\n                               และโฮมโฟลเดอร์ในรายงาน (ใช้กับ --cli ได้ทุกรูปแบบ)\n  nikke-check --help           แสดงข้อความช่วยเหลือนี้\n\nภาษา:\n  --lang CODE    ใส่เพิ่มในคำสั่งรูปแบบใดก็ได้ด้านบน เพื่อกำหนดภาษาของหน้าต่าง\n                 และรายงาน ถ้าไม่ใส่ โปรแกรมจะใช้ภาษาที่ตั้งไว้ในระบบปฏิบัติการ\n                 CODE: {codes}\n\nรหัสออก (exit code) เมื่อใช้ --cli:\n  0  ไม่พบร่องรอย\n  1  มีความเสี่ยง (มีเฉพาะคำเตือน)\n  2  ติดมัลแวร์ (พบร่องรอยระดับวิกฤต)\n  3  ไม่พบการติดตั้ง NIKKE หรือข้อมูล launcher\n  4  อาร์กิวเมนต์ไม่ถูกต้อง หรือมีโฟลเดอร์ที่อ่านไม่ได้\n
+cli.unknown_argument = อาร์กิวเมนต์ที่ไม่รู้จัก: {arg}
+cli.lang_missing = --lang ต้องตามด้วยรหัสภาษา: {codes}
+cli.lang_unknown = ไม่รู้จักรหัสภาษา: {code} ใช้รหัสใดรหัสหนึ่งต่อไปนี้: {codes}
+cli.cannot_read_folder = อ่านโฟลเดอร์ {path} ไม่ได้: {error}
+cli.not_a_folder = ไม่ใช่โฟลเดอร์: {path}
+cli.window_failed = เปิดหน้าต่างไม่ได้: {error}
+# Windows error box when the window cannot open. {command} is a PowerShell command.
+cli.error_box = เปิดหน้าต่างไม่ได้:\n{error}\n\nหากต้องการรายงานโดยไม่ใช้หน้าต่าง ให้เปิด PowerShell ในโฟลเดอร์ที่มีโปรแกรมนี้ แล้วรันคำสั่งนี้:\n\n{command}
+
+# Top bar, start screen and report header.
+report.read_only = อ่านอย่างเดียว ไม่เชื่อมต่อเครือข่าย
+report.about = เมื่อวันที่ 27 กันยายน 2026 ไฟล์ 4 ไฟล์บน CDN ของ Level Infinite ถูกแก้ไขให้ NIKKE PC launcher โหลดสคริปต์จาก insightjs.com ตั้งแต่วันที่ 23 ตุลาคม 2026 เป็นอย่างช้า สคริปต์นั้นได้ดาวน์โหลดเอเจนต์ควบคุมระยะไกล (insight.bundle) ซึ่งสามารถรันคำสั่ง อ่านไฟล์ จับภาพหน้าจอ และเก็บข้อมูลเบราว์เซอร์ได้ ไฟล์ 3 ไฟล์ถูกแทนที่แล้วเมื่อวันที่ 3 พฤศจิกายน ไฟล์ที่ 4 ถูกล้างแล้วเมื่อวันที่ 28 ตุลาคม แต่เซิร์ฟเวอร์ CDN บางเครื่องยังส่งสำเนาเก่าอยู่ในวันที่ 3 พฤศจิกายน เครื่องมือนี้ค้นหาร่องรอยที่ตัวโหลดและเอเจนต์ทิ้งไว้บนดิสก์
+# What was scanned ("Scan of: ...", "Scanning ...").
+report.scope.computer = คอมพิวเตอร์เครื่องนี้
+report.scope.quick = คอมพิวเตอร์เครื่องนี้ (สแกนด่วน)
+report.scope.full = คอมพิวเตอร์เครื่องนี้ (สแกนเต็มรูปแบบ)
+
+# The verdict: a title, then one sentence.
+verdict.infected.title = ติดมัลแวร์
+verdict.infected.summary = พบร่องรอยระดับวิกฤต: เอเจนต์ถูกดาวน์โหลดหรือได้ทำงานแล้ว ได้ฝังตัวไว้ในระบบ หรือ launcher กำลังทำงานอยู่ตอนนี้ ให้ถือว่าคอมพิวเตอร์เครื่องนี้ถูกบุกรุกแล้ว
+verdict.exposed.title = มีความเสี่ยง
+verdict.exposed.summary = launcher โหลดสคริปต์อันตรายหรือติดต่อ insightjs.com แต่ไม่พบสัญญาณว่าเอเจนต์ได้ทำงาน
+verdict.no_traces.title = ไม่พบร่องรอย
+verdict.no_traces.summary = ไม่พบร่องรอยของสคริปต์อันตรายหรือเอเจนต์ในไฟล์ NIKKE ที่การสแกนนี้พบ
+verdict.not_found.title = ไม่พบ NIKKE
+verdict.not_found.summary = ไม่พบการติดตั้ง NIKKE หรือข้อมูล launcher ในตำแหน่งที่การสแกนนี้ตรวจ
+
+# Severity badges of the findings, and the tags of the report ("[CRITICAL]").
+severity.critical = วิกฤต
+severity.warning = คำเตือน
+severity.info = ข้อมูล
+
+# The kinds of locations a scan checks ("[NIKKE install] /path" in the report).
+kind.install = โฟลเดอร์ติดตั้ง NIKKE
+kind.launcher_data = ข้อมูล launcher
+kind.wine_prefix = Wine prefix
+kind.user_profile = โปรไฟล์ผู้ใช้
+# Groups of findings with no folder.
+group.running = โปรแกรมที่กำลังทำงาน
+group.coverage = ขอบเขตการสแกน
+
+# "Limits of this check", in the window and the report.
+report.caveat.debug_log = debug.log จะหายไปเมื่อโฟลเดอร์ NIKKE ถูกลบหรือติดตั้งใหม่ การตรวจ k2f.agent.state ในข้อมูล launcher ไม่ได้อาศัยไฟล์นี้
+report.caveat.not_proof = การไม่พบอะไรเลยไม่ได้เป็นหลักฐานว่าคอมพิวเตอร์ไม่มีมัลแวร์
+report.caveat.no_logs = คำสั่งที่เอเจนต์รันไม่ทิ้ง log ไว้ เครื่องมือนี้จึงบอกไม่ได้ว่าผู้โจมตีทำอะไรไปบ้าง
+
+# Protection: the hosts file, in Details and in the report.
+hosts.blocked = บล็อกแล้ว
+hosts.not_blocked = ยังไม่บล็อก
+hosts.unknown = ไม่ทราบ
+hosts.missing = ไม่มีไฟล์ hosts จึงไม่ได้บล็อกอะไรเลย
+hosts.unreadable = อ่านไฟล์ hosts ไม่ได้ จึงไม่ทราบว่าไฟล์นี้บล็อกโดเมนใดบ้าง
+hosts.block_lines_intro = หากต้องการบล็อกโดเมนที่ยังไม่แสดงสถานะว่าบล็อกแล้ว ให้เพิ่มบรรทัดเหล่านี้ลงในไฟล์ hosts:
+hosts.note = การแก้ไขไฟล์ hosts ต้องใช้สิทธิ์ผู้ดูแลระบบ เครื่องมือนี้ไม่แก้ไขไฟล์นี้เลย
+hosts.ip_note = IP 89.127.233.127 และ 89.126.250.172 บล็อกในไฟล์ hosts ไม่ได้ ให้บล็อกในไฟร์วอลล์หรือเราเตอร์ของคุณ
+
+# "Checked: ..." in Details and "Locations checked: ..." in the report, joined with commas.
+report.checked.install_one = โฟลเดอร์ติดตั้ง NIKKE {n} แห่ง
+report.checked.install_other = โฟลเดอร์ติดตั้ง NIKKE {n} แห่ง
+report.checked.launcher_data_one = โฟลเดอร์ข้อมูล launcher {n} โฟลเดอร์
+report.checked.launcher_data_other = โฟลเดอร์ข้อมูล launcher {n} โฟลเดอร์
+report.checked.wine_prefix_one = Wine prefix {n} รายการ
+report.checked.wine_prefix_other = Wine prefix {n} รายการ
+report.checked.user_profile_one = โปรไฟล์ผู้ใช้ {n} โปรไฟล์
+report.checked.user_profile_other = โปรไฟล์ผู้ใช้ {n} โปรไฟล์
+report.checked.nothing = ไม่มีอะไรให้ตรวจ
+
+# "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
+report.stats = ตรวจ {entries} รายการ ({folders} โฟลเดอร์), ข้อผิดพลาดด้านสิทธิ์ {errors} ครั้ง{skipped}, ใช้เวลา {seconds} วินาที
+report.stats.skipped_one = , ข้ามไดรฟ์เครือข่าย 1 ไดรฟ์
+report.stats.skipped_other = , ข้ามไดรฟ์เครือข่าย {n} ไดรฟ์
+report.stats.cap = จำนวนรายการถึงขีดจำกัดแล้ว จึงมีบางโฟลเดอร์ที่ไม่ได้ตรวจ
+
+# The text report (CLI output, "Copy report" and "Save report...").
+report.scan_of = ขอบเขตการสแกน: {scope}
+report.started = เริ่มเมื่อ: {time}
+report.verdict = ผลการตรวจ: {verdict}
+report.what_happened = เกิดอะไรขึ้น
+# One answer of "What happened": the question and its reply (Yes, No...).
+report.answer = {question} {reply}
+report.agent_runs = การทำงานของเอเจนต์ที่พบใน log:
+report.payload_build = บิลด์ของเพย์โหลด: {build}
+report.what_to_do = สิ่งที่ต้องทำ
+report.open = เปิด: {path}
+report.details = รายละเอียด
+report.locations_checked = ตำแหน่งที่ตรวจ: {summary}
+report.exposure_heading = {heading}:
+report.exposure_none = {heading}: ไม่พบ
+report.exposure_item = {what}: {path}
+report.folders_checked = โฟลเดอร์ที่ตรวจ:
+report.no_findings = ไม่มีสิ่งที่พบ
+report.protection = การป้องกัน (ไฟล์ hosts: {path})
+report.protection_note = ส่วนนี้ไม่ใช่การตรวจการติดมัลแวร์ แต่แสดงว่าโดเมนถูกบล็อกหรือไม่
+report.domain_state = {domain}: {state}
+report.limits = ข้อจำกัดของการตรวจนี้
+report.write_up = บทวิเคราะห์: {url}
+report.scan_stats = สถิติการสแกน: {stats}
+# Where a finding was found: "NIKKE install: /path".
+report.location = {label}: {path}
+
+# The lines of a finding, in Details and in the report.
+details.meaning = ความหมาย: {text}
+details.found_in = พบใน: {location}
+details.path = พาธ: {path}
+details.time = เวลา: {time}
+# A registry key or a text to copy: "Registry key: HKCU\...".
+details.copy = {label}: {text}
+details.copy_label.registry = คีย์รีจิสทรี
+details.copy_label.text = ข้อความ
+
+# Times read from the logs. Log times use the clock of the computer that ran the launcher.
+time.local = {time} (เวลาท้องถิ่น)
+time.local_no_year = {time} (เวลาท้องถิ่น, log ไม่ได้บันทึกปี)
+
+# "What happened": four questions, each with a reply and the reasons.
+answer.yes = ใช่
+answer.no = ไม่
+answer.cannot_tell = บอกไม่ได้
+answer.partly = บางส่วน
+# A finding title used as one reason.
+answer.finding = {title}
+answer.ran.question = มัลแวร์ได้ทำงานบนคอมพิวเตอร์เครื่องนี้หรือไม่?
+answer.ran.nothing_checked = ไม่พบการติดตั้ง NIKKE หรือข้อมูล launcher จึงไม่มีอะไรให้ตรวจ
+answer.ran.no_agent_log = ไม่มี log ใดแสดงว่าตัวเอเจนต์เริ่มทำงาน แต่ log อาจถูกลบหรือถูกตัดทอนได้
+answer.ran.loader = launcher โหลดสคริปต์อันตราย แต่ไม่พบร่องรอยของเอเจนต์
+answer.ran.act_as_if = เอเจนต์ถูกส่งมาเฉพาะในการเปิด launcher บางครั้งเท่านั้น ตั้งแต่วันที่ 23 ตุลาคม 2026 เป็นอย่างช้า หากเปิด launcher ในวันนั้นหรือหลังจากนั้น ให้ถือว่าเอเจนต์ได้ทำงานแล้ว
+answer.ran.nothing = ไม่พบร่องรอยของสคริปต์อันตรายหรือเอเจนต์
+answer.ran.no_install = ไม่พบโฟลเดอร์ติดตั้ง NIKKE จึงไม่ได้ตรวจ debug.log และ log การดาวน์โหลด
+answer.ran.gaps = การสแกนนี้ทำได้ไม่ครบบางส่วน ดู "สิ่งที่การสแกนนี้ตรวจไม่ได้" ใน "รายละเอียด"
+answer.ran.quick = นี่เป็นการสแกนด่วน ซึ่งเปิดโฟลเดอร์ลึกลงไปเพียง {depth} ชั้น การสแกนเต็มรูปแบบจะตรวจโฟลเดอร์ที่ลึกกว่านั้นด้วย
+answer.active.question = ยังมีอะไรทำงานอยู่หรือไม่?
+answer.active.launcher = NIKKE launcher กำลังทำงานอยู่ตอนนี้ ระหว่างที่ launcher ทำงาน ผู้โจมตีสามารถส่งคำสั่งมายัง launcher ได้
+answer.active.dll_loaded = ตอนนี้ DLL ของมัลแวร์ถูกโหลดอยู่ใน {programs}
+answer.active.registry = มีการตั้งค่าคีย์รีจิสทรีที่ทำให้เบราว์เซอร์โหลด DLL ของมัลแวร์
+answer.active.none = launcher ไม่ได้ทำงานอยู่ และไม่มี DLL ที่ติดตั้งไว้หรือตั้งค่าให้โหลด
+answer.clean.question = มีอะไรต้องลบทิ้งหรือไม่?
+answer.clean.dll_folder = โฟลเดอร์ DLL ของ {browser}: {path}
+answer.clean.registry = คีย์รีจิสทรี HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}
+answer.clean.leftover = คีย์รีจิสทรี HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04} ที่ว่างเปล่า ซึ่งเหลืออยู่หลังจากมัลแวร์ล้างพาธ DLL ออกจากคีย์นี้
+answer.clean.legacy = ไฟล์ DLL รุ่นเก่ากว่าใน {path}
+answer.clean.temp = ไฟล์ k2f ใน {path}
+answer.clean.cache = แคชของ launcher ซึ่งมีร่องรอยของมัลแวร์: {path}
+answer.clean.none_cache = ไม่พบไฟล์ที่มัลแวร์ทิ้งไว้ แต่ให้ลบแคชของ launcher (tbs_cache) ก่อนเปิด launcher อีกครั้งอยู่ดี เพราะแคชอาจยังมีสคริปต์อันตรายจากช่วงก่อนการแก้ไข
+answer.clean.none = ไม่พบสิ่งที่มัลแวร์ทิ้งไว้
+answer.protected.question = คุณป้องกันไว้สำหรับครั้งหน้าแล้วหรือไม่?
+answer.protected.not_checked = ไม่ได้ตรวจไฟล์ hosts
+answer.protected.domain = {domain}: {state} ในไฟล์ hosts
+answer.protected.ip = ไฟล์ hosts บล็อกที่อยู่ IP ไม่ได้ และการสแกนนี้ตรวจไฟร์วอลล์ไม่ได้ ให้บล็อก 89.127.233.127 และ 89.126.250.172 ในไฟร์วอลล์หรือเราเตอร์ของคุณ
+
+# The agent runs found in the logs, one line each: "{time}: {what}".
+run.line = {time}: {what}
+run.line_from = {time}: {what} (จาก {file})
+run.no_time = log ไม่ได้บันทึกเวลา
+run.downloaded = launcher ดาวน์โหลดเอเจนต์
+run.downloaded_as = launcher ดาวน์โหลดเอเจนต์และบันทึกเป็น {file}
+run.adopted = เอเจนต์เริ่มทำงานครั้งแรกบนคอมพิวเตอร์เครื่องนี้และสร้าง ID ของตัวเอง
+run.resumed = เอเจนต์เริ่มทำงานอีกครั้งด้วย ID ที่บันทึกไว้
+run.started = เอเจนต์ส่งชื่อคอมพิวเตอร์ไปให้ผู้โจมตี
+run.started_as = เอเจนต์ส่งชื่อคอมพิวเตอร์ {host} ไปให้ผู้โจมตี
+
+# "Payload build": one line per build of the agent file. The parts follow each other on one line.
+build.no_etag = ไม่มี ETag
+build.uploaded = , อัปโหลดเมื่อ {time}
+build.last_modified = , แก้ไขล่าสุดเมื่อ {time}
+build.size = , {size} ไบต์
+build.known = , เป็นหนึ่งใน {n} บิลด์ที่รู้จัก
+build.unknown = , ไม่ใช่หนึ่งใน {n} บิลด์ที่รู้จัก
+build.received = launcher ได้รับไฟล์นี้เมื่อ {time}
+
+# Buttons shared by several screens.
+common.copy = คัดลอก
+common.copy_command = คัดลอกคำสั่ง
+common.copy_key_path = คัดลอกพาธคีย์
+common.copy_hosts_path = คัดลอกพาธไฟล์ hosts
+common.copy_lines = คัดลอกบรรทัดเหล่านี้
+common.copy_list = คัดลอกรายการนี้
+# Two names joined, as in "Remove the Chrome and Edge DLL".
+common.and = {a} และ {b}
+common.files_one = {n} ไฟล์
+common.files_other = {n} ไฟล์
+
+# "What to do": the steps. Each title is followed by its texts.
+step.scan_folder.title = สแกนโฟลเดอร์ที่ติดตั้ง NIKKE
+step.scan_folder.windows = หากติดตั้ง NIKKE ไว้ในที่ที่การสแกนนี้ไม่ได้ค้นหา เช่น ไดรฟ์อื่น ให้สแกนโฟลเดอร์นั้นด้วยปุ่ม "สแกนโฟลเดอร์..." หรือรันคำสั่งนี้ใน PowerShell จากโฟลเดอร์ที่มีโปรแกรมนี้ ซึ่งจะสแกนโฟลเดอร์นั้นเช่นกัน ให้เปลี่ยน D:\\Games\\NIKKE เป็นโฟลเดอร์ NIKKE ของคุณ
+step.scan_folder.other = หากติดตั้ง NIKKE ไว้ในที่ที่การสแกนนี้ไม่ได้ค้นหา เช่น ไดรฟ์อื่น ให้สแกนโฟลเดอร์นั้น: ใช้ "สแกนโฟลเดอร์..." ในหน้าต่าง หรือรัน nikke-check --cli <folder> ในเทอร์มินัล
+step.full_scan.title = รันการสแกนเต็มรูปแบบ
+step.full_scan.intro = นี่เป็นการสแกนด่วน ซึ่งเปิดโฟลเดอร์ลึกลงไปเพียง {depth} ชั้น หากคุณไม่รู้ว่า NIKKE อยู่ที่ไหน หรืออาจมีสำเนาเก่าอยู่ลึกกว่านั้น การสแกนเต็มรูปแบบจะเปิดทุกโฟลเดอร์ในทุกไดรฟ์ภายในเครื่อง ซึ่งอาจใช้เวลานานในไดรฟ์ขนาดใหญ่
+step.full_scan.powershell = ใน PowerShell จากโฟลเดอร์ที่มีโปรแกรมนี้:
+step.full_scan.terminal = ในเทอร์มินัล: nikke-check --cli --full
+step.close.title_launcher = ปิด launcher
+step.close.title_programs = ปิดโปรแกรมที่กำลังรันมัลแวร์
+step.close.launcher = NIKKE launcher กำลังทำงานอยู่ ระหว่างที่ launcher ทำงาน ผู้โจมตีสามารถส่งคำสั่งมายังคอมพิวเตอร์เครื่องนี้ได้ ให้ปิด launcher ทันทีและตัดการเชื่อมต่อเครือข่ายของคอมพิวเตอร์เครื่องนี้
+step.close.dll_loaded_one = {programs} มี DLL ของมัลแวร์โหลดอยู่ ให้ปิดโปรแกรมนี้ถ้าทำได้ การรีสตาร์ทในขั้นตอนหลังจากนี้จะยกเลิกการโหลด DLL ออกจากทุกโปรแกรม
+step.close.dll_loaded_other = {programs} มี DLL ของมัลแวร์โหลดอยู่ ให้ปิดโปรแกรมเหล่านี้ถ้าทำได้ การรีสตาร์ทในขั้นตอนหลังจากนี้จะยกเลิกการโหลด DLL ออกจากทุกโปรแกรม
+step.close.explorer = อย่าสิ้นสุดงาน explorer.exe เพราะโปรแกรมนี้ทำหน้าที่แสดงแถบงานและเดสก์ท็อป การรีสตาร์ทจะยกเลิกการโหลด DLL ออกจากโปรแกรมนี้เอง
+step.close.programs = โปรแกรมที่ต้องสิ้นสุดงาน: {programs}
+step.close.task_manager = หากโปรแกรมไม่ปิด ให้เปิดตัวจัดการงาน (Ctrl+Shift+Esc) ค้นหาโปรแกรมนั้นในแท็บ "รายละเอียด" เลือกโปรแกรม แล้วคลิก "สิ้นสุดงาน"
+step.close.pkill = หาก launcher ไม่ปิด ให้รันคำสั่งนี้ในเทอร์มินัล:
+step.save.title = บันทึกรายงานก่อนลบสิ่งใด
+# The first text of this step is these sentences, one after the other.
+step.save.record = รายงานนี้เป็นบันทึกของสิ่งที่การสแกนนี้พบ
+step.save.agent_state = การลบ tbs_cache จะลบร่องรอย k2f.agent.state ไปด้วย
+step.save.cache_traces = การลบ tbs_cache จะลบร่องรอยที่การสแกนนี้พบในโฟลเดอร์นั้นไปด้วย
+step.save.restart = การรีสตาร์ทในขั้นตอนถัดไปจะปิดหน้าต่างนี้
+step.save.hide = เปิด "ซ่อนข้อมูลของฉัน" (--redact ในบรรทัดคำสั่ง) ก่อนแชร์รายงาน ตัวเลือกนี้จะแทนที่ชื่อคอมพิวเตอร์ ชื่อผู้ใช้ ID ของเอเจนต์ และโฮมโฟลเดอร์ของคุณในรายงานที่คัดลอกหรือบันทึก หน้าต่างยังคงแสดงข้อมูลเหล่านี้อยู่
+step.dll.title_files = ลบ DLL ของ {browsers}
+step.dll.title_leftover = ลบคีย์รีจิสทรีที่หลงเหลือ
+step.dll.title_key = ลบคีย์รีจิสทรี
+step.dll.offline_loaded = ตัดคอมพิวเตอร์เครื่องนี้ออกจากเครือข่ายไว้จนกว่าจะทำขั้นตอนนี้เสร็จ เพราะตอนนี้มีโปรแกรมที่โหลด DLL อยู่
+step.dll.offline_key = ตัดคอมพิวเตอร์เครื่องนี้ออกจากเครือข่ายไว้จนกว่าจะทำขั้นตอนนี้เสร็จ เพราะขณะที่คีย์นี้ยังถูกตั้งค่าอยู่ เบราว์เซอร์จะโหลด DLL ทุกครั้งที่เปิด
+step.dll.order = ทำตามลำดับนี้ Windows จะล็อก DLL ไว้จนกว่าจะรีสตาร์ท จึงต้องลบคีย์รีจิสทรีก่อน
+step.dll.delete_key = ลบคีย์รีจิสทรี โดยเปิดตัวแก้ไขรีจิสทรี (กด Win+R พิมพ์ regedit แล้วกด Enter) วางพาธคีย์ด้านล่างลงในแถบที่อยู่ด้านบนแล้วกด Enter จากนั้นคลิกขวาที่คีย์ที่ถูกเลือกในบานหน้าต่างด้านซ้าย แล้วเลือก "ลบ"
+step.dll.leftover = คีย์ที่ว่างเปล่าคือสิ่งที่หลงเหลือ: มัลแวร์ลบพาธ DLL ออกแล้วแต่ยังเก็บคีย์ไว้ ให้ลบคีย์นี้ด้วยวิธีเดียวกัน
+step.dll.restart = รีสตาร์ท Windows จากนั้นเปิดเครื่องมือนี้อีกครั้งแล้วสแกน ผลจะแสดงสิ่งที่ยังต้องลบ
+step.dll.wine_files = ไฟล์เหล่านี้อยู่ใน Wine prefix ให้ปิด launcher และโปรแกรมอื่นทั้งหมดของ prefix นั้นก่อน
+step.dll.wine_key = คีย์นี้อยู่ใน Wine prefix ให้ปิด launcher และโปรแกรมอื่นทั้งหมดของ prefix นั้นก่อน
+step.dll.drive = ไฟล์เหล่านี้อยู่บนไดรฟ์ Windows ที่มองเห็นจากระบบนี้ Windows นั้นไม่ได้ทำงานอยู่ DLL จึงไม่ถูกล็อกและคุณลบได้จากที่นี่ หากระบบนี้ลบไฟล์บนไดรฟ์นั้นไม่ได้ (การเริ่มระบบอย่างรวดเร็วหรือ Fast Startup ของ Windows ทำให้ไดรฟ์นั้นเป็นแบบอ่านอย่างเดียว) ให้ทำขั้นตอนนี้จาก Windows นั้นแทน: ลบคีย์ รีสตาร์ท แล้วลบไฟล์
+step.dll.delete_folder = ลบโฟลเดอร์ DLL ด้านล่าง ซึ่งเป็นโฟลเดอร์ที่ตั้งชื่อด้วยอักขระฐานสิบหก (hex) 64 ตัว อย่าแตะส่วนอื่นของโฟลเดอร์ PlatformExperienceHelper เพราะ Chrome เก็บ platform_experience_helper.exe และ LoadFeatures ของตัวเองไว้ที่นั่น
+step.dll.delete_folder_after_restart = หลังจากรีสตาร์ทแล้ว ให้ลบโฟลเดอร์ DLL ด้านล่าง ซึ่งเป็นโฟลเดอร์ที่ตั้งชื่อด้วยอักขระฐานสิบหก (hex) 64 ตัว อย่าแตะส่วนอื่นของโฟลเดอร์ PlatformExperienceHelper เพราะ Chrome เก็บ platform_experience_helper.exe และ LoadFeatures ของตัวเองไว้ที่นั่น
+step.dll.delete_legacy = ในโฟลเดอร์ด้านล่าง ให้ลบเฉพาะ platform_experience_helper.dll, platform_experience_helper.dll.old และ old-clsid.txt เท่าที่มีอยู่ เก็บ platform_experience_helper.exe ไว้ เพราะเป็นไฟล์ของ Chrome
+step.dll.delete_legacy_after_restart = หลังจากรีสตาร์ทแล้ว ในโฟลเดอร์ด้านล่าง ให้ลบเฉพาะ platform_experience_helper.dll, platform_experience_helper.dll.old และ old-clsid.txt เท่าที่มีอยู่ เก็บ platform_experience_helper.exe ไว้ เพราะเป็นไฟล์ของ Chrome
+step.dll.delete_file = ลบไฟล์ DLL ด้านล่าง
+step.dll.delete_file_after_restart = หลังจากรีสตาร์ทแล้ว ให้ลบไฟล์ DLL ด้านล่าง
+# Follows one of the three "delete" texts above, on Windows.
+step.dll.in_use = หาก Windows แจ้งว่าไฟล์กำลังถูกใช้งานอยู่ ให้รีสตาร์ท Windows แล้วลบอีกครั้ง
+step.dll.wine_regedit = ลบคีย์รีจิสทรีในไฟล์ user.reg ของ prefix โดยเปิด regedit ของ Wine ใน prefix นั้นด้วยคำสั่งด้านล่าง ไปที่ HKEY_CURRENT_USER\\Software\\Classes\\CLSID แล้วลบคีย์ {E77CC89B-7401-4C04-8CED-149DB35ADD04}
+step.dll.protontricks = หากไม่ได้ติดตั้ง Wine เช่นบน Steam Deck ให้ใช้ protontricks เปิด regedit ใน Proton prefix นี้:
+step.dll.drive_key = บูตเข้า Windows นั้นแล้วลบคีย์รีจิสทรีด้านล่าง รวมถึงสำเนาใน WOW6432Node ถ้ามี เพราะการสแกนนี้อ่านรีจิสทรีของ Windows นั้นไม่ได้ เปิดตัวแก้ไขรีจิสทรี (กด Win+R พิมพ์ regedit แล้วกด Enter) วางพาธคีย์ลงในแถบที่อยู่ด้านบนแล้วกด Enter จากนั้นคลิกขวาที่คีย์ที่ถูกเลือกในบานหน้าต่างด้านซ้าย แล้วเลือก "ลบ"
+step.dll.scan_again = สแกนอีกครั้งหลังจากนั้น สิ่งที่พบเหล่านี้ควรหายไป
+step.dll.defender = Microsoft Defender ตรวจไม่พบ DLL นี้บนคอมพิวเตอร์ที่ติดมัลแวร์เครื่องหนึ่ง ดังนั้นผลสแกนแอนติไวรัสที่ไม่พบอะไรไม่ได้แสดงว่า DLL ถูกลบไปแล้ว
+step.cache.title = ล้างแคชของ launcher
+step.cache.intro = ปิด launcher ก่อน แล้วลบโฟลเดอร์ tbs_cache ซึ่งเป็นแคชของเบราว์เซอร์ในตัวของ launcher แคชนี้อาจยังมีสคริปต์อันตรายจากช่วงก่อนการแก้ไข และ launcher จะโหลดสคริปต์นั้นอีกครั้ง
+step.cache.none = การสแกนนี้ไม่พบโฟลเดอร์ข้อมูล launcher บน Windows โฟลเดอร์นี้คือ %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt สำหรับ launcher HMT) หรือ drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache ภายใน Proton หรือ Wine prefix
+step.password.title = เปลี่ยนรหัสผ่านจากอุปกรณ์อื่น
+step.password.intro_infected = ใช้โทรศัพท์หรือคอมพิวเตอร์เครื่องอื่นที่ไม่เคยรัน NIKKE launcher ระหว่างที่เอเจนต์ทำงาน คำสั่งของเอเจนต์สามารถอ่านไฟล์และข้อมูลเบราว์เซอร์ของคอมพิวเตอร์เครื่องนี้ได้ ให้เปลี่ยนหรือแทนที่สิ่งเหล่านี้:
+step.password.intro_exposed = เอเจนต์ถูกส่งมาตั้งแต่วันที่ 23 ตุลาคม 2026 เป็นอย่างช้า และส่งมาเฉพาะในการเปิด launcher บางครั้งเท่านั้น หากเปิด launcher ในวันนั้นหรือหลังจากนั้น ให้ถือว่าเอเจนต์ได้ทำงานแล้ว: ใช้โทรศัพท์หรือคอมพิวเตอร์เครื่องอื่นที่ไม่เคยรัน launcher เปลี่ยนหรือแทนที่สิ่งเหล่านี้:
+step.password.title_maybe = เปลี่ยนรหัสผ่าน NIKKE หากเปิด launcher ในวันที่ 23 ตุลาคมหรือหลังจากนั้น
+step.password.maybe = หากเปิด launcher ในวันที่ 23 ตุลาคม 2026 หรือหลังจากนั้น ให้เปลี่ยนรหัสผ่าน NIKKE / Level Infinite ไว้ก่อน โดยใช้โทรศัพท์หรือคอมพิวเตอร์เครื่องอื่นที่ไม่เคยรัน launcher
+step.password.not_opened = การสแกนนี้ตรวจเพียงว่ามีไฟล์เหล่านี้อยู่ ไม่ได้เปิดไฟล์
+# The list of accounts and secrets to change ("Copy this list" copies it).
+step.password.first = บัญชี NIKKE / Level Infinite ของคุณก่อน จากนั้นอีเมล Discord และบัญชีธนาคาร
+step.password.browsers = รหัสผ่านทุกรายการที่บันทึกไว้ในเบราว์เซอร์ของคุณ
+step.password.browser_one = รหัสผ่านทุกรายการที่บันทึกไว้ใน {browser} (โปรไฟล์ {profiles})
+step.password.browser_other = รหัสผ่านทุกรายการที่บันทึกไว้ใน {browser} (โปรไฟล์ {profiles})
+step.password.sessions = ออกจากระบบทุกเซสชันในบริการเหล่านั้น เอเจนต์สามารถเก็บคุกกี้ของเบราว์เซอร์ได้ และคุกกี้ที่ถูกขโมยใช้งานได้โดยไม่ต้องมีรหัสผ่าน
+step.password.crypto = หากคุณถือคริปโทเคอร์เรนซี ให้ย้ายไปยังวอลเล็ตใหม่ที่มี seed phrase ใหม่ซึ่งสร้างบนอุปกรณ์อื่น
+step.password.wallet = {wallet} ใน {browser} (โปรไฟล์ {profile}): ย้ายสินทรัพย์ไปยังวอลเล็ตใหม่ที่มี seed phrase ใหม่ซึ่งสร้างบนอุปกรณ์อื่น
+step.password.tokens = เพิกถอน API token และ SSH key ที่เก็บไว้บนคอมพิวเตอร์เครื่องนี้
+step.password.secret = เพิกถอนและแทนที่: {what}, {path}
+step.password.other = รหัสผ่าน, API token, SSH key หรือวอลเล็ตอื่นใดที่เก็บไว้บนคอมพิวเตอร์เครื่องนี้
+step.password.wine = เมื่อใช้ Wine เอเจนต์สามารถอ่านโฮมโฟลเดอร์ทั้งหมดของคุณผ่านไดรฟ์ Z: และอ่านตัวแปรสภาพแวดล้อมของโปรเซส launcher ได้ ไม่ใช่แค่ Wine prefix เท่านั้น
+step.block.title_domains = บล็อกโดเมน
+step.block.title_ips = บล็อกที่อยู่ IP ของผู้โจมตี
+step.block.all_blocked = ไฟล์ hosts ของคุณบล็อกทั้ง 3 โดเมนแล้ว
+step.block.notepad = เปิดเมนูเริ่ม พิมพ์ Notepad คลิกขวาแล้วเลือก "เรียกใช้ในฐานะผู้ดูแลระบบ" ใน Notepad เลือก "ไฟล์ > เปิด" วางพาธไฟล์ hosts ด้านล่างลงในช่อง "ชื่อไฟล์" แล้วกด Enter
+step.block.paste = วางบรรทัดเหล่านี้ไว้ท้ายไฟล์แล้วบันทึก:
+step.block.tee = รันคำสั่งนี้ในเทอร์มินัล คำสั่งนี้จะเพิ่มบรรทัดลงใน /etc/hosts และขอรหัสผ่านของคุณ
+# Follows the text above, outside macOS.
+step.block.deck = บน Steam Deck หากยังไม่เคยตั้งรหัสผ่าน ให้ตั้งด้วยคำสั่ง passwd ก่อน
+step.block.scan_again = สแกนอีกครั้งหลังจากนั้น ส่วน "การป้องกัน" ใน "รายละเอียด" จะแสดงว่าแต่ละโดเมนบล็อกแล้ว
+step.block.ips = ไฟล์ hosts บล็อกที่อยู่ IP ไม่ได้ ให้บล็อก 89.127.233.127 และ 89.126.250.172 ในไฟร์วอลล์หรือเราเตอร์ของคุณ
+step.block.firewall = หากต้องการเพิ่มกฎไฟร์วอลล์ของ Windows ให้คลิกขวาที่ปุ่มเริ่ม เลือก "เทอร์มินัล (ผู้ดูแลระบบ)" หรือ "Windows PowerShell (ผู้ดูแลระบบ)" แล้วรัน:
+step.block.macos = บน macOS ให้บล็อกในการตั้งค่าของเราเตอร์
+step.block.ufw = หากใช้ ufw ให้รันคำสั่งนี้ กฎเหล่านี้จะไม่บล็อกอะไรเลยขณะที่ ufw ปิดอยู่: sudo ufw status ต้องแสดง "Status: active" และ sudo ufw enable จะเปิด ufw หากไม่มี ufw ให้บล็อกในการตั้งค่าของเราเตอร์
+step.wait.title = อย่าเปิด launcher จนกว่า Level Infinite จะยืนยันว่าแก้ไขแล้ว
+step.wait.servers = เซิร์ฟเวอร์บางเครื่องของ Level Infinite ยังส่งไฟล์อันตรายอยู่ในวันที่ 3 พฤศจิกายน 2026 การเปิด launcher ก่อนการแก้ไขอาจโหลดสคริปต์นั้นอีกครั้ง
+step.wait.reinstall = เอเจนต์สามารถรันคำสั่งใดก็ได้ การติดตั้งระบบปฏิบัติการใหม่จึงเป็นวิธีที่ปลอดภัยที่สุดในการทำให้มั่นใจว่าคอมพิวเตอร์เครื่องนี้ไม่มีมัลแวร์
+
+# Details: the groups of findings.
+section.proof = หลักฐานว่ามัลแวร์ได้ทำงาน
+section.cleanup = สิ่งที่ต้องลบทิ้ง
+section.signs = สัญญาณความเสี่ยง
+section.info = ข้อมูลเพิ่มเติม
+section.coverage = สิ่งที่การสแกนนี้ตรวจไม่ได้
+
+# Details: "What this means: ..." for each kind of finding.
+meaning.agent_ran = เอเจนต์ได้ทำงานภายใน launcher ระหว่างที่ launcher เปิดอยู่ ผู้โจมตีสามารถควบคุมคอมพิวเตอร์เครื่องนี้ได้
+meaning.payload_downloaded = launcher ได้รับเอเจนต์จากเซิร์ฟเวอร์ของผู้โจมตี
+meaning.payload_file = สำเนาของเอเจนต์ยังอยู่ในโฟลเดอร์ log ของ launcher
+meaning.agent_state = เอเจนต์บันทึก ID ของตัวเองไว้ในพื้นที่จัดเก็บของเบราว์เซอร์ใน launcher แสดงว่าเอเจนต์ได้ทำงานแล้วอย่างน้อยหนึ่งครั้ง
+meaning.agent_server = launcher ติดต่อถึงเซิร์ฟเวอร์ที่ส่งเอเจนต์ แสดงว่าไปถึงขั้นร้องขอเอเจนต์แล้ว
+meaning.loader_cached = สคริปต์อันตรายได้ทำงานใน launcher ข้อนี้เพียงอย่างเดียวไม่ได้แสดงว่าเอเจนต์ถูกส่งมาแล้ว
+meaning.launcher_contacted = launcher ได้ติดต่อโดเมนของผู้โจมตี
+meaning.chrome_dll = เบราว์เซอร์จะโหลด DLL นี้เมื่อเปิดขึ้นมา มัลแวร์จึงทำงานซ้ำได้โดยไม่ต้องมี launcher มัลแวร์สร้างโฟลเดอร์ของ Chrome ไว้แม้ไม่ได้ติดตั้ง Chrome
+meaning.registry_key = คีย์นี้ทำให้เบราว์เซอร์โหลด DLL ของมัลแวร์
+meaning.registry_leftover = พาธ DLL ถูกลบออกจากคีย์นี้แล้ว แต่คีย์ยังอยู่ ให้ลบคีย์นี้
+meaning.legacy_dll = เอเจนต์รุ่นก่อนหน้าเคยวาง DLL ไว้ที่นี่
+meaning.dll_loaded = โปรแกรมเหล่านี้กำลังรัน DLL ของมัลแวร์อยู่ Windows จะคงการโหลดไว้จนกว่าโปรแกรมจะปิดหรือ Windows รีสตาร์ท
+meaning.temp_file = เอเจนต์เขียนไฟล์เหล่านี้ขณะเก็บข้อมูลล็อกอินของเบราว์เซอร์หรือจับภาพหน้าจอ
+meaning.launcher_running = ระหว่างที่ launcher ทำงาน ผู้โจมตีสามารถส่งคำสั่งมายัง launcher ได้
+meaning.coverage = การสแกนนี้ทำได้ไม่ครบบางส่วน ข้อความด้านบนบอกว่าต้องทำอะไร
+meaning.info = เป็นข้อมูลประกอบเท่านั้น ไม่เปลี่ยนผลการตรวจ
+
+# Details: "Your data the malware could reach".
+exposure.title = ข้อมูลของคุณที่มัลแวร์สามารถเข้าถึงได้
+exposure.note = การสแกนนี้ตรวจเพียงว่ามีไฟล์เหล่านี้อยู่ ไม่ได้เปิดไฟล์ ระหว่างที่เอเจนต์ทำงาน คำสั่งของเอเจนต์สามารถอ่านไฟล์เหล่านี้ได้
+exposure.home_note = มีการตรวจโฮมโฟลเดอร์ของคอมพิวเตอร์เครื่องนี้เพราะพบ Wine prefix หาก prefix ที่สแกนเคยทำงานบนคอมพิวเตอร์เครื่องอื่น ให้ตรวจคอมพิวเตอร์เครื่องนั้นแทน
+exposure.saved_passwords = รหัสผ่านที่บันทึกไว้
+exposure.wallets = ส่วนขยายวอลเล็ต
+exposure.secrets = ไฟล์ข้อมูลลับ
+# {files} are file names such as "Login Data, key4.db".
+exposure.login = {browser}, โปรไฟล์ {profile} ({files})
+exposure.wallet = {wallet} ({id}) ใน {browser}, โปรไฟล์ {profile}
+# What each secret file found holds.
+secret.aws = ข้อมูลรับรอง AWS
+secret.github_cli = token ของ GitHub CLI
+secret.git = ข้อมูลรับรอง Git
+secret.npm = การตั้งค่า npm ซึ่งอาจมี token
+secret.docker = ข้อมูลล็อกอิน Docker registry
+secret.kubernetes = การตั้งค่า Kubernetes
+secret.gcloud = ข้อมูลรับรอง Google Cloud
+secret.azure = token ของ Azure CLI
+secret.claude = ข้อมูลรับรอง Claude Code
+secret.codex = ข้อมูลรับรอง Codex CLI
+secret.gemini = ข้อมูลรับรอง Gemini CLI
+secret.copilot = การตั้งค่า MCP ของ GitHub Copilot CLI
+secret.opencode = ข้อมูลรับรอง opencode
+secret.filezilla = เซิร์ฟเวอร์ที่บันทึกไว้ใน FileZilla
+secret.netrc = ข้อมูลล็อกอินใน netrc
+secret.pypi = token ของ PyPI
+secret.crates = token ของ crates.io
+secret.vault = token ของ HashiCorp Vault
+secret.terraform = token ของ Terraform
+secret.pulumi = ข้อมูลรับรอง Pulumi
+secret.kaggle = API key ของ Kaggle
+secret.huggingface = token ของ Hugging Face
+secret.rclone = การตั้งค่า rclone
+secret.s3cmd = การตั้งค่า s3cmd
+secret.databricks = การตั้งค่า Databricks
+secret.oci = การตั้งค่า Oracle Cloud
+secret.gnupg = คีย์ส่วนตัว GnuPG
+secret.env = ไฟล์ .env
+secret.ssh = คีย์ส่วนตัว SSH
+
+# Findings: a title and a detail each. {file} is a log file name, {files} is a count such as "2 files".
+finding.no_install.title = ไม่พบโฟลเดอร์ติดตั้ง NIKKE
+finding.no_install.detail = พบข้อมูล launcher แต่ไม่พบโฟลเดอร์ติดตั้ง จึงไม่ได้ตรวจ debug.log และ log การดาวน์โหลด หากคุณรู้ว่าติดตั้ง NIKKE ไว้ที่ไหน ให้สแกนโฟลเดอร์นั้น: ใช้ "สแกนโฟลเดอร์..." ในหน้าต่าง หรือ nikke-check --cli <folder>
+finding.quick_scan.title = นี่เป็นการสแกนด่วน
+finding.quick_scan.detail_windows = การสแกนนี้อ่านพาธติดตั้งที่ launcher บันทึกไว้ในรีจิสทรี ข้อมูล launcher และทุกโฟลเดอร์ที่ลึกไม่เกิน {depth} ชั้นจากรากของแต่ละไดรฟ์ภายในเครื่อง โฟลเดอร์ NIKKE ที่ลึกกว่า {depth} ชั้นและ launcher ไม่ได้บันทึกไว้แล้ว จะพบได้เฉพาะจากการสแกนเต็มรูปแบบ ("สแกนเต็มรูปแบบ" ในหน้าต่าง หรือ nikke-check --cli --full) หรือจาก "สแกนโฟลเดอร์..." เท่านั้น
+finding.quick_scan.detail_macos = การสแกนนี้อ่านโฟลเดอร์ Wine prefix ที่ใช้กันทั่วไป พาธติดตั้งที่ prefix เหล่านั้นบันทึกไว้ และทุกโฟลเดอร์ที่ลึกไม่เกิน {depth} ชั้นใต้ / โฟลเดอร์ NIKKE ที่ลึกกว่า {depth} ชั้นและ launcher ไม่ได้บันทึกไว้แล้ว จะพบได้เฉพาะจากการสแกนเต็มรูปแบบ ("สแกนเต็มรูปแบบ" ในหน้าต่าง หรือ nikke-check --cli --full) หรือจาก "สแกนโฟลเดอร์..." เท่านั้น
+finding.quick_scan.detail_linux = การสแกนนี้อ่านโฟลเดอร์ Wine prefix ที่ใช้กันทั่วไป พาธติดตั้งที่ prefix เหล่านั้นบันทึกไว้ และทุกโฟลเดอร์ที่ลึกไม่เกิน {depth} ชั้นใต้ / ใต้โฮมโฟลเดอร์ของคุณ และใต้แต่ละไดรฟ์ใน /mnt, /media และ /run/media โฟลเดอร์ NIKKE ที่ลึกกว่า {depth} ชั้นและ launcher ไม่ได้บันทึกไว้แล้ว จะพบได้เฉพาะจากการสแกนเต็มรูปแบบ ("สแกนเต็มรูปแบบ" ในหน้าต่าง หรือ nikke-check --cli --full) หรือจาก "สแกนโฟลเดอร์..." เท่านั้น
+finding.unreadable.title = อ่านบางโฟลเดอร์ไม่ได้
+finding.unreadable.detail = การสแกนไม่ได้รับอนุญาตให้เปิดโฟลเดอร์เหล่านี้ จึงไม่ได้ตรวจสิ่งใดในโฟลเดอร์ บน macOS ให้สิทธิ์ "การเข้าถึงดิสก์เต็มรูปแบบ" แก่เทอร์มินัล (หรือแอปที่คุณใช้เปิดเครื่องมือนี้) ใน การตั้งค่าระบบ > ความเป็นส่วนตัวและความปลอดภัย แล้วสแกนอีกครั้ง ในระบบอื่น ให้สแกนอีกครั้งด้วยผู้ใช้ที่อ่านโฟลเดอร์เหล่านั้นได้
+finding.network.title = ไม่ได้สแกนไดรฟ์เครือข่าย
+finding.network.detail = การสแกนคอมพิวเตอร์จะข้ามไดรฟ์เครือข่ายและการเมานต์ระยะไกล เพราะการอ่านช้า และไดรฟ์ที่ขาดการเชื่อมต่ออาจทำให้การสแกนหยุดค้าง หากติดตั้ง NIKKE ไว้บนไดรฟ์ดังกล่าว ให้สแกนด้วย "สแกนโฟลเดอร์..." หรือ nikke-check --cli <folder>
+finding.log_server.title = {file} ระบุชื่อเซิร์ฟเวอร์ของเอเจนต์
+finding.log_server.detail = {file} มีชื่อ analytics.insightjs.com หรือ insight.bundle เซิร์ฟเวอร์นั้นเป็นตัวส่งเอเจนต์ แสดงว่า launcher ไปถึงขั้นร้องขอเอเจนต์แล้ว
+finding.log_mention.title = {file} กล่าวถึง insightjs
+finding.log_mention.detail = {file} มีชื่อ insightjs ซึ่งเป็นโดเมนของสคริปต์ตัวโหลดอันตราย ไม่มีบรรทัดใดระบุเซิร์ฟเวอร์ของเอเจนต์ (analytics.insightjs.com หรือ insight.bundle) ข้อนี้เพียงอย่างเดียวจึงไม่ได้แสดงว่ามีการดาวน์โหลดเอเจนต์
+finding.debug_unreadable.title = อ่าน debug.log ไม่ได้
+finding.debug_unreadable.detail = มีไฟล์ Launcher/intl_service/debug.log อยู่ แต่การสแกนนี้ไม่ได้รับอนุญาตให้เปิดไฟล์ จึงตรวจไม่ได้ว่าเอเจนต์ได้ทำงานหรือไม่ ให้สแกนอีกครั้งด้วยผู้ใช้ที่อ่านไฟล์นี้ได้
+finding.agent_ran.title = เอเจนต์ของมัลแวร์ได้ทำงานแล้ว
+finding.agent_ran.detail = debug.log แสดงว่าเอเจนต์ควบคุมระยะไกลเริ่มทำงานภายใน launcher (k2f_chan registered) ระหว่างที่ launcher เปิดอยู่ ผู้โจมตีสามารถรันคำสั่งบนคอมพิวเตอร์เครื่องนี้ได้
+finding.payload_file.title = ไฟล์มัลแวร์ยังอยู่บนดิสก์
+finding.payload_file.detail = ไฟล์นี้ในโฟลเดอร์ log ของ launcher เป็น LuaJIT bytecode launcher บันทึกเอเจนต์ที่ดาวน์โหลดมา (insight.bundle) ไว้ภายใต้ชื่อไฟล์ log ของ tinyget
+finding.downloaded.title = launcher ดาวน์โหลดมัลแวร์แล้ว
+finding.downloaded.detail = {file} บันทึกว่า launcher ดาวน์โหลด insight.bundle จาก analytics.insightjs.com ไฟล์นั้นคือเอเจนต์ควบคุมระยะไกล
+finding.download_attempt.title = launcher ร้องขอมัลแวร์ แต่ไม่มีการดาวน์โหลดใดเสร็จสิ้น
+finding.download_attempt.detail = {file} บันทึกการร้องขอ insight.bundle จาก analytics.insightjs.com แต่ไม่มีบรรทัดใดแสดงว่าดาวน์โหลดเสร็จ คำขอที่ล้มเหลวจะบันทึก curl_error และ total=0 ตัวโหลดได้ร้องขอเอเจนต์ แต่ข้อนี้เพียงอย่างเดียวไม่ได้แสดงว่าเอเจนต์มาถึงเครื่อง debug.log จะแสดงว่าเอเจนต์ได้ทำงานหรือไม่
+finding.install_found.title = พบการติดตั้ง NIKKE ที่ {path}
+finding.install_found.debug_missing = ไม่พบ Launcher/intl_service/debug.log ไฟล์อาจถูกลบไปแล้ว หรือไม่เคยเปิด launcher จากโฟลเดอร์นี้
+finding.install_found.debug_unreadable = มี Launcher/intl_service/debug.log อยู่ แต่อ่านไม่ได้ (ไม่มีสิทธิ์)
+finding.install_found.debug_checked = ตรวจ Launcher/intl_service/debug.log แล้ว ไฟล์นี้เก็บการเปิด launcher ทุกครั้งตั้งแต่สร้างไฟล์
+# {note} is one of the three texts above.
+finding.install_found.written = {note} เขียนล่าสุดเมื่อ {time}
+finding.data_link.title = โฟลเดอร์ข้อมูล launcher เป็นลิงก์และไม่ได้อ่าน
+finding.data_link.detail = โฟลเดอร์นี้ลิงก์ไปยัง {target} ซึ่งไม่มีอยู่ เป็นรากของไดรฟ์ หรือเป็นโฟลเดอร์ที่อยู่เหนือลิงก์ จึงไม่ได้ตรวจไฟล์ในโฟลเดอร์นี้ ให้สแกนโฟลเดอร์ข้อมูล launcher ตัวจริงด้วย "สแกนโฟลเดอร์..." หรือ nikke-check --cli <folder>
+finding.data_link.unknown_target = ปลายทางที่ไม่ทราบ
+finding.agent_state.title = เอเจนต์ของมัลแวร์ทิ้งร่องรอยไว้ในข้อมูล launcher
+finding.agent_state.detail = พบ k2f_chan (ชื่อช่องทาง bridge ของเอเจนต์) หรือ k2f.agent.state (ID ที่เอเจนต์บันทึกไว้) ในไฟล์ข้อมูล launcher {files} ซึ่งแสดงว่าเอเจนต์ได้ทำงานแล้ว
+finding.agent_server.title = launcher ติดต่อเซิร์ฟเวอร์ของเอเจนต์
+finding.agent_server.detail = มีการบันทึก analytics.insightjs.com ไว้ในไฟล์สถานะเครือข่าย {files} เซิร์ฟเวอร์นั้นส่งเอเจนต์ (insight.bundle) และรับการรายงานตัว (check-in) จากเอเจนต์ การเปิด launcher ที่ตัวโหลดทำงานโดยไม่มีเอเจนต์จะบันทึกไว้เพียง insightjs.com
+finding.loader_cached.title = launcher โหลดสคริปต์อันตราย
+finding.loader_cached.detail = พบที่อยู่ของตัวโหลด insightjs.com ในไฟล์ที่เบราว์เซอร์ในตัวของ launcher แคชไว้ {files} สคริปต์ที่ถูกแทรกได้ทำงานแล้ว แต่ข้อนี้เพียงอย่างเดียวไม่ได้แสดงว่ามีการดาวน์โหลดเอเจนต์
+finding.network_state.title = launcher เชื่อมต่อกับ insightjs.com
+finding.network_state.detail = มีการบันทึก insightjs.com ไว้ในไฟล์สถานะเครือข่าย {files} แสดงว่าเบราว์เซอร์ในตัวของ launcher ได้ติดต่อโดเมนนี้
+finding.data_mention.title = ข้อมูล launcher กล่าวถึง insightjs.com
+finding.data_mention.detail = พบ insightjs.com ในไฟล์ข้อมูล launcher {files}
+finding.data_clean.title = ไม่พบร่องรอยในข้อมูล launcher
+finding.data_clean.detail = ตรวจแล้ว {files}
+# {browser} is a browser name such as Chrome or Edge.
+finding.persistence.title = มีการฝังตัวของมัลแวร์ติดตั้งอยู่ใน {browser}
+finding.persistence.dll = โฟลเดอร์ของมัลแวร์อยู่ในข้อมูลผู้ใช้ของ {browser} และมี platform_experience_helper.dll ซึ่งการลงทะเบียน COM ใน HKCU ที่ถูกแอบแก้ (hijack) ทำให้ {browser} โหลดไฟล์นี้
+finding.persistence.hash_dir = โฟลเดอร์ของมัลแวร์อยู่ในข้อมูลผู้ใช้ของ {browser}: เป็นโฟลเดอร์ย่อยที่ตั้งชื่อด้วยอักขระฐานสิบหก (hex) 64 ตัว (SHA-256) ซึ่งมัลแวร์ใช้วาง platform_experience_helper.dll ไม่พบตัวไฟล์ DLL จึงอาจถูกลบไปแล้ว
+# For Chrome, {text} is one of the two texts above.
+finding.persistence.chrome = {text} มัลแวร์สร้างโฟลเดอร์นี้แม้ไม่ได้ติดตั้ง Chrome
+finding.helper_folder.title = โฟลเดอร์ Platform Experience Helper ของ {browser}
+finding.helper_folder.chrome = โฟลเดอร์นี้ไม่มี platform_experience_helper.dll และไม่มีโฟลเดอร์ย่อยที่ตั้งชื่อด้วยอักขระฐานสิบหก (hex) 64 ตัว ซึ่งตรงกับ Platform Experience Helper ของ Chrome เอง (platform_experience_helper.exe, LoadFeatures) ที่ Chrome แบบติดตั้งรายผู้ใช้เก็บไว้ที่นี่ ไม่ใช่สัญญาณของการติดมัลแวร์
+finding.helper_folder.other = โฟลเดอร์นี้ไม่มี platform_experience_helper.dll และไม่มีโฟลเดอร์ย่อยที่ตั้งชื่อด้วยอักขระฐานสิบหก (hex) 64 ตัว จึงไม่ตรงกับรูปแบบของมัลแวร์ ไม่ใช่สัญญาณของการติดมัลแวร์
+finding.legacy.title = มีไฟล์ของการฝังตัวใน Chrome รุ่นเก่ากว่าติดตั้งอยู่
+finding.legacy.detail = โฟลเดอร์ Application\\PlatformExperienceHelper ของ Chrome มีไฟล์ที่โค้ดเก็บกวาดของเอเจนต์ลบทิ้ง: platform_experience_helper.dll, platform_experience_helper.dll.old หรือ old-clsid.txt เอเจนต์รุ่นก่อนหน้าเคยวาง DLL ไว้ที่นี่ ส่วน platform_experience_helper.exe ของ Chrome เองในโฟลเดอร์นี้เป็นเรื่องปกติ
+finding.temp.title = ไฟล์ที่มัลแวร์ทิ้งไว้ใน Temp
+finding.temp.detail = เอเจนต์ตั้งชื่อไฟล์ชั่วคราวเป็น k2f-bcreds-* (ข้อมูลล็อกอินที่เก็บจากเบราว์เซอร์), k2f-keyscan-* (บิลด์ช่วงแรก) และ k2f_screen_* (ภาพหน้าจอ เป็น .jpg หรือ .png ในบิลด์ช่วงแรก)
+finding.hex_id.title = ไฟล์ ID ฐานสิบหกใน Temp
+finding.hex_id.detail = ไฟล์ .tmp ขนาด 22 ไบต์ใน Temp มี ID ฐานสิบหกยาว 22 อักขระ บนคอมพิวเตอร์ที่ติดมัลแวร์ซึ่งนำมาศึกษา ไฟล์ลักษณะนี้ถูกเขียนขึ้น 1 วินาทีก่อนการดาวน์โหลดเอเจนต์ ซอฟต์แวร์อื่นของ Tencent ก็เขียนไฟล์ชื่อเดียวกันนี้ (พบใน prefix ของ Delta Force ลงวันที่ 20 กันยายน 2026 ก่อนที่ไฟล์บน CDN จะถูกแก้ไข) ไฟล์นี้เพียงอย่างเดียวจึงไม่ใช่สัญญาณของการติดมัลแวร์
+finding.registry.title = พบการฝังตัวในรีจิสทรี (HKCU CLSID hijack)
+# {detail} is one of the two "where" texts below.
+finding.registry.detail = {detail} มัลแวร์ลงทะเบียนคีย์นี้เพื่อให้ Google Chrome โหลด DLL ของมัลแวร์ สำเนาใน HKLM ที่ชี้ไปยัง wpc.dll เป็นส่วนหนึ่งของ Windows และเป็นเรื่องปกติ
+finding.registry_leftover.title = คีย์รีจิสทรีที่หลงเหลือจากการฝังตัว (HKCU CLSID)
+finding.registry_leftover.detail = {detail} ค่าเริ่มต้น (Default) ของคีย์ว่างเปล่าหรือไม่มีอยู่: เอเจนต์เคยติดตั้ง DLL แล้วถอนการติดตั้งในภายหลัง ซึ่งจะล้างค่านี้แต่ทิ้งคีย์ไว้ DLL อาจยังอยู่บนดิสก์ สำเนาใน HKLM ที่ชี้ไปยัง wpc.dll เป็นส่วนหนึ่งของ Windows และเป็นเรื่องปกติ
+finding.registry.where_windows = มีคีย์ {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32 อยู่ใต้ HKCU (ดูด้านล่าง)
+finding.registry.where_wine = user.reg ซึ่งเป็น hive HKCU ของ Wine prefix นี้ มีคีย์ {E77CC89B-7401-4C04-8CED-149DB35ADD04}
+finding.launcher_running.title = NIKKE launcher กำลังทำงานอยู่ตอนนี้
+finding.launcher_running.detail = ปิด launcher ทันที (สิ้นสุดโปรเซสหากปิดไม่ได้) และตัดการเชื่อมต่อเครือข่าย ระหว่างที่ launcher ทำงาน ผู้โจมตีสามารถส่งคำสั่งมายังคอมพิวเตอร์เครื่องนี้ได้
+finding.dll_loaded.title = DLL ของการฝังตัวถูกโหลดอยู่ตอนนี้
+finding.dll_loaded.detail = โปรแกรมเหล่านี้โหลด platform_experience_helper.dll ของมัลแวร์อยู่ Windows จะล็อกไฟล์ไว้จนกว่าโปรแกรมจะปิด และ Chrome จะโหลดไฟล์อีกครั้งเมื่อเปิดครั้งถัดไปตราบใดที่ยังมีคีย์ HKCU อยู่ ให้ลบคีย์รีจิสทรี รีสตาร์ท Windows แล้วลบโฟลเดอร์ของ DLL
+
+# "Show technical details": lines the tool writes among the lines quoted from files.
+evidence.luajit = ส่วนหัว LuaJIT bytecode (1B 4C 4A), {size} ไบต์ บิลด์ที่รู้จักมีขนาด 205,135 ไบต์ และบิลด์วันที่ 23 ต.ค. ที่บันทึกเป็น k2f.lua มีขนาด 165,108 ไบต์
+# One TransportSecurity entry. {host} is a domain, {time} a UTC time.
+evidence.hsts = รายการ HSTS ของ {host} ได้รับล่าสุดเมื่อ {time}
+evidence.hsts_no_time = รายการ HSTS ของ {host}
+evidence.in_file = {file}: {text}
+evidence.empty_folder = (โฟลเดอร์ว่าง)
+evidence.registry_value = {key}\\InprocServer32 (Default) = {value}
+evidence.value_not_set = (ไม่ได้ตั้งค่า)
+evidence.dll_loaded = PID {pid}: {program} ({exe}) โหลด {dll} อยู่
+# The last line of a list that was cut.
+evidence.total = ... รวมทั้งหมด {total} รายการ
+
+# "Open folder" and the other buttons that open a window, when it fails.
+open.gone = {path} ไม่มีอยู่แล้ว
+open.windows_only = {program} มีเฉพาะบน Windows
+open.failed = เปิดตัวจัดการไฟล์ไม่ได้ ({status})
+open.shell_execute = ข้อผิดพลาด ShellExecute {code}
+
+# The window.
+ui.tab.happened = เกิดอะไรขึ้น
+ui.tab.todo = สิ่งที่ต้องทำ
+ui.tab.details = รายละเอียด
+ui.copied = คัดลอกแล้ว
+ui.button.scan_computer = สแกนคอมพิวเตอร์เครื่องนี้
+ui.button.full_scan = สแกนเต็มรูปแบบ
+ui.button.scan_folder = สแกนโฟลเดอร์...
+ui.button.scan_again = สแกนอีกครั้ง
+ui.button.new_scan = สแกนใหม่
+ui.button.stop = หยุดสแกน
+ui.button.copy_report = คัดลอกรายงาน
+ui.button.save_report = บันทึกรายงาน...
+ui.button.see_todo = ดูสิ่งที่ต้องทำ
+ui.button.open_folder = เปิดโฟลเดอร์
+ui.button.task_manager = เปิดตัวจัดการงาน
+ui.button.registry_editor = เปิดตัวแก้ไขรีจิสทรี
+ui.button.copy_path = คัดลอกพาธ
+ui.button.copy_link = คัดลอกลิงก์
+ui.button.open_link = เปิดลิงก์
+ui.button.show = แสดง
+ui.button.hide = ซ่อน
+ui.button.show_details = แสดงรายละเอียดทางเทคนิค
+ui.button.hide_details = ซ่อนรายละเอียดทางเทคนิค
+ui.hide_info = ซ่อนข้อมูลของฉัน
+ui.hide_info_note = "ซ่อนข้อมูลของฉัน" มีผลกับ "คัดลอกรายงาน" และ "บันทึกรายงาน..." หน้าต่างยังคงแสดงทุกอย่าง
+ui.done = เสร็จแล้ว
+# File dialogs.
+ui.dialog.pick_folder = เลือกโฟลเดอร์ที่จะสแกน
+ui.dialog.save = บันทึกรายงาน
+ui.dialog.text_files = ไฟล์ข้อความ
+# One line shown above the screen.
+ui.notice.only_folders = สแกนได้เฉพาะโฟลเดอร์ ให้ลากโฟลเดอร์ที่มีไฟล์นั้นมาวางแทน
+ui.notice.stopped = หยุดการสแกนแล้ว
+ui.notice.saved = บันทึกรายงานไว้ที่ {path} แล้ว
+ui.notice.save_failed = บันทึกรายงานไม่ได้: {error}
+ui.notice.save_failed_plain = บันทึกรายงานไม่ได้
+ui.notice.open_failed = เปิดไม่ได้: {error}
+ui.notice.open_failed_plain = เปิดไม่ได้
+# Start screen. The helper's speech bubble comes first.
+ui.home.hint = สวัสดี ฉันคือ MotherSphere เริ่มต้นด้วยปุ่ม "สแกนคอมพิวเตอร์เครื่องนี้" เครื่องมือนี้แค่อ่านไฟล์ ไม่ลบอะไรและไม่ส่งข้อมูลใดผ่านเครือข่าย
+ui.home.title = ยังไม่ได้สแกน
+ui.home.computer = การสแกนคอมพิวเตอร์
+ui.home.quick_windows = อ่านพาธติดตั้งที่ launcher บันทึกไว้ในรีจิสทรี โปรไฟล์ผู้ใช้ของคุณ ข้อมูล launcher และทุกโฟลเดอร์ที่ลึกไม่เกิน 5 ชั้นในแต่ละไดรฟ์ภายในเครื่อง โดยปกติเสร็จภายในไม่กี่วินาที
+ui.home.quick_macos = อ่าน prefix ของ Wine, CrossOver, Whisky, Wineskin และ Heroic รวมถึงพาธติดตั้งที่ prefix เหล่านั้นบันทึกไว้ และทุกโฟลเดอร์ที่ลึกไม่เกิน 5 ชั้นใต้ / ซึ่งรวมวอลุ่มภายในเครื่องด้วย โดยข้ามวอลุ่มเครือข่าย
+ui.home.quick_linux = อ่าน Wine prefix ทุกตัวของ Steam, Lutris, Heroic, Bottles และ Faugus รวมถึงพาธติดตั้งที่ prefix เหล่านั้นบันทึกไว้ และทุกโฟลเดอร์ที่ลึกไม่เกิน 5 ชั้นใต้ / ใต้โฮมโฟลเดอร์ของคุณ และใต้แต่ละไดรฟ์ใน /mnt, /media และ /run/media โดยข้ามการเมานต์เครือข่าย
+ui.home.full = การสแกนเต็มรูปแบบจะเปิดทุกโฟลเดอร์ในทุกไดรฟ์ภายในเครื่อง เพื่อหาโฟลเดอร์ NIKKE ที่ลึกกว่า 5 ชั้นและ launcher ไม่ได้บันทึกไว้แล้ว อาจใช้เวลานานในไดรฟ์ขนาดใหญ่
+ui.home.folder = การสแกนโฟลเดอร์
+ui.home.folder_text = สแกนโฟลเดอร์เดียวและทุกอย่างที่อยู่ข้างใน รวมถึง Wine prefix ที่อยู่ในโฟลเดอร์นั้น
+ui.home.drop = คุณยังลากโฟลเดอร์มาวางบนหน้าต่างนี้ได้ด้วย
+ui.home.no_dialog = หากหน้าต่างเลือกโฟลเดอร์ไม่เปิดขึ้น ให้รัน nikke-check --cli <folder> ในเทอร์มินัล
+# Scan screen.
+ui.scan.title = กำลังสแกน {target}
+ui.scan.elapsed = เวลาที่ผ่านไป
+ui.scan.searching = กำลังค้นหาการติดตั้ง NIKKE และ Wine prefix
+ui.scan.programs = กำลังตรวจโปรแกรมที่ทำงานอยู่
+ui.scan.locations = กำลังตรวจตำแหน่งที่พบ
+ui.scan.locations_one = กำลังตรวจ 1 ตำแหน่ง
+ui.scan.locations_other = กำลังตรวจ {n} ตำแหน่ง
+ui.scan.progress = {done} จาก {total}
+ui.scan.hosts = กำลังตรวจไฟล์ hosts
+ui.tile.items = รายการที่สแกน
+ui.tile.folders = โฟลเดอร์
+ui.tile.locations = ตำแหน่งที่พบ
+ui.tile.findings = สิ่งที่พบจนถึงตอนนี้
+ui.failed.windows = การสแกนหยุดลงเพราะข้อผิดพลาดภายใน ลองอีกครั้ง หรือรัน {command} ใน PowerShell จากโฟลเดอร์ที่มีโปรแกรมนี้เพื่อดูรายงาน
+ui.failed.other = การสแกนหยุดลงเพราะข้อผิดพลาดภายใน ลองอีกครั้ง หรือรัน nikke-check --cli เพื่อดูรายงานในเทอร์มินัล
+# Result screen.
+ui.happened.payload_build = บิลด์ของเพย์โหลด
+ui.happened.agent_runs = การทำงานของเอเจนต์ที่พบใน log
+ui.todo.hint = ทำทีละขั้นตอนตามลำดับ ปุ่มต่าง ๆ จะเปิดโฟลเดอร์หรือเครื่องมือที่ถูกต้องให้ แต่คุณต้องลบไฟล์เอง โปรแกรมนี้ไม่ลบอะไรเลย
+ui.todo.note = ขั้นตอนเหล่านี้มาจากสิ่งที่การสแกนนี้พบ เรียงตามลำดับที่ควรทำ เครื่องหมาย "เสร็จแล้ว" จะไม่ถูกบันทึก
+ui.tile.critical = วิกฤต
+ui.tile.warnings = คำเตือน
+ui.tile.info = ข้อมูล
+ui.tile.duration = ระยะเวลา
+ui.details.checked = ตรวจแล้ว: {summary} ขอบเขตการสแกน: {scope}
+# A section title and its number of findings: "Information (3)".
+ui.details.section_count = {title} ({n})
+ui.details.hosts = ไฟล์ hosts: {path} ส่วนนี้ไม่ใช่การตรวจการติดมัลแวร์ แต่แสดงว่าโดเมนถูกบล็อกหรือไม่
+ui.details.protection = การป้องกัน
+ui.details.limits = ข้อจำกัดของการตรวจนี้
+ui.details.locations = ตำแหน่งที่ตรวจ
+ui.details.none_found = ไม่พบ
+ui.details.folders_checked = โฟลเดอร์ที่ตรวจ

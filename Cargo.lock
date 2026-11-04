@@ -1838,6 +1838,7 @@ dependencies = [
  "image",
  "libc",
  "rfd",
+ "sys-locale",
  "sysinfo",
  "walkdir",
  "windows-sys 0.61.2",

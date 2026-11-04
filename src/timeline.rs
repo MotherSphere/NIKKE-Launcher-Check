@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, UNIX_EPOCH};
 
+use crate::i18n::Text;
 use crate::scan::{cef_time, log_time, utc};
 
 /// The ETags of the builds of insight.bundle seen so far (nginx: hex mtime and
@@ -37,7 +38,7 @@ pub enum RunKind {
 pub struct AgentRun {
     pub kind: RunKind,
     /// As logged, with its clock: "11-03 01:47:36 (local time, year not logged)".
-    pub time: Option<String>,
+    pub time: Option<Text>,
     /// Adopted and Resumed. Kept whole here; the report decides whether to show it.
     pub agent_id: Option<String>,
     /// Started: the computer name the agent sent.
@@ -62,7 +63,7 @@ pub struct PayloadBuild {
     /// The ETag is one of [`KNOWN_BUILDS`].
     pub known: bool,
     /// When the launcher received the headers (log time).
-    pub time: Option<String>,
+    pub time: Option<Text>,
     pub source: PathBuf,
 }
 
@@ -205,7 +206,7 @@ mod tests {
         let d = ev(r#"[1103/014736.558:INFO:CONSOLE(1)] "lua downloaded to log\tinyget\tinyget.20261103-014735-553.log", source:  (1)"#);
         assert_eq!(d.kind, RunKind::Downloaded);
         assert_eq!(d.file.as_deref(), Some("tinyget.20261103-014735-553.log"));
-        assert_eq!(d.time.as_deref(), Some("11-03 01:47:36 (local time, year not logged)"));
+        assert_eq!(d.time.map(|t| t.en()).as_deref(), Some("11-03 01:47:36 (local time, year not logged)"));
         let a = ev(r#"[1103/014736.623:INFO:CONSOLE(1)] "adopted 3c4c9b75-09e5-4619-99ee-97c1dc3c0373", source:  (1)"#);
         assert_eq!((a.kind, a.agent_id.as_deref()), (RunKind::Adopted, Some("3c4c9b75-09e5-4619-99ee-97c1dc3c0373")));
         let r = ev(r#"[1024/011602.100:INFO:CONSOLE(1)] "resuming 3c4c9b75-09e5-4619-99ee-97c1dc3c0373", source:  (1)"#);
@@ -223,7 +224,7 @@ mod tests {
         let line = "[2026-11-03 01:47:35.556][316][ERROR][tiny_downloader.cpp(103)]tiny_downloader::TinyDownloader::AddTask\tadd task, task_id=2147483648, url=https://analytics.insightjs.com/comm/assets/insight.bundle, path=S:\\NIKKE\\Launcher\\log\\tinyget\\tinyget.20261103-014735-553.log";
         let run = tinyget_download(line, Path::new("t.log")).unwrap();
         assert_eq!(run.file.as_deref(), Some("tinyget.20261103-014735-553.log"));
-        assert_eq!(run.time.as_deref(), Some("2026-11-03 01:47:35 (local time)"));
+        assert_eq!(run.time.map(|t| t.en()).as_deref(), Some("2026-11-03 01:47:35 (local time)"));
         assert!(tinyget_download("[2026-11-03 01:47:35.556][316] AddTask url=https://x/y.zip, path=C:\\y.zip", Path::new("t")).is_none());
     }
 
@@ -260,7 +261,7 @@ mod tests {
         assert_eq!(b.uploaded.as_deref(), Some("2026-11-02 21:48:40 UTC"));
         assert_eq!(b.size, Some(205_135));
         assert!(b.known);
-        assert_eq!(b.time.as_deref(), Some("2026-11-03 01:47:35 (local time)"));
+        assert_eq!(b.time.as_ref().map(Text::en).as_deref(), Some("2026-11-03 01:47:35 (local time)"));
         assert!(!builds[1].known);
         // The attacker's server sets the ETag: a time past what SystemTime holds is dropped.
         let huge = "[2026-11-03 01:47:35.891][7][TRACE][x]x\t[CURL]Header out: GET /comm/assets/insight.bundle HTTP/1.1\n[2026-11-03 01:47:36.013][7][TRACE][x]x\t[CURL]Header in: ETag: \"ffffffffffffffff-3214f\"\n";

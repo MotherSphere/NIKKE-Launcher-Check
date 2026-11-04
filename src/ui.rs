@@ -1,6 +1,7 @@
 //! The window (iced 0.14). Scans run on a worker thread and report through a
 //! shared `Progress`, which the scanning screen reads on each frame. The result
-//! has three tabs: What happened, What to do and Details.
+//! has three tabs: What happened, What to do and Details. The language menu at
+//! the bottom left redraws every text, the result included, without a new scan.
 
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -14,7 +15,8 @@ use std::time::{Duration, Instant};
 use iced::futures::channel::oneshot;
 use iced::theme::Palette;
 use iced::widget::{
-    Column, button, canvas, checkbox, column, container, grid, image, responsive, row, scrollable, space, stack, text, toggler,
+    Column, button, canvas, checkbox, column, container, grid, image, pick_list, responsive, row, scrollable, space, stack, text,
+    toggler,
 };
 use iced::{
     Alignment, Background, Color, Element, Fill, Font, Length, Point, Radians, Rectangle, Renderer, Shrink, Size,
@@ -23,14 +25,15 @@ use iced::{
 
 use crate::exposure::Exposure;
 use crate::guide::{self, Action, Answer, Part, Section, Step, Tone};
+use crate::i18n::{Lang, Text, msg, tr};
 use crate::locate::{Progress, Stage};
 use crate::open::{self, Target};
 use crate::redact::Secrets;
 use crate::report::{self, thousands};
 use crate::scan::{self, Finding, FindingKind, Group, ScanResult, Severity, Verdict};
 
-pub fn run(folder: Option<PathBuf>) -> iced::Result {
-    iced::application(move || App::boot(folder.clone()), App::update, App::view)
+pub fn run(folder: Option<PathBuf>, lang: Lang) -> iced::Result {
+    iced::application(move || App::boot(folder.clone(), lang), App::update, App::view)
         .title(report::APP_NAME)
         .theme(App::theme)
         .subscription(App::subscription)
@@ -52,20 +55,27 @@ enum Request {
 
 #[derive(Debug)]
 struct Scan {
-    label: String,
+    request: Request,
     progress: Arc<Progress>,
     started: Instant,
     /// Time of the last frame, for the clock and the ring.
     now: Instant,
 }
 
-/// A finished scan and what the result tabs show of it.
+/// A finished scan and what the result tabs show of it. `report` and `steps`
+/// are in the window's language and are built again when it changes.
 #[derive(Debug)]
 struct Done {
     result: Arc<ScanResult>,
     report: String,
     steps: Vec<Step>,
     secrets: Secrets,
+}
+
+impl Done {
+    fn new(result: Arc<ScanResult>, lang: Lang) -> Self {
+        Done { report: report::render(&result, lang), steps: guide::steps(&result, lang), secrets: Secrets::of(&result), result }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -88,12 +98,15 @@ enum Tab {
 impl Tab {
     const ALL: [Tab; 3] = [Tab::Happened, Tab::Todo, Tab::Details];
 
-    fn label(self) -> &'static str {
-        match self {
-            Tab::Happened => "What happened",
-            Tab::Todo => "What to do",
-            Tab::Details => "Details",
-        }
+    fn label(self, lang: Lang) -> &'static str {
+        tr(
+            lang,
+            match self {
+                Tab::Happened => "ui.tab.happened",
+                Tab::Todo => "ui.tab.todo",
+                Tab::Details => "ui.tab.details",
+            },
+        )
     }
 }
 
@@ -110,7 +123,9 @@ struct App {
     /// The save dialog is open, or the report is being written.
     saving: bool,
     /// One line shown above the home or results screen.
-    notice: Option<String>,
+    notice: Option<Text>,
+    /// The language of every text. Not saved: the tool writes nothing but a report.
+    lang: Lang,
     theme: Theme,
     tab: Tab,
     /// "Hide my info": Copy report and Save report replace personal values.
@@ -153,7 +168,8 @@ enum Message {
     SaveTo(Option<PathBuf>),
     Saved(Option<Result<PathBuf, String>>),
     Open(Target),
-    Opened(Option<Result<(), String>>),
+    Opened(Option<Result<(), Text>>),
+    Lang(Lang),
 }
 
 /// Runs `job` on its own thread and delivers the result as a message.
@@ -166,7 +182,7 @@ fn background<T: Send + 'static>(job: impl FnOnce() -> T + Send + 'static, done:
 }
 
 impl App {
-    fn boot(folder: Option<PathBuf>) -> (Self, Task<Message>) {
+    fn boot(folder: Option<PathBuf>, lang: Lang) -> (Self, Task<Message>) {
         let palette = Palette {
             background: BG,
             text: TEXT,
@@ -184,6 +200,7 @@ impl App {
             picking: false,
             saving: false,
             notice: None,
+            lang,
             theme: Theme::custom(report::APP_NAME, palette),
             tab: Tab::default(),
             hide: false,
@@ -225,14 +242,9 @@ impl App {
     }
 
     fn start(&mut self, request: Request) -> Task<Message> {
-        let label = match &request {
-            Request::Computer(false) => "this computer".to_string(),
-            Request::Computer(true) => "this computer (full scan)".to_string(),
-            Request::Folder(p) => p.display().to_string(),
-        };
         let progress = Arc::new(Progress::default());
         let now = Instant::now();
-        self.phase = Phase::Scanning(Scan { label, progress: progress.clone(), started: now, now });
+        self.phase = Phase::Scanning(Scan { request: request.clone(), progress: progress.clone(), started: now, now });
         self.last = Some(request.clone());
         self.copied_shown = None;
         self.notice = None;
@@ -265,7 +277,7 @@ impl App {
             Message::PickFolder => {
                 self.picking = true;
                 Task::perform(
-                    rfd::AsyncFileDialog::new().set_title("Choose a folder to scan").pick_folder(),
+                    rfd::AsyncFileDialog::new().set_title(tr(self.lang, "ui.dialog.pick_folder")).pick_folder(),
                     |h| Message::FolderPicked(h.map(|h| h.path().to_path_buf())),
                 )
             }
@@ -278,7 +290,7 @@ impl App {
             }
             Message::Dropped(path) if path.is_dir() => self.start(Request::Folder(path)),
             Message::Dropped(_) => {
-                self.notice = Some("Only folders can be scanned. Drop the folder that holds the file.".into());
+                self.notice = Some(msg("ui.notice.only_folders"));
                 Task::none()
             }
             Message::ScanAgain => match self.last.clone() {
@@ -298,7 +310,7 @@ impl App {
                     // The cancelled scan still delivers a result; the new id drops it.
                     self.scan_id += 1;
                     self.phase = Phase::Idle;
-                    self.notice = Some("Scan stopped.".into());
+                    self.notice = Some(msg("ui.notice.stopped"));
                 }
                 Task::none()
             }
@@ -311,12 +323,7 @@ impl App {
             Message::Finished(id, _) if id != self.scan_id => Task::none(),
             Message::Finished(_, result) => {
                 self.phase = match result {
-                    Some(r) => Phase::Done(Box::new(Done {
-                        report: report::render(&r),
-                        steps: guide::steps(&r),
-                        secrets: Secrets::of(&r),
-                        result: r,
-                    })),
+                    Some(r) => Phase::Done(Box::new(Done::new(r, self.lang))),
                     None => Phase::Failed,
                 };
                 // The launcher is running or a program has the DLL loaded: the steps come first.
@@ -389,9 +396,9 @@ impl App {
                 let date = d.result.started.get(..10).unwrap_or("scan");
                 Task::perform(
                     rfd::AsyncFileDialog::new()
-                        .set_title("Save the report")
+                        .set_title(tr(self.lang, "ui.dialog.save"))
                         .set_file_name(format!("nikke-check-report-{date}.txt"))
-                        .add_filter("Text", &["txt"])
+                        .add_filter(tr(self.lang, "ui.dialog.text_files"), &["txt"])
                         .save_file(),
                     |h| Message::SaveTo(h.map(|h| h.path().to_path_buf())),
                 )
@@ -407,9 +414,9 @@ impl App {
             Message::Saved(result) => {
                 self.saving = false;
                 self.notice = Some(match result {
-                    Some(Ok(path)) => format!("Report saved to {}.", path.display()),
-                    Some(Err(err)) => format!("Could not save the report: {err}"),
-                    None => "Could not save the report.".into(),
+                    Some(Ok(path)) => msg("ui.notice.saved").arg("path", path.display().to_string()),
+                    Some(Err(err)) => msg("ui.notice.save_failed").arg("error", err),
+                    None => msg("ui.notice.save_failed_plain"),
                 });
                 Task::none()
             }
@@ -417,37 +424,49 @@ impl App {
             Message::Opened(result) => {
                 match result {
                     Some(Ok(())) => {}
-                    Some(Err(err)) => self.notice = Some(format!("Could not open it: {err}")),
-                    None => self.notice = Some("Could not open it.".into()),
+                    Some(Err(err)) => self.notice = Some(msg("ui.notice.open_failed").arg("error", err)),
+                    None => self.notice = Some(msg("ui.notice.open_failed_plain")),
+                }
+                Task::none()
+            }
+            // The Done marks, the open tab and the shown details stay: the steps keep their order.
+            Message::Lang(lang) => {
+                self.lang = lang;
+                if let Phase::Done(d) = &mut self.phase {
+                    **d = Done::new(d.result.clone(), lang);
                 }
                 Task::none()
             }
         }
     }
 
-    fn copy_button(&self, what: Clip, label: &'static str, primary: bool) -> Element<'static, Message> {
-        let label = if self.copied_shown.as_ref() == Some(&what) { "Copied" } else { label };
-        action(label, Some(Message::Copy(what)), primary)
+    fn t(&self, key: &'static str) -> &'static str {
+        tr(self.lang, key)
+    }
+
+    fn copy_button(&self, what: Clip, label: &str, primary: bool) -> Element<'static, Message> {
+        let label = if self.copied_shown.as_ref() == Some(&what) { self.t("ui.copied") } else { label };
+        action(label.to_string(), Some(Message::Copy(what)), primary)
     }
 
     fn view(&self) -> Element<'_, Message> {
         let body = match &self.phase {
             Phase::Idle => self.home(),
-            Phase::Scanning(scan) => scanning(scan),
+            Phase::Scanning(scan) => scanning(scan, self.lang),
             Phase::Done(d) => self.results(d),
             Phase::Failed => self.failed(),
         };
         let mut page = Column::new().spacing(20).width(Fill).max_width(1080);
-        if let Some(notice) = self.notice.as_deref().filter(|_| !self.scanning()) {
+        if let Some(notice) = self.notice.as_ref().filter(|_| !self.scanning()) {
             page = page.push(
-                container(text(notice).color(INFO_TEXT).wrapping(text::Wrapping::WordOrGlyph))
+                container(text(notice.render(self.lang)).color(INFO_TEXT).wrapping(text::Wrapping::WordOrGlyph))
                     .padding([10, 16])
                     .width(Fill)
                     .style(|_| surface(CARD, 8).border(border::rounded(8).color(INFO).width(1))),
             );
         }
         page = page.push(body);
-        column![top_bar(), scrollable(container(page).padding(24).center_x(Fill)).height(Fill)].into()
+        column![top_bar(self.lang), scrollable(container(page).padding(24).center_x(Fill)).height(Fill), bottom_bar(self.lang)].into()
     }
 
     fn home(&self) -> Element<'_, Message> {
@@ -455,7 +474,7 @@ impl App {
         let hero = card(
             row![
                 glyph(Glyph::Shield, 88.0),
-                column![text("Not scanned yet").size(26).font(bold()), text(report::ABOUT).size(15)]
+                column![text(self.t("ui.home.title")).size(26).font(bold()), text(self.t("report.about")).size(15)]
                     .spacing(8)
                     .width(Fill),
             ]
@@ -465,28 +484,26 @@ impl App {
         .padding(24);
 
         let mut folder = column![
-            text("Folder scan").size(20).font(bold()),
-            text("Scans one folder and everything under it, including any Wine prefix inside."),
-            action("Scan a folder...", idle.then_some(Message::PickFolder), false),
+            text(self.t("ui.home.folder")).size(20).font(bold()),
+            text(self.t("ui.home.folder_text")),
+            action(self.t("ui.button.scan_folder"), idle.then_some(Message::PickFolder), false),
         ]
         .spacing(10);
         if drop_works() {
-            folder = folder.push(text("You can also drop a folder on this window.").size(13).color(MUTED));
+            folder = folder.push(text(self.t("ui.home.drop")).size(13).color(MUTED));
         }
         // rfd needs an XDG portal file chooser or zenity, and returns nothing without them.
         if cfg!(all(unix, not(target_os = "macos"))) {
-            folder = folder.push(
-                text("If no folder dialog opens, run nikke-check --cli <folder> in a terminal.").size(13).color(MUTED),
-            );
+            folder = folder.push(text(self.t("ui.home.no_dialog")).size(13).color(MUTED));
         }
         let options = grid![
             card(
                 column![
-                    text("Computer scan").size(20).font(bold()),
-                    text(QUICK_SCAN),
-                    action("Scan this computer", idle.then_some(Message::ScanComputer(false)), true),
-                    text(FULL_SCAN).size(13).color(MUTED),
-                    action("Full scan", idle.then_some(Message::ScanComputer(true)), false),
+                    text(self.t("ui.home.computer")).size(20).font(bold()),
+                    text(self.t(QUICK_SCAN)),
+                    action(self.t("ui.button.scan_computer"), idle.then_some(Message::ScanComputer(false)), true),
+                    text(self.t("ui.home.full")).size(13).color(MUTED),
+                    action(self.t("ui.button.full_scan"), idle.then_some(Message::ScanComputer(true)), false),
                 ]
                 .spacing(10)
             ),
@@ -497,21 +514,21 @@ impl App {
         .spacing(16)
         .height(Shrink);
 
-        column![helper(HOME_HINT), hero, options].spacing(16).into()
+        column![helper(self.t("ui.home.hint")), hero, options].spacing(16).into()
     }
 
     fn failed(&self) -> Element<'_, Message> {
         card(
             column![
                 text(if cfg!(windows) {
-                    format!("The scan stopped with an internal error. Try again, or run {} in PowerShell, from the folder that holds this program, to see the report.", guide::powershell_cli(""))
+                    msg("ui.failed.windows").arg("command", guide::powershell_cli("")).render(self.lang)
                 } else {
-                    "The scan stopped with an internal error. Try again, or run nikke-check --cli to see the report in a terminal.".into()
+                    self.t("ui.failed.other").into()
                 })
                 .color(CRITICAL_TEXT),
                 row![
-                    action("Scan again", (!self.busy()).then_some(Message::ScanAgain), true),
-                    action("New scan", Some(Message::NewScan), false),
+                    action(self.t("ui.button.scan_again"), (!self.busy()).then_some(Message::ScanAgain), true),
+                    action(self.t("ui.button.new_scan"), Some(Message::NewScan), false),
                 ]
                 .spacing(12),
             ]
@@ -523,20 +540,18 @@ impl App {
     fn results<'a>(&'a self, d: &'a Done) -> Element<'a, Message> {
         let idle = !self.busy();
         let actions = row![
-            self.copy_button(Clip::Report, "Copy report", true),
-            action("Save report...", (!self.saving).then_some(Message::SaveReport), false),
-            toggler(self.hide).label("Hide my info").on_toggle(Message::Hide).style(switch_style),
-            action("Scan again", idle.then_some(Message::ScanAgain), false),
-            action("New scan", idle.then_some(Message::NewScan), false),
+            self.copy_button(Clip::Report, self.t("ui.button.copy_report"), true),
+            action(self.t("ui.button.save_report"), (!self.saving).then_some(Message::SaveReport), false),
+            toggler(self.hide).label(self.t("ui.hide_info")).on_toggle(Message::Hide).style(switch_style),
+            action(self.t("ui.button.scan_again"), idle.then_some(Message::ScanAgain), false),
+            action(self.t("ui.button.new_scan"), idle.then_some(Message::NewScan), false),
         ]
         .spacing(12)
         .align_y(Alignment::Center)
         .wrap()
         .vertical_spacing(12);
-        let tabs = row(Tab::ALL.map(|t| tab_button(t, t == self.tab))).spacing(8).wrap().vertical_spacing(8);
-        let hidden = self.hide.then(|| {
-            text("Hide my info applies to Copy report and Save report. The window still shows everything.").size(13).color(MUTED)
-        });
+        let tabs = row(Tab::ALL.map(|t| tab_button(t, t == self.tab, self.lang))).spacing(8).wrap().vertical_spacing(8);
+        let hidden = self.hide.then(|| text(self.t("ui.hide_info_note")).size(13).color(MUTED));
         let body = match self.tab {
             Tab::Happened => self.happened(&d.result),
             Tab::Todo => self.todo(&d.steps),
@@ -551,8 +566,8 @@ impl App {
             row![
                 glyph(Glyph::Verdict(r.verdict), 96.0),
                 column![
-                    text(report::headline(r.verdict)).size(30).font(bold()),
-                    text(report::summary(r.verdict)).size(16),
+                    text(report::headline(r.verdict, self.lang)).size(30).font(bold()),
+                    text(report::summary(r.verdict, self.lang)).size(16),
                 ]
                 .spacing(8)
                 .width(Fill),
@@ -565,24 +580,21 @@ impl App {
         .style(move |_| container::Style { border: border::rounded(12), ..filled(color) });
 
         let mut col = Column::new().spacing(14).push(hero);
-        for a in guide::answers(r) {
-            col = col.push(answer_card(a));
+        for a in guide::answers(r, self.lang) {
+            col = col.push(answer_card(a, self.lang));
         }
         if !r.builds.is_empty() {
-            let mut c = Column::new().spacing(6).push(text("Payload build").size(16).font(bold()));
+            let mut c = Column::new().spacing(6).push(text(self.t("ui.happened.payload_build")).size(16).font(bold()));
             for b in &r.builds {
-                c = c.push(bullet(guide::build_line(b)));
+                c = c.push(bullet(guide::build_line(b, self.lang)));
             }
             col = col.push(card(c));
         }
-        col.push(action("See what to do", Some(Message::Tab(Tab::Todo)), true)).into()
+        col.push(action(self.t("ui.button.see_todo"), Some(Message::Tab(Tab::Todo)), true)).into()
     }
 
     fn todo<'a>(&'a self, steps: &'a [Step]) -> Element<'a, Message> {
-        let mut col = Column::new().spacing(14).push(helper(TODO_HINT)).push(
-            text("These steps come from what this scan found, in the order to do them. The Done marks are not saved.")
-                .color(MUTED),
-        );
+        let mut col = Column::new().spacing(14).push(helper(self.t("ui.todo.hint"))).push(text(self.t("ui.todo.note")).color(MUTED));
         for (i, s) in steps.iter().enumerate() {
             col = col.push(self.step_card(i, s));
         }
@@ -597,7 +609,7 @@ impl App {
         let head = row![
             number,
             text(&s.title).size(17).font(bold()).color(if done { MUTED } else { TEXT }).width(Fill),
-            checkbox(done).label("Done").on_toggle(move |b| Message::StepDone(i, b)).style(check_style),
+            checkbox(done).label(self.t("ui.done")).on_toggle(move |b| Message::StepDone(i, b)).style(check_style),
         ]
         .spacing(12)
         .align_y(Alignment::Center);
@@ -616,16 +628,16 @@ impl App {
     }
 
     fn action_button(&self, a: &Action) -> Element<'static, Message> {
-        let open = |label, target| action(label, Some(Message::Open(target)), false);
+        let open = |key, target| action(self.t(key), Some(Message::Open(target)), false);
         match a {
-            Action::Reveal(path) => open("Open folder", Target::Reveal(path.clone())),
+            Action::Reveal(path) => open("ui.button.open_folder", Target::Reveal(path.clone())),
             Action::Copy(label, text) => self.copy_button(Clip::Text(text.clone()), label, false),
-            Action::TaskManager => open("Open Task Manager", Target::TaskManager),
-            Action::RegistryEditor => open("Open Registry Editor", Target::RegistryEditor),
-            Action::SaveReport => action("Save report...", (!self.saving).then_some(Message::SaveReport), true),
-            Action::CopyReport => self.copy_button(Clip::Report, "Copy report", false),
-            Action::ScanFolder => action("Scan a folder...", (!self.busy()).then_some(Message::PickFolder), true),
-            Action::FullScan => action("Full scan", (!self.busy()).then_some(Message::ScanComputer(true)), false),
+            Action::TaskManager => open("ui.button.task_manager", Target::TaskManager),
+            Action::RegistryEditor => open("ui.button.registry_editor", Target::RegistryEditor),
+            Action::SaveReport => action(self.t("ui.button.save_report"), (!self.saving).then_some(Message::SaveReport), true),
+            Action::CopyReport => self.copy_button(Clip::Report, self.t("ui.button.copy_report"), false),
+            Action::ScanFolder => action(self.t("ui.button.scan_folder"), (!self.busy()).then_some(Message::PickFolder), true),
+            Action::FullScan => action(self.t("ui.button.full_scan"), (!self.busy()).then_some(Message::ScanComputer(true)), false),
         }
     }
 
@@ -635,42 +647,41 @@ impl App {
             counts[f.severity as usize] += 1;
         }
         let [info, warnings, critical] = counts;
+        let lang = self.lang;
         let tiles = grid![
-            tile("Critical", critical.to_string(), if critical > 0 { CRITICAL_TEXT } else { TEXT }),
-            tile("Warnings", warnings.to_string(), if warnings > 0 { WARNING_TEXT } else { TEXT }),
-            tile("Info", info.to_string(), TEXT),
-            tile("Items scanned", thousands(r.stats.entries), TEXT),
-            tile("Duration", duration(r.seconds), TEXT),
+            tile(self.t("ui.tile.critical"), critical.to_string(), if critical > 0 { CRITICAL_TEXT } else { TEXT }),
+            tile(self.t("ui.tile.warnings"), warnings.to_string(), if warnings > 0 { WARNING_TEXT } else { TEXT }),
+            tile(self.t("ui.tile.info"), info.to_string(), TEXT),
+            tile(self.t("ui.tile.items"), thousands(r.stats.entries), TEXT),
+            tile(self.t("ui.tile.duration"), duration(r.seconds), TEXT),
         ]
         .fluid(220)
         .spacing(12)
         .height(Shrink);
 
-        let mut col = Column::new().spacing(14).push(tiles).push(
-            text(format!("Checked: {}. Scan of {}.", report::checked_summary(r), report::scope(r)))
-                .color(MUTED)
-                .wrapping(text::Wrapping::WordOrGlyph),
-        );
+        let checked = msg("ui.details.checked").arg("summary", report::checked_summary(r, lang)).arg("scope", report::scope(r, lang));
+        let mut col = Column::new()
+            .spacing(14)
+            .push(tiles)
+            .push(text(checked.render(lang)).color(MUTED).wrapping(text::Wrapping::WordOrGlyph));
         if r.groups.is_empty() {
-            col = col.push(text("No findings."));
+            col = col.push(text(self.t("report.no_findings")));
         }
         for s in Section::ALL {
             if s == Section::Info
                 && let Some(e) = &r.exposure
             {
-                col = col.push(heading(guide::EXPOSURE_TITLE)).push(exposure_view(e, guide::home_note(r)));
+                col = col.push(heading(self.t("exposure.title"))).push(exposure_view(e, guide::home_note(r, lang), lang));
             }
             let found = report::section(r, s);
             if found.is_empty() {
                 continue;
             }
             if s == Section::Info {
-                let label = if self.info_open { "Hide" } else { "Show" };
+                let label = self.t(if self.info_open { "ui.button.hide" } else { "ui.button.show" });
+                let title = msg("ui.details.section_count").arg("title", s.title(lang)).arg("n", found.len().to_string());
                 col = col.push(
-                    row![
-                        text(format!("{} ({})", s.title(), found.len())).size(20).font(bold()),
-                        action(label, Some(Message::ToggleInfo), false),
-                    ]
+                    row![text(title.render(lang)).size(20).font(bold()), action(label, Some(Message::ToggleInfo), false)]
                     .spacing(12)
                     .align_y(Alignment::Center),
                 );
@@ -678,7 +689,7 @@ impl App {
                     continue;
                 }
             } else {
-                col = col.push(heading(s.title()));
+                col = col.push(heading(s.title(lang)));
             }
             for (gi, fi, g, f) in found {
                 col = col.push(self.finding_card(gi, fi, g, f));
@@ -686,12 +697,10 @@ impl App {
         }
 
         if let Some(h) = &r.hosts {
-            let mut p = Column::new().spacing(8).push(
-                text(format!("Hosts file: {}. This is not an infection check: it shows whether the domains are blocked.", h.path.display()))
-                    .wrapping(text::Wrapping::WordOrGlyph),
-            );
-            if let Some(note) = h.note {
-                p = p.push(text(note));
+            let hosts = msg("ui.details.hosts").arg("path", h.path.display().to_string());
+            let mut p = Column::new().spacing(8).push(text(hosts.render(lang)).wrapping(text::Wrapping::WordOrGlyph));
+            if let Some(note) = &h.note {
+                p = p.push(text(note.render(lang)));
             }
             for (domain, blocked) in &h.domains {
                 let color = match blocked {
@@ -700,29 +709,29 @@ impl App {
                     None => MUTED,
                 };
                 p = p.push(
-                    row![text(format!("{domain}:")).font(Font::MONOSPACE), text(report::block_state(*blocked)).color(color)]
+                    row![text(format!("{domain}:")).font(Font::MONOSPACE), text(report::block_state(*blocked, lang)).color(color)]
                         .spacing(8),
                 );
             }
             let lines = report::block_lines(h);
             if !lines.is_empty() {
-                p = p.push(text(report::BLOCK_LINES_INTRO));
+                p = p.push(text(self.t("hosts.block_lines_intro")));
                 p = p.push(mono_box(lines.join("\n")));
-                p = p.push(self.copy_button(Clip::Text(lines.join("\n")), "Copy these lines", false));
+                p = p.push(self.copy_button(Clip::Text(lines.join("\n")), self.t("common.copy_lines"), false));
             }
-            p = p.push(text(report::HOSTS_NOTE).color(MUTED));
-            p = p.push(text(report::ip_note()).color(MUTED));
-            col = col.push(heading("Protection")).push(card(p));
+            p = p.push(text(self.t("hosts.note")).color(MUTED));
+            p = p.push(text(self.t("hosts.ip_note")).color(MUTED));
+            col = col.push(heading(self.t("ui.details.protection"))).push(card(p));
         }
 
-        col = col.push(heading("Limits of this check"));
-        for c in report::CAVEATS {
+        col = col.push(heading(self.t("ui.details.limits")));
+        for c in report::caveats(lang) {
             col = col.push(bullet(c));
         }
         let mut places = Column::new().spacing(4);
         for t in &r.targets {
             places = places.push(
-                text(format!("[{}] {}", t.kind.label(), t.path.display()))
+                text(format!("[{}] {}", t.kind.label(lang), t.path.display()))
                     .font(Font::MONOSPACE)
                     .size(13)
                     .wrapping(text::Wrapping::WordOrGlyph),
@@ -730,64 +739,68 @@ impl App {
         }
         col.push(
             row![
-                text(format!("Write-up: {}", report::GIST_URL))
+                text(msg("report.write_up").arg("url", report::GIST_URL).render(lang))
                     .font(Font::MONOSPACE)
                     .size(13)
                     .width(Fill)
                     .wrapping(text::Wrapping::WordOrGlyph),
-                self.copy_button(Clip::Text(report::GIST_URL.into()), "Copy link", false),
-                action("Open link", Some(Message::Open(Target::Link(report::GIST_URL.into()))), false),
+                self.copy_button(Clip::Text(report::GIST_URL.into()), self.t("ui.button.copy_link"), false),
+                action(self.t("ui.button.open_link"), Some(Message::Open(Target::Link(report::GIST_URL.into()))), false),
             ]
             .spacing(12)
             .align_y(Alignment::Center),
         )
-        .push(heading("Locations checked"))
+        .push(heading(self.t("ui.details.locations")))
         .push(places)
-        .push(text(format!("Scan stats: {}", report::stats_line(r))).size(13).color(MUTED))
+        .push(text(msg("report.scan_stats").arg("stats", report::stats_line(r, lang)).render(lang)).size(13).color(MUTED))
         .into()
     }
 
     fn finding_card<'a>(&'a self, gi: usize, fi: usize, g: &'a Group, f: &'a Finding) -> Element<'a, Message> {
+        let lang = self.lang;
         let color = severity_color(f.severity);
-        let badge = container(text(f.severity.tag()).size(12).font(bold()))
+        let badge = container(text(f.severity.tag(lang)).size(12).font(bold()))
             .padding([2, 8])
             .style(move |_| filled(color));
+        let meaning = msg("details.meaning").arg("text", guide::meaning(f.kind, lang));
+        let found_in = msg("details.found_in").arg("location", report::location(g, lang));
         let mut c = Column::new()
             .spacing(6)
-            .push(row![badge, text(&f.title).size(16).font(bold()).width(Fill)].spacing(10))
-            .push(text(&f.detail).wrapping(text::Wrapping::WordOrGlyph))
-            .push(text(format!("What this means: {}", guide::meaning(f.kind))).color(INFO_TEXT))
-            .push(text(format!("Found in: {}", report::location(g))).size(13).color(MUTED).wrapping(text::Wrapping::WordOrGlyph));
+            .push(row![badge, text(f.title.render(lang)).size(16).font(bold()).width(Fill)].spacing(10))
+            .push(text(f.detail.render(lang)).wrapping(text::Wrapping::WordOrGlyph))
+            .push(text(meaning.render(lang)).color(INFO_TEXT))
+            .push(text(found_in.render(lang)).size(13).color(MUTED).wrapping(text::Wrapping::WordOrGlyph));
         if let Some(p) = &f.path {
-            c = c.push(text(format!("Path: {}", p.display())).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph));
+            let path = msg("details.path").arg("path", p.display().to_string());
+            c = c.push(text(path.render(lang)).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph));
         }
         if let Some(t) = &f.time {
-            c = c.push(text(format!("Time: {t}")).size(13).color(MUTED));
+            c = c.push(text(msg("details.time").arg("time", t.clone()).render(lang)).size(13).color(MUTED));
         }
         if let Some(copy) = &f.copy_text {
-            c = c.push(mono_box(format!("{}: {copy}", report::copy_label(f))));
+            c = c.push(mono_box(msg("details.copy").arg("label", report::copy_label(f, lang)).arg("text", copy.as_str()).render(lang)));
         }
         let mut buttons: Vec<Element<'a, Message>> = Vec::new();
         if let Some(p) = &f.open_path {
-            buttons.push(action("Open folder", Some(Message::Open(Target::Reveal(p.clone()))), false));
+            buttons.push(action(self.t("ui.button.open_folder"), Some(Message::Open(Target::Reveal(p.clone()))), false));
         }
         if let Some(p) = &f.path {
-            buttons.push(self.copy_button(Clip::Text(p.display().to_string()), "Copy path", false));
+            buttons.push(self.copy_button(Clip::Text(p.display().to_string()), self.t("ui.button.copy_path"), false));
         }
         if let Some(copy) = &f.copy_text {
-            let label = if matches!(f.kind, FindingKind::RegistryKey | FindingKind::RegistryLeftover) { "Copy key path" } else { "Copy" };
-            buttons.push(self.copy_button(Clip::Text(copy.clone()), label, false));
+            let label = if matches!(f.kind, FindingKind::RegistryKey | FindingKind::RegistryLeftover) { "common.copy_key_path" } else { "common.copy" };
+            buttons.push(self.copy_button(Clip::Text(copy.clone()), self.t(label), false));
         }
         let shown = self.evidence.contains(&(gi, fi));
         if !f.evidence.is_empty() {
-            let label = if shown { "Hide technical details" } else { "Show technical details" };
+            let label = self.t(if shown { "ui.button.hide_details" } else { "ui.button.show_details" });
             buttons.push(action(label, Some(Message::Evidence(gi, fi)), false));
         }
         if !buttons.is_empty() {
             c = c.push(row(buttons).spacing(10).wrap().vertical_spacing(10));
         }
         if shown {
-            c = c.push(mono_box(f.evidence.join("\n")));
+            c = c.push(mono_box(f.evidence_lines(lang).join("\n")));
         }
         container(c)
             .padding(12)
@@ -798,7 +811,7 @@ impl App {
 }
 
 /// One of the four answers of the What happened tab.
-fn answer_card(a: Answer) -> Element<'static, Message> {
+fn answer_card(a: Answer, lang: Lang) -> Element<'static, Message> {
     let color = match a.tone {
         Tone::Bad => CRITICAL_TEXT,
         Tone::Unsure => WARNING_TEXT,
@@ -812,19 +825,19 @@ fn answer_card(a: Answer) -> Element<'static, Message> {
         c = c.push(bullet(line));
     }
     if !a.runs.is_empty() {
-        c = c.push(text("Agent runs in the logs").size(13).color(MUTED));
+        c = c.push(text(tr(lang, "ui.happened.agent_runs")).size(13).color(MUTED));
         c = c.push(mono_box(a.runs.join("\n")));
     }
     card(c).into()
 }
 
 /// What the agent's commands could read, from the existence checks.
-fn exposure_view(e: &Exposure, note: Option<&'static str>) -> Element<'static, Message> {
-    let mut c = Column::new().spacing(8).push(text(guide::EXPOSURE_NOTE).color(MUTED)).push(note.map(|n| text(n).color(MUTED)));
-    for (title, items) in guide::exposure_lists(e) {
+fn exposure_view(e: &Exposure, note: Option<&'static str>, lang: Lang) -> Element<'static, Message> {
+    let mut c = Column::new().spacing(8).push(text(tr(lang, "exposure.note")).color(MUTED)).push(note.map(|n| text(n).color(MUTED)));
+    for (title, items) in guide::exposure_lists(e, lang) {
         c = c.push(text(title).size(16).font(bold()));
         if items.is_empty() {
-            c = c.push(text("None found.").color(MUTED));
+            c = c.push(text(tr(lang, "ui.details.none_found")).color(MUTED));
         }
         for (what, path) in items {
             c = c.push(
@@ -835,14 +848,14 @@ fn exposure_view(e: &Exposure, note: Option<&'static str>) -> Element<'static, M
                     ]
                     .spacing(2)
                     .width(Fill),
-                    action("Open folder", Some(Message::Open(Target::Reveal(path))), false),
+                    action(tr(lang, "ui.button.open_folder"), Some(Message::Open(Target::Reveal(path))), false),
                 ]
                 .spacing(12)
                 .align_y(Alignment::Center),
             );
         }
     }
-    c = c.push(text("Folders checked").size(16).font(bold()));
+    c = c.push(text(tr(lang, "ui.details.folders_checked")).size(16).font(bold()));
     for p in &e.checked {
         c = c.push(text(p.display().to_string()).font(Font::MONOSPACE).size(13).wrapping(text::Wrapping::WordOrGlyph));
     }
@@ -873,8 +886,8 @@ fn switch_style(theme: &Theme, status: toggler::Status) -> toggler::Style {
 }
 
 /// A result tab; the active one has the accent border and bold text.
-fn tab_button<'a>(tab: Tab, active: bool) -> Element<'a, Message> {
-    button(text(tab.label()).font(if active { bold() } else { Font::DEFAULT }))
+fn tab_button<'a>(tab: Tab, active: bool, lang: Lang) -> Element<'a, Message> {
+    button(text(tab.label(lang)).font(if active { bold() } else { Font::DEFAULT }))
         .padding([8, 18])
         .style(move |_, status| {
             let hover = matches!(status, button::Status::Hovered | button::Status::Pressed);
@@ -892,18 +905,15 @@ fn tab_button<'a>(tab: Tab, active: bool) -> Element<'a, Message> {
 
 /// Where "Scan this computer" looks (see `locate::plan_computer`).
 const QUICK_SCAN: &str = if cfg!(windows) {
-    "Reads the install paths the launcher records in the registry, your user profile and the launcher data, and every folder up to 5 levels deep on each local drive. Usually done in seconds."
+    "ui.home.quick_windows"
 } else if cfg!(target_os = "macos") {
-    "Reads the Wine, CrossOver, Whisky, Wineskin and Heroic prefixes and the install paths they record, and every folder up to 5 levels below /, local volumes included. Network volumes are skipped."
+    "ui.home.quick_macos"
 } else {
-    "Reads every Wine prefix of Steam, Lutris, Heroic, Bottles and Faugus and the install paths they record, and every folder up to 5 levels below /, your home folder and each drive under /mnt, /media and /run/media. Network mounts are skipped."
+    "ui.home.quick_linux"
 };
 
-/// What "Full scan" adds.
-const FULL_SCAN: &str = "The full scan opens every folder on every local drive, for a NIKKE folder more than 5 levels deep that the launcher no longer records. It can take a long time on large drives.";
-
-fn top_bar<'a>() -> Element<'a, Message> {
-    let pill = container(text(report::READ_ONLY).size(12).color(MUTED))
+fn top_bar<'a>(lang: Lang) -> Element<'a, Message> {
+    let pill = container(text(tr(lang, "report.read_only")).size(12).color(MUTED))
         .padding([4, 12])
         .style(|_| surface(CARD, 999).border(border::rounded(999).color(LINE).width(1)));
     container(
@@ -923,28 +933,39 @@ fn top_bar<'a>() -> Element<'a, Message> {
     .into()
 }
 
-fn scanning(scan: &Scan) -> Element<'_, Message> {
+/// The language menu, at the bottom left of every screen.
+fn bottom_bar<'a>(lang: Lang) -> Element<'a, Message> {
+    container(pick_list(&Lang::ALL[..], Some(lang), Message::Lang).text_size(13).padding([4, 10]))
+        .padding([6, 24])
+        .width(Fill)
+        .style(|_| surface(BAR, 0))
+        .into()
+}
+
+fn scanning(scan: &Scan, lang: Lang) -> Element<'_, Message> {
+    let t = |key| tr(lang, key);
     let p = &*scan.progress;
     let stage = p.stage();
     let elapsed = scan.now.saturating_duration_since(scan.started);
     let ring = stack![
         canvas(Ring { seconds: elapsed.as_secs_f32() }).width(150).height(150),
-        container(column![text(clock(elapsed)).size(30).font(bold()), text("elapsed").size(12).color(MUTED)].align_x(Alignment::Center))
+        container(column![text(clock(elapsed)).size(30).font(bold()), text(t("ui.scan.elapsed")).size(12).color(MUTED)].align_x(Alignment::Center))
             .center(150),
     ];
 
     let (done, total) = (p.checks_done.load(Relaxed), p.checks_total.load(Relaxed));
     let checking = match total {
-        _ if stage < Stage::Locations => "Checking the locations found".to_string(),
-        1 => "Checking 1 location".to_string(),
-        n => format!("Checking {n} locations"),
+        _ if stage < Stage::Locations => t("ui.scan.locations").to_string(),
+        1 => t("ui.scan.locations_one").to_string(),
+        n => msg("ui.scan.locations_other").arg("n", n.to_string()).render(lang),
     };
+    let of = || msg("ui.scan.progress").arg("done", done.to_string()).arg("total", total.to_string()).render(lang);
     // The order run() uses: discovery, running programs, each location, hosts file.
     let steps = [
-        (Stage::Searching, "Looking for NIKKE installs and Wine prefixes".to_string(), None),
-        (Stage::Programs, "Checking running programs".to_string(), None),
-        (Stage::Locations, checking, (stage >= Stage::Locations).then(|| format!("{done} of {total}"))),
-        (Stage::Hosts, "Checking the hosts file".to_string(), None),
+        (Stage::Searching, t("ui.scan.searching").to_string(), None),
+        (Stage::Programs, t("ui.scan.programs").to_string(), None),
+        (Stage::Locations, checking, (stage >= Stage::Locations).then(of)),
+        (Stage::Hosts, t("ui.scan.hosts").to_string(), None),
     ];
     let mut list = Column::new().spacing(14);
     for (step, label, detail) in steps {
@@ -971,10 +992,10 @@ fn scanning(scan: &Scan) -> Element<'_, Message> {
         TEXT
     };
     let tiles = grid![
-        tile("Items scanned", thousands(p.entries.load(Relaxed)), TEXT),
-        tile("Folders", thousands(p.folders.load(Relaxed)), TEXT),
-        tile("Locations found", found.to_string(), TEXT),
-        tile("Findings so far", (critical + warnings).to_string(), flagged),
+        tile(t("ui.tile.items"), thousands(p.entries.load(Relaxed)), TEXT),
+        tile(t("ui.tile.folders"), thousands(p.folders.load(Relaxed)), TEXT),
+        tile(t("ui.tile.locations"), found.to_string(), TEXT),
+        tile(t("ui.tile.findings"), (critical + warnings).to_string(), flagged),
     ]
     .fluid(200)
     .spacing(12)
@@ -992,9 +1013,14 @@ fn scanning(scan: &Scan) -> Element<'_, Message> {
     })
     .height(Shrink);
 
+    let target = match &scan.request {
+        Request::Computer(false) => t("report.scope.computer").to_string(),
+        Request::Computer(true) => t("report.scope.full").to_string(),
+        Request::Folder(p) => p.display().to_string(),
+    };
     let content = column![
         ring,
-        text(format!("Scanning {}", scan.label))
+        text(msg("ui.scan.title").arg("target", target).render(lang))
             .size(22)
             .font(bold())
             .width(Fill)
@@ -1003,7 +1029,7 @@ fn scanning(scan: &Scan) -> Element<'_, Message> {
         card(list),
         tiles,
         now_in,
-        action("Stop scan", Some(Message::Stop), false),
+        action(t("ui.button.stop"), Some(Message::Stop), false),
     ]
     .spacing(20)
     .align_x(Alignment::Center)
@@ -1032,9 +1058,6 @@ fn mono_box<'a>(content: String) -> Element<'a, Message> {
         .into()
 }
 
-const HOME_HINT: &str = "Hi, I'm MotherSphere. Start with \"Scan this computer\". It only reads files: it deletes nothing and sends nothing over the network.";
-const TODO_HINT: &str = "Do the steps one at a time, in order. The buttons open the right folder or tool for you, but you delete the files yourself. This program never deletes anything.";
-
 /// Decoded once, so iced keeps one texture for every frame.
 static MOTHERSPHERE: std::sync::LazyLock<image::Handle> =
     std::sync::LazyLock::new(|| image::Handle::from_bytes(include_bytes!("../assets/mothersphere.png").as_slice()));
@@ -1060,7 +1083,7 @@ fn card<'a>(content: impl Into<Element<'a, Message>>) -> container::Container<'a
 }
 
 /// A button; `primary` is the main action of a screen.
-fn action<'a>(label: &'a str, on_press: Option<Message>, primary: bool) -> Element<'a, Message> {
+fn action<'a>(label: impl text::IntoFragment<'a>, on_press: Option<Message>, primary: bool) -> Element<'a, Message> {
     let (base, hover, label_color) = if primary { (INFO, INFO_HOVER, Color::WHITE) } else { (LINE, LINE_HOVER, TEXT) };
     button(text(label))
         .padding([8, 18])
@@ -1415,7 +1438,7 @@ mod tests {
                 ..Exposure::default()
             }),
         };
-        let (mut app, _) = App::boot(None);
+        let (mut app, _) = App::boot(None, Lang::En);
         let _ = app.update(Message::Finished(0, Some(Arc::new(r))));
         app.info_open = true;
         app.evidence.insert((0, 0));
@@ -1425,7 +1448,21 @@ mod tests {
         }
         let Phase::Done(d) = &app.phase else { panic!("no result") };
         assert!(d.steps.iter().any(|s| s.title == "Delete the leftover registry key"));
-        assert!(app.report_text().unwrap().contains("COLONY"));
+        let report = app.report_text().unwrap();
+        assert!(report.contains("COLONY"));
+        // Every {name} of the texts got its value.
+        let unfilled = report.split('{').skip(1).filter_map(|s| s.split_once('}')).find(|(n, _)| n.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'));
+        assert!(unfilled.is_none(), "{unfilled:?} in:\n{report}");
+
+        // Another language redraws the result in place; the Done marks and the tab stay.
+        let _ = app.update(Message::StepDone(1, true));
+        for lang in Lang::ALL {
+            let _ = app.update(Message::Lang(lang));
+            let _ = app.view();
+        }
+        let _ = app.update(Message::Lang(Lang::En));
+        assert!(app.checked.contains(&1) && app.tab == Tab::Details);
+        assert_eq!(app.report_text().unwrap(), report);
         let _ = app.update(Message::Hide(true));
         let hidden = app.report_text().unwrap();
         assert!(!hidden.contains("COLONY") && !hidden.contains("steamuser"), "{hidden}");

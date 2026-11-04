@@ -1,0 +1,527 @@
+# NIKKE Launcher Check: the Russian texts (ru). The keys are those of en.txt.
+#
+# One entry per line: key = text. Lines that start with # are comments.
+# Translate only the text after "=". Do not change the keys.
+# In the text, \n starts a new line and \\ is one backslash.
+# {name} is a value the program fills in: a path, a number, a file name or another text.
+# Keep every {name} of the English text with the same name. You can move it in the sentence.
+# Other braces, such as the CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}, are plain text: keep them.
+# Keep file names, paths, registry keys, commands, domains, IP addresses and hashes as they are.
+# Text in quotes such as "Scan a folder..." names a button or a part of this window: use the
+# words of that button's own entry. Windows menus and buttons (Run as administrator, End task,
+# File > Open) are named as Windows shows them in your language.
+# An entry missing from a translation shows the English text.
+
+# Command line: nikke-check --help, and errors printed in the terminal.
+cli.usage = NIKKE Launcher Check: ищет следы компрометации лаунчера NIKKE для ПК в ноябре 2026 года.\nТолько чтение. Без доступа к сети.\n\nИспользование:\n  nikke-check                  Открыть окно\n  nikke-check PATH             Открыть окно и проверить эту папку\n  nikke-check --cli            Быстрая проверка этого компьютера, вывод отчета\n  nikke-check --cli --full     Полная проверка всех папок всех локальных дисков\n  nikke-check --cli PATH...    Полная проверка только этих папок, вывод отчета\n  nikke-check --cli --redact   Заменить в отчете имя компьютера, имена\n                               пользователей, ID агентов и домашнюю папку\n                               (с любой формой --cli)\n  nikke-check --help           Показать эту справку\n\nЯзык:\n  --lang CODE    Добавьте к любой форме выше, чтобы задать язык окна\n                 и отчета. Без этого параметра используется язык системы.\n                 CODE: {codes}\n\nКоды выхода (--cli):\n  0  следов не найдено\n  1  под угрозой (только предупреждения)\n  2  заражен (критические следы)\n  3  не найдены ни установка NIKKE, ни данные лаунчера\n  4  неверные аргументы или папка, которую не удается прочитать\n
+cli.unknown_argument = Неизвестный аргумент: {arg}
+cli.lang_missing = Для --lang нужен код языка: {codes}
+cli.lang_unknown = Неизвестный код языка: {code}. Используйте один из этих кодов: {codes}
+cli.cannot_read_folder = Не удается прочитать папку {path}: {error}
+cli.not_a_folder = Это не папка: {path}
+cli.window_failed = Не удалось открыть окно: {error}
+# Windows error box when the window cannot open. {command} is a PowerShell command.
+cli.error_box = Не удалось открыть окно:\n{error}\n\nЧтобы получить отчет без окна, откройте PowerShell в папке с этой программой и выполните команду:\n\n{command}
+
+# Top bar, start screen and report header.
+report.read_only = Только чтение. Без доступа к сети.
+report.about = 27 сентября 2026 года четыре файла на CDN компании Level Infinite были изменены так, чтобы лаунчер NIKKE для ПК загружал скрипт с insightjs.com. Не позднее 23 октября 2026 года этот скрипт начал скачивать агент удаленного доступа (insight.bundle), который может выполнять команды, читать файлы, делать снимки экрана и собирать данные браузеров. 3 ноября три из этих файлов были заменены. Четвертый был очищен 28 октября, но 3 ноября некоторые серверы CDN все еще отдавали его старую копию. Эта программа ищет следы, которые загрузчик и агент оставляют на диске.
+# What was scanned ("Scan of: ...", "Scanning ...").
+report.scope.computer = этот компьютер
+report.scope.quick = этот компьютер (быстрая проверка)
+report.scope.full = этот компьютер (полная проверка)
+
+# The verdict: a title, then one sentence.
+verdict.infected.title = Заражен
+verdict.infected.summary = Обнаружены критические следы: агент был скачан или запускался, закрепился в системе, либо лаунчер работает прямо сейчас. Считайте этот компьютер скомпрометированным.
+verdict.exposed.title = Под угрозой
+verdict.exposed.summary = Лаунчер загрузил вредоносный скрипт или связывался с insightjs.com, но признаков запуска агента не найдено.
+verdict.no_traces.title = Следов не найдено
+verdict.no_traces.summary = В файлах NIKKE, которые нашла эта проверка, следов вредоносного скрипта или агента не обнаружено.
+verdict.not_found.title = NIKKE не найдена
+verdict.not_found.summary = В проверенных местах не найдены ни установка NIKKE, ни данные лаунчера.
+
+# Severity badges of the findings, and the tags of the report ("[CRITICAL]").
+severity.critical = КРИТИЧНО
+severity.warning = ПРЕДУПРЕЖДЕНИЕ
+severity.info = СВЕДЕНИЯ
+
+# The kinds of locations a scan checks ("[NIKKE install] /path" in the report).
+kind.install = Установка NIKKE
+kind.launcher_data = Данные лаунчера
+kind.wine_prefix = Префикс Wine
+kind.user_profile = Профиль пользователя
+# Groups of findings with no folder.
+group.running = Запущенные программы
+group.coverage = Охват проверки
+
+# "Limits of this check", in the window and the report.
+report.caveat.debug_log = Файл debug.log пропадает, если удалить папку NIKKE или переустановить игру. Проверка k2f.agent.state в данных лаунчера от него не зависит.
+report.caveat.not_proof = Если ничего не найдено, это не доказывает, что компьютер чист.
+report.caveat.no_logs = Команды, которые выполнял агент, не оставляют журналов, поэтому эта программа не может определить, что сделал злоумышленник.
+
+# Protection: the hosts file, in Details and in the report.
+hosts.blocked = заблокирован
+hosts.not_blocked = не заблокирован
+hosts.unknown = состояние неизвестно
+hosts.missing = Файла hosts нет, поэтому он ничего не блокирует.
+hosts.unreadable = Не удалось прочитать файл hosts, поэтому неизвестно, какие домены он блокирует.
+hosts.block_lines_intro = Чтобы заблокировать домены, которые не отмечены как заблокированные, добавьте в файл hosts эти строки:
+hosts.note = Для изменения файла hosts нужны права администратора. Эта программа никогда его не изменяет.
+hosts.ip_note = IP-адреса 89.127.233.127 и 89.126.250.172 нельзя заблокировать в файле hosts. Заблокируйте их в брандмауэре или на маршрутизаторе.
+
+# "Checked: ..." in Details and "Locations checked: ..." in the report, joined with commas.
+report.checked.install_one = установка NIKKE ({n})
+report.checked.install_other = установки NIKKE ({n})
+report.checked.launcher_data_one = папка данных лаунчера ({n})
+report.checked.launcher_data_other = папки данных лаунчера ({n})
+report.checked.wine_prefix_one = префикс Wine ({n})
+report.checked.wine_prefix_other = префиксы Wine ({n})
+report.checked.user_profile_one = профиль пользователя ({n})
+report.checked.user_profile_other = профили пользователей ({n})
+report.checked.nothing = ничего не найдено для проверки
+
+# "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
+report.stats = просмотрено элементов: {entries} (папок: {folders}), ошибок доступа: {errors}{skipped}, время: {seconds} с.
+report.stats.skipped_one = , пропущен 1 сетевой диск
+report.stats.skipped_other = , пропущено сетевых дисков: {n}
+report.stats.cap = Достигнут предел числа элементов, поэтому некоторые папки не были просмотрены.
+
+# The text report (CLI output, "Copy report" and "Save report...").
+report.scan_of = Область проверки: {scope}
+report.started = Начало проверки: {time}
+report.verdict = РЕЗУЛЬТАТ: {verdict}
+report.what_happened = ЧТО ПРОИЗОШЛО
+# One answer of "What happened": the question and its reply (Yes, No...).
+report.answer = {question} {reply}.
+report.agent_runs = Запуски агента в журналах:
+report.payload_build = Сборка агента: {build}
+report.what_to_do = ЧТО ДЕЛАТЬ
+report.open = Открыть: {path}
+report.details = ПОДРОБНОСТИ
+report.locations_checked = Проверенные места: {summary}
+report.exposure_heading = {heading}:
+report.exposure_none = {heading}: не найдено.
+report.exposure_item = {what}: {path}
+report.folders_checked = Проверенные папки:
+report.no_findings = Ничего не обнаружено.
+report.protection = ЗАЩИТА (файл hosts: {path})
+report.protection_note = Это не проверка на заражение. Здесь показано, заблокированы ли домены.
+report.domain_state = {domain}: {state}
+report.limits = ОГРАНИЧЕНИЯ ЭТОЙ ПРОВЕРКИ
+report.write_up = Подробный разбор: {url}
+report.scan_stats = Статистика проверки: {stats}
+# Where a finding was found: "NIKKE install: /path".
+report.location = {label}: {path}
+
+# The lines of a finding, in Details and in the report.
+details.meaning = Что это значит: {text}
+details.found_in = Где найдено: {location}
+details.path = Путь: {path}
+details.time = Время: {time}
+# A registry key or a text to copy: "Registry key: HKCU\...".
+details.copy = {label}: {text}
+details.copy_label.registry = Раздел реестра
+details.copy_label.text = Текст
+
+# Times read from the logs. Log times use the clock of the computer that ran the launcher.
+time.local = {time} (местное время)
+time.local_no_year = {time} (местное время, год в журнале не указан)
+
+# "What happened": four questions, each with a reply and the reasons.
+answer.yes = Да
+answer.no = Нет
+answer.cannot_tell = Не удается определить
+answer.partly = Частично
+# A finding title used as one reason.
+answer.finding = {title}.
+answer.ran.question = Запускалось ли вредоносное ПО на этом компьютере?
+answer.ran.nothing_checked = Не найдены ни установка NIKKE, ни данные лаунчера, поэтому проверять было нечего.
+answer.ran.no_agent_log = Ни один журнал не показывает запуск самого агента, но журналы могут быть удалены или обрезаны.
+answer.ran.loader = Лаунчер загрузил вредоносный скрипт, но следов агента не найдено.
+answer.ran.act_as_if = Агент отправлялся только при некоторых запусках, начиная не позднее чем с 23 октября 2026 года. Если лаунчер был открыт в этот день или позже, исходите из того, что агент запускался.
+answer.ran.nothing = Следов вредоносного скрипта или агента не найдено.
+answer.ran.no_install = Папка установки NIKKE не найдена, поэтому debug.log и журналы загрузок не проверялись.
+answer.ran.gaps = Часть этой проверки выполнить не удалось. См. раздел «Что не удалось проверить» на вкладке «Подробности».
+answer.ran.quick = Это была быстрая проверка: она открывает папки не глубже {depth} уровней. Полная проверка проверяет и более глубокие папки.
+answer.active.question = Активно ли что-то до сих пор?
+answer.active.launcher = Лаунчер NIKKE сейчас запущен. Пока он работает, злоумышленник может отправлять ему команды.
+answer.active.dll_loaded = Сейчас DLL вредоносного ПО загружена в {programs}.
+answer.active.registry = В реестре есть раздел, из-за которого браузер загружает DLL вредоносного ПО.
+answer.active.none = Лаунчер не запущен, и никакая DLL не установлена и не настроена на загрузку.
+answer.clean.question = Осталось ли что-то, что нужно удалить?
+answer.clean.dll_folder = Папка DLL ({browser}): {path}
+answer.clean.registry = Раздел реестра HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+answer.clean.leftover = Пустой раздел реестра HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}, оставшийся после того, как вредоносное ПО удалило из него путь к DLL.
+answer.clean.legacy = Старые файлы DLL в папке {path}
+answer.clean.temp = Файлы k2f в папке {path}
+answer.clean.cache = Кэш лаунчера, в котором есть следы вредоносного ПО: {path}
+answer.clean.none_cache = Файлов, оставленных вредоносным ПО, не найдено. Все равно удалите кэш лаунчера (tbs_cache), прежде чем снова открывать лаунчер: в нем все еще может храниться вредоносный скрипт, полученный до исправления.
+answer.clean.none = Ничего, что оставило бы вредоносное ПО, не найдено.
+answer.protected.question = Защищены ли вы на будущее?
+answer.protected.not_checked = Файл hosts не проверялся.
+answer.protected.domain = {domain}: {state} (файл hosts).
+answer.protected.ip = Файл hosts не может блокировать IP-адреса, а эта программа не может проверить брандмауэр. Заблокируйте 89.127.233.127 и 89.126.250.172 в брандмауэре или на маршрутизаторе.
+
+# The agent runs found in the logs, one line each: "{time}: {what}".
+run.line = {time}: {what}
+run.line_from = {time}: {what} (из файла {file})
+run.no_time = время в журнале не указано
+run.downloaded = лаунчер скачал агент
+run.downloaded_as = лаунчер скачал агент и сохранил его как {file}
+run.adopted = агент впервые запустился на этом компьютере и создал свой ID
+run.resumed = агент снова запустился с сохраненным ID
+run.started = агент отправил злоумышленнику имя компьютера
+run.started_as = агент отправил злоумышленнику имя компьютера {host}
+
+# "Payload build": one line per build of the agent file. The parts follow each other on one line.
+build.no_etag = ETag отсутствует
+build.uploaded = , загружена на сервер {time}
+build.last_modified = , последнее изменение {time}
+build.size = , {size} байт
+build.known = , одна из {n} известных сборок.
+build.unknown = . Не совпадает ни с одной из {n} известных сборок.
+build.received = Время получения лаунчером: {time}.
+
+# Buttons shared by several screens.
+common.copy = Копировать
+common.copy_command = Копировать команду
+common.copy_key_path = Копировать путь к разделу
+common.copy_hosts_path = Копировать путь к hosts
+common.copy_lines = Копировать эти строки
+common.copy_list = Копировать этот список
+# Two names joined, as in "Remove the Chrome and Edge DLL".
+common.and = {a} и {b}
+common.files_one = {n} файл
+common.files_other = файлов: {n}
+
+# "What to do": the steps. Each title is followed by its texts.
+step.scan_folder.title = Проверьте папку установки NIKKE
+step.scan_folder.windows = Если NIKKE установлена там, где эта проверка не искала, например на другом диске, проверьте эту папку кнопкой «Проверить папку...». Ее также можно проверить командой ниже в PowerShell, открытом в папке с этой программой. Вместо D:\\Games\\NIKKE укажите свою папку NIKKE.
+step.scan_folder.other = Если NIKKE установлена там, где эта проверка не искала, например на другом диске, проверьте эту папку: кнопкой «Проверить папку...» в окне или командой nikke-check --cli <folder> в терминале.
+step.full_scan.title = Выполните полную проверку
+step.full_scan.intro = Это была быстрая проверка: она открывает папки не глубже {depth} уровней. Если вы не знаете, где находится NIKKE, или старая копия может лежать глубже, полная проверка откроет все папки на всех локальных дисках. На больших дисках она может занять много времени.
+step.full_scan.powershell = В PowerShell, открытом в папке с этой программой:
+step.full_scan.terminal = В терминале: nikke-check --cli --full
+step.close.title_launcher = Закройте лаунчер
+step.close.title_programs = Закройте программы, в которых работает вредоносное ПО
+step.close.launcher = Лаунчер NIKKE запущен. Пока он работает, злоумышленник может отправлять команды на этот компьютер. Закройте его сейчас и отключите компьютер от сети.
+step.close.dll_loaded_one = DLL вредоносного ПО загружена в {programs}. Закройте эту программу, если можете. Перезагрузка на одном из следующих шагов выгрузит DLL из всех программ.
+step.close.dll_loaded_other = DLL вредоносного ПО загружена в эти программы: {programs}. Закройте их, если можете. Перезагрузка на одном из следующих шагов выгрузит DLL из всех программ.
+step.close.explorer = Не завершайте explorer.exe: он отвечает за панель задач и рабочий стол. Перезагрузка выгрузит из него DLL.
+step.close.programs = Программы, которые нужно завершить: {programs}.
+step.close.task_manager = Если программа не закрывается, откройте диспетчер задач (Ctrl+Shift+Esc), найдите ее на вкладке «Подробности», выделите и нажмите «Снять задачу».
+step.close.pkill = Если лаунчер не закрывается, выполните эту команду в терминале:
+step.save.title = Сохраните отчет, прежде чем что-либо удалять
+# The first text of this step is these sentences, one after the other.
+step.save.record = В отчете записано то, что нашла эта проверка.
+step.save.agent_state = При удалении tbs_cache удаляется и след k2f.agent.state.
+step.save.cache_traces = При удалении tbs_cache удаляются и следы, которые эта проверка в нем нашла.
+step.save.restart = Перезагрузка на следующем шаге закроет это окно.
+step.save.hide = Прежде чем делиться отчетом, включите «Скрыть мои данные» (--redact в командной строке): в скопированном или сохраненном отчете будут заменены имя компьютера, имена пользователей, ID агента и домашняя папка. В окне они по-прежнему видны.
+step.dll.title_files = Удалите DLL ({browsers})
+step.dll.title_leftover = Удалите оставшийся раздел реестра
+step.dll.title_key = Удалите раздел реестра
+step.dll.offline_loaded = Не подключайте этот компьютер к сети, пока не выполните этот шаг: сейчас DLL загружена в одну из программ.
+step.dll.offline_key = Не подключайте этот компьютер к сети, пока не выполните этот шаг: пока раздел существует, браузер загружает DLL при каждом запуске.
+step.dll.order = Выполните действия в этом порядке. Windows не даст удалить DLL до перезагрузки, поэтому сначала удаляется раздел реестра.
+step.dll.delete_key = Удалите раздел реестра. Откройте редактор реестра (нажмите Win+R, введите regedit и нажмите Enter), вставьте путь к разделу, указанный ниже, в адресную строку вверху и нажмите Enter. Щелкните выделенный раздел в левой панели правой кнопкой мыши и выберите «Удалить».
+step.dll.leftover = Пустой раздел остался после вредоносного ПО: оно удалило из него путь к DLL, но сам раздел оставило. Удалите его так же.
+step.dll.restart = Перезагрузите Windows. Затем снова откройте эту программу и запустите проверку: она покажет, что еще осталось удалить.
+step.dll.wine_files = Эти файлы находятся внутри префикса Wine. Сначала закройте лаунчер и все остальные программы этого префикса.
+step.dll.wine_key = Раздел находится внутри префикса Wine. Сначала закройте лаунчер и все остальные программы этого префикса.
+step.dll.drive = Эти файлы находятся на диске Windows, доступном из этой системы. Та Windows сейчас не запущена, поэтому DLL не заблокирована и ее можно удалить отсюда. Если эта система не может удалять файлы на этом диске (быстрый запуск Windows оставляет его доступным только для чтения), выполните этот шаг из той Windows: удалите раздел, перезагрузите компьютер, затем удалите файлы.
+step.dll.delete_folder = Удалите папку DLL, указанную ниже: ее имя состоит из 64 шестнадцатеричных символов. Остальное содержимое папки PlatformExperienceHelper не трогайте: Chrome хранит там свои platform_experience_helper.exe и LoadFeatures.
+step.dll.delete_folder_after_restart = После перезагрузки удалите папку DLL, указанную ниже: ее имя состоит из 64 шестнадцатеричных символов. Остальное содержимое папки PlatformExperienceHelper не трогайте: Chrome хранит там свои platform_experience_helper.exe и LoadFeatures.
+step.dll.delete_legacy = В папке ниже удалите только те из файлов platform_experience_helper.dll, platform_experience_helper.dll.old и old-clsid.txt, которые там есть. Оставьте platform_experience_helper.exe: этот файл принадлежит Chrome.
+step.dll.delete_legacy_after_restart = После перезагрузки удалите в папке ниже только те из файлов platform_experience_helper.dll, platform_experience_helper.dll.old и old-clsid.txt, которые там есть. Оставьте platform_experience_helper.exe: этот файл принадлежит Chrome.
+step.dll.delete_file = Удалите файл DLL, указанный ниже.
+step.dll.delete_file_after_restart = После перезагрузки удалите файл DLL, указанный ниже.
+# Follows one of the three "delete" texts above, on Windows.
+step.dll.in_use = Если Windows сообщает, что файл используется, перезагрузите Windows и удалите его еще раз.
+step.dll.wine_regedit = Удалите раздел реестра в файле user.reg этого префикса. Откройте regedit из Wine в этом префиксе командой ниже, перейдите в HKEY_CURRENT_USER\\Software\\Classes\\CLSID и удалите раздел {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+step.dll.protontricks = Если Wine не установлен (например, на Steam Deck), regedit в этом префиксе Proton можно открыть через protontricks:
+step.dll.drive_key = Запустите ту Windows и удалите раздел реестра, указанный ниже, а также его копию в WOW6432Node, если она есть: эта проверка не смогла прочитать реестр той Windows. Откройте редактор реестра (нажмите Win+R, введите regedit и нажмите Enter), вставьте путь к разделу в адресную строку вверху и нажмите Enter. Щелкните выделенный раздел в левой панели правой кнопкой мыши и выберите «Удалить».
+step.dll.scan_again = После этого запустите проверку снова: эти пункты должны исчезнуть из результатов.
+step.dll.defender = На одном зараженном компьютере Microsoft Defender не обнаружил эту DLL, поэтому чистый результат антивирусной проверки не означает, что ее больше нет.
+step.cache.title = Очистите кэш лаунчера
+step.cache.intro = Сначала закройте лаунчер. Затем удалите папку tbs_cache: в ней хранится кэш встроенного браузера лаунчера. В кэше может остаться вредоносный скрипт, полученный до исправления, и лаунчер загрузит его снова.
+step.cache.none = Эта проверка не нашла папку данных лаунчера. В Windows это %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt для лаунчера HMT), а внутри префикса Proton или Wine путь такой: drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache.
+step.password.title = Смените пароли с другого устройства
+step.password.intro_infected = Используйте телефон или другой компьютер, на котором никогда не запускался лаунчер NIKKE. Пока агент работал, его команды могли читать файлы и данные браузеров на этом компьютере. Смените или замените следующее:
+step.password.intro_exposed = Агент отправлялся начиная не позднее чем с 23 октября 2026 года, и только при некоторых запусках. Если лаунчер был открыт в этот день или позже, исходите из того, что агент запускался: с телефона или другого компьютера, на котором никогда не запускался лаунчер, смените или замените следующее:
+step.password.title_maybe = Смените пароль NIKKE, если лаунчер был открыт 23 октября или позже
+step.password.maybe = Если лаунчер был открыт 23 октября 2026 года или позже, все равно смените пароль NIKKE / Level Infinite с телефона или другого компьютера, на котором никогда не запускался лаунчер.
+step.password.not_opened = Эта проверка только убедилась, что эти файлы существуют. Она их не открывала.
+# The list of accounts and secrets to change ("Copy this list" copies it).
+step.password.first = Сначала учетную запись NIKKE / Level Infinite, затем электронную почту, Discord и онлайн-банки.
+step.password.browsers = Все пароли, сохраненные в ваших браузерах.
+step.password.browser_one = Все пароли, сохраненные в {browser} (профиль {profiles}).
+step.password.browser_other = Все пароли, сохраненные в {browser} (профили {profiles}).
+step.password.sessions = Выйдите из всех сеансов в этих сервисах. Агент может собирать файлы cookie браузера, а украденный файл cookie работает без пароля.
+step.password.crypto = Если у вас есть криптовалюта, переведите ее в новый кошелек с новой сид-фразой, созданной на другом устройстве.
+step.password.wallet = {wallet} в {browser} (профиль {profile}): переведите средства в новый кошелек с новой сид-фразой, созданной на другом устройстве.
+step.password.tokens = Отзовите API-токены и SSH-ключи, хранящиеся на этом компьютере.
+step.password.secret = {what} ({path}): отзовите и замените.
+step.password.other = Любой другой пароль, API-токен, SSH-ключ или кошелек, хранящийся на этом компьютере.
+step.password.wine = В Wine агент мог читать через диск Z: всю вашу домашнюю папку, а также переменные среды процесса лаунчера, а не только префикс Wine.
+step.block.title_domains = Заблокируйте домены
+step.block.title_ips = Заблокируйте IP-адреса злоумышленника
+step.block.all_blocked = Ваш файл hosts блокирует все три домена.
+step.block.notepad = Откройте меню «Пуск», введите Блокнот, щелкните его правой кнопкой мыши и выберите «Запуск от имени администратора». В Блокноте выберите «Файл» > «Открыть», вставьте путь к файлу hosts, указанный ниже, в поле «Имя файла» и нажмите Enter.
+step.block.paste = Вставьте эти строки в конец файла и сохраните его:
+step.block.tee = Выполните эту команду в терминале. Она добавит строки в /etc/hosts и запросит ваш пароль.
+# Follows the text above, outside macOS.
+step.block.deck = На Steam Deck, если вы ни разу не задавали пароль, сначала задайте его командой passwd.
+step.block.scan_again = После этого запустите проверку снова: в разделе «Защита» на вкладке «Подробности» каждый домен будет отмечен как заблокированный.
+step.block.ips = Файл hosts не может блокировать IP-адреса. Заблокируйте 89.127.233.127 и 89.126.250.172 в брандмауэре или на маршрутизаторе.
+step.block.firewall = Чтобы добавить правило брандмауэра Windows, щелкните правой кнопкой мыши кнопку «Пуск», выберите «Терминал (Администратор)» или «Windows PowerShell (администратор)» и выполните:
+step.block.macos = В macOS заблокируйте их в настройках маршрутизатора.
+step.block.ufw = Если у вас есть ufw, выполните эту команду. Пока ufw выключен, правила ничего не блокируют: команда sudo ufw status должна показывать «Status: active» (или эту строку на языке системы), а команда sudo ufw enable его включает. Если ufw нет, заблокируйте их в настройках маршрутизатора.
+step.wait.title = Не открывайте лаунчер, пока Level Infinite не подтвердит исправление
+step.wait.servers = 3 ноября 2026 года некоторые серверы Level Infinite все еще отдавали вредоносный файл. Запуск до исправления может снова загрузить скрипт.
+step.wait.reinstall = Агент мог выполнить любую команду, поэтому надежнее всего убедиться, что компьютер чист, переустановив операционную систему.
+
+# Details: the groups of findings.
+section.proof = Доказательства запуска вредоносного ПО
+section.cleanup = Что нужно удалить
+section.signs = Признаки угрозы
+section.info = Сведения
+section.coverage = Что не удалось проверить
+
+# Details: "What this means: ..." for each kind of finding.
+meaning.agent_ran = Агент работал внутри лаунчера. Пока лаунчер был открыт, злоумышленник мог управлять этим компьютером.
+meaning.payload_downloaded = Лаунчер получил агент с сервера злоумышленника.
+meaning.payload_file = Копия агента все еще лежит в папке журналов лаунчера.
+meaning.agent_state = Агент сохранил свой ID в хранилище браузера лаунчера, значит, он запускался хотя бы раз.
+meaning.agent_server = Лаунчер обращался к серверу, который отправляет агент, то есть дошел до запроса агента.
+meaning.loader_cached = Вредоносный скрипт выполнялся в лаунчере. Само по себе это не показывает, что агент был отправлен.
+meaning.launcher_contacted = Лаунчер связывался с доменом злоумышленника.
+meaning.chrome_dll = Браузер загружает эту DLL при запуске, поэтому вредоносное ПО может снова запуститься без лаунчера. Вредоносное ПО создает папку Chrome, даже если Chrome не установлен.
+meaning.registry_key = Из-за этого раздела браузер загружает DLL вредоносного ПО.
+meaning.registry_leftover = Путь к DLL удален из этого раздела, но сам раздел остался. Удалите его.
+meaning.legacy_dll = Более ранняя версия агента помещала сюда свою DLL.
+meaning.dll_loaded = В этих программах сейчас работает DLL вредоносного ПО. Windows держит ее загруженной, пока эти программы не будут закрыты или Windows не перезагрузится.
+meaning.temp_file = Агент записал эти файлы, когда собирал учетные данные браузеров или делал снимки экрана.
+meaning.launcher_running = Пока лаунчер работает, злоумышленник может отправлять ему команды.
+meaning.coverage = Часть этой проверки выполнить не удалось. Что делать, написано в тексте выше.
+meaning.info = Только для справки. На результат проверки не влияет.
+
+# Details: "Your data the malware could reach".
+exposure.title = Ваши данные, к которым вредоносное ПО могло получить доступ
+exposure.note = Эта проверка только убедилась, что эти файлы существуют. Она их не открывала. Пока агент работал, его команды могли их читать.
+exposure.home_note = Домашняя папка этого компьютера проверена, потому что найден префикс Wine. Если проверенный префикс использовался на другом компьютере, проверьте тот компьютер.
+exposure.saved_passwords = Сохраненные пароли
+exposure.wallets = Расширения криптокошельков
+exposure.secrets = Файлы с секретными данными
+# {files} are file names such as "Login Data, key4.db".
+exposure.login = {browser}, профиль {profile} ({files})
+exposure.wallet = {wallet} ({id}) в {browser}, профиль {profile}
+# What each secret file found holds.
+secret.aws = Учетные данные AWS
+secret.github_cli = Токен GitHub CLI
+secret.git = Учетные данные Git
+secret.npm = Конфигурация npm, может содержать токен
+secret.docker = Данные для входа в реестры Docker
+secret.kubernetes = Конфигурация Kubernetes
+secret.gcloud = Учетные данные Google Cloud
+secret.azure = Токены Azure CLI
+secret.claude = Учетные данные Claude Code
+secret.codex = Учетные данные Codex CLI
+secret.gemini = Учетные данные Gemini CLI
+secret.copilot = Конфигурация MCP для GitHub Copilot CLI
+secret.opencode = Учетные данные opencode
+secret.filezilla = Сохраненные серверы FileZilla
+secret.netrc = Данные для входа из netrc
+secret.pypi = Токен PyPI
+secret.crates = Токен crates.io
+secret.vault = Токен HashiCorp Vault
+secret.terraform = Токен Terraform
+secret.pulumi = Учетные данные Pulumi
+secret.kaggle = Ключ API Kaggle
+secret.huggingface = Токен Hugging Face
+secret.rclone = Конфигурация rclone
+secret.s3cmd = Конфигурация s3cmd
+secret.databricks = Конфигурация Databricks
+secret.oci = Конфигурация Oracle Cloud
+secret.gnupg = Закрытые ключи GnuPG
+secret.env = Файл .env
+secret.ssh = Закрытый ключ SSH
+
+# Findings: a title and a detail each. {file} is a log file name, {files} is a count such as "2 files".
+finding.no_install.title = Папка установки NIKKE не найдена
+finding.no_install.detail = Данные лаунчера найдены, а папка установки нет, поэтому debug.log и журналы загрузок не проверялись. Если вы знаете, где установлена NIKKE, проверьте эту папку: кнопкой «Проверить папку...» в окне или командой nikke-check --cli <folder>.
+finding.quick_scan.title = Это была быстрая проверка
+finding.quick_scan.detail_windows = Она прочитала пути установки, которые лаунчер записывает в реестр, данные лаунчера и все папки до {depth} уровней ниже корня каждого локального диска. Папку NIKKE глубже {depth} уровней, о которой лаунчер больше не хранит запись, найдут только полная проверка (кнопка «Полная проверка» в окне или nikke-check --cli --full) или «Проверить папку...».
+finding.quick_scan.detail_macos = Она прочитала обычные папки префиксов Wine, пути установки, записанные в этих префиксах, и все папки до {depth} уровней ниже /. Папку NIKKE глубже {depth} уровней, о которой лаунчер больше не хранит запись, найдут только полная проверка (кнопка «Полная проверка» в окне или nikke-check --cli --full) или «Проверить папку...».
+finding.quick_scan.detail_linux = Она прочитала обычные папки префиксов Wine, пути установки, записанные в этих префиксах, и все папки до {depth} уровней ниже /, ниже вашей домашней папки и ниже каждого диска в /mnt, /media и /run/media. Папку NIKKE глубже {depth} уровней, о которой лаунчер больше не хранит запись, найдут только полная проверка (кнопка «Полная проверка» в окне или nikke-check --cli --full) или «Проверить папку...».
+finding.unreadable.title = Некоторые папки не удалось прочитать
+finding.unreadable.detail = У проверки не было прав на открытие этих папок, поэтому их содержимое не проверено. В macOS предоставьте приложению «Терминал» (или приложению, из которого вы запустили эту программу) полный доступ к диску (Full Disk Access) в разделе «Системные настройки» > «Конфиденциальность и безопасность», затем запустите проверку снова. В других системах запустите проверку снова от имени пользователя, который может читать эти папки.
+finding.network.title = Сетевые диски не проверялись
+finding.network.detail = Проверка компьютера пропускает сетевые диски и удаленные точки монтирования, потому что они читаются медленно, а отключенный диск может остановить проверку. Если NIKKE установлена на таком диске, проверьте его кнопкой «Проверить папку...» или командой nikke-check --cli <folder>.
+finding.log_server.title = В файле {file} указан сервер агента
+finding.log_server.detail = В файле {file} есть analytics.insightjs.com или insight.bundle. Этот сервер отправляет агент, значит, лаунчер дошел до его запроса.
+finding.log_mention.title = В файле {file} упоминается insightjs
+finding.log_mention.detail = В файле {file} есть insightjs, домен вредоносного скрипта-загрузчика. Ни одна строка не указывает на сервер агента (analytics.insightjs.com или insight.bundle), поэтому само по себе это не показывает, что агент был скачан.
+finding.debug_unreadable.title = Не удалось прочитать debug.log
+finding.debug_unreadable.detail = Файл Launcher/intl_service/debug.log существует, но у этой проверки не было прав на его открытие, поэтому не удалось узнать, запускался ли агент. Запустите проверку снова от имени пользователя, который может читать этот файл.
+finding.agent_ran.title = Агент вредоносного ПО запускался
+finding.agent_ran.detail = В файле debug.log видно, как внутри лаунчера запускается агент удаленного доступа (k2f_chan registered). Пока лаунчер был открыт, злоумышленник мог выполнять команды на этом компьютере.
+finding.payload_file.title = Файл вредоносного ПО все еще на диске
+finding.payload_file.detail = Этот файл в папке журналов лаунчера представляет собой байт-код LuaJIT. Лаунчер сохранил скачанный агент (insight.bundle) под именем журнала tinyget.
+finding.downloaded.title = Лаунчер скачал вредоносное ПО
+finding.downloaded.detail = В файле {file} записано, как лаунчер скачивает insight.bundle с analytics.insightjs.com. Этот файл и есть агент удаленного доступа.
+finding.download_attempt.title = Лаунчер запрашивал вредоносное ПО, но ни одна загрузка не завершилась
+finding.download_attempt.detail = В файле {file} записан запрос insight.bundle с analytics.insightjs.com, но ни одна строка не показывает, что загрузка завершилась. Неудачный запрос записывает curl_error и total=0. Загрузчик запрашивал агент, но само по себе это не показывает, что агент был получен: запускался ли он, видно по debug.log.
+finding.install_found.title = Найдена установка NIKKE: {path}
+finding.install_found.debug_missing = Файл Launcher/intl_service/debug.log не найден. Возможно, он был удален или лаунчер ни разу не запускался из этой папки.
+finding.install_found.debug_unreadable = Файл Launcher/intl_service/debug.log существует, но его не удалось прочитать (нет разрешения).
+finding.install_found.debug_checked = Файл Launcher/intl_service/debug.log проверен. В нем записаны запуски с момента создания файла.
+# {note} is one of the three texts above.
+finding.install_found.written = {note} Последняя запись: {time}.
+finding.data_link.title = Папка данных лаунчера является ссылкой и не была прочитана
+finding.data_link.detail = Эта папка ссылается на {target}. Цель отсутствует, является корнем диска или папкой выше ссылки, поэтому файлы не проверялись. Проверьте настоящую папку данных лаунчера кнопкой «Проверить папку...» или командой nikke-check --cli <folder>.
+finding.data_link.unknown_target = неизвестную цель
+finding.agent_state.title = Агент вредоносного ПО оставил следы в данных лаунчера
+finding.agent_state.detail = В данных лаунчера ({files}) встречается k2f_chan (имя канала-моста агента) или k2f.agent.state (ID, который сохраняет агент). Это показывает, что агент запускался.
+finding.agent_server.title = Лаунчер связывался с сервером агента
+finding.agent_server.detail = Адрес analytics.insightjs.com записан в файлах состояния сети ({files}). Этот сервер отправляет агент (insight.bundle) и получает от него регулярные сигналы связи. При запуске, когда загрузчик работал без агента, записывался только insightjs.com.
+finding.loader_cached.title = Лаунчер загрузил вредоносный скрипт
+finding.loader_cached.detail = Адрес загрузчика insightjs.com есть в файлах, которые кэшировал встроенный браузер лаунчера ({files}). Внедренный скрипт выполнялся, но само по себе это не показывает, что агент был скачан.
+finding.network_state.title = Лаунчер подключался к insightjs.com
+finding.network_state.detail = Адрес insightjs.com записан в файлах состояния сети ({files}), значит, встроенный браузер лаунчера связывался с ним.
+finding.data_mention.title = В данных лаунчера упоминается insightjs.com
+finding.data_mention.detail = Адрес insightjs.com встречается в данных лаунчера ({files}).
+finding.data_clean.title = В данных лаунчера следов нет
+finding.data_clean.detail = Проверка выполнена ({files}).
+# {browser} is a browser name such as Chrome or Edge.
+finding.persistence.title = Вредоносное ПО закрепилось в {browser}
+finding.persistence.dll = В пользовательских данных {browser} есть папка вредоносного ПО, а в ней файл platform_experience_helper.dll, который {browser} загружает из-за подмененной COM-регистрации в HKCU.
+finding.persistence.hash_dir = В пользовательских данных {browser} есть папка вредоносного ПО: подпапка, имя которой состоит из 64 шестнадцатеричных символов (SHA-256). В нее вредоносное ПО помещает platform_experience_helper.dll. Сама DLL не найдена, так что, возможно, ее уже удалили.
+# For Chrome, {text} is one of the two texts above.
+finding.persistence.chrome = {text} Вредоносное ПО создает эту папку, даже если Chrome не установлен.
+finding.helper_folder.title = Папка Platform Experience Helper в {browser}
+finding.helper_folder.chrome = В этой папке нет platform_experience_helper.dll и нет подпапки, имя которой состоит из 64 шестнадцатеричных символов. Это соответствует собственному компоненту Chrome Platform Experience Helper (platform_experience_helper.exe, LoadFeatures), который хранят здесь установки Chrome для отдельного пользователя. Это не признак заражения.
+finding.helper_folder.other = В этой папке нет platform_experience_helper.dll и нет подпапки, имя которой состоит из 64 шестнадцатеричных символов, поэтому она не соответствует структуре папок вредоносного ПО. Это не признак заражения.
+finding.legacy.title = Найдены файлы старой версии закрепления в Chrome
+finding.legacy.detail = В папке Chrome Application\\PlatformExperienceHelper есть файлы, которые удаляет код очистки агента: platform_experience_helper.dll, platform_experience_helper.dll.old или old-clsid.txt. Более ранняя версия агента помещала сюда свою DLL. Файл platform_experience_helper.exe в этой папке принадлежит самому Chrome, и это нормально.
+finding.temp.title = Файлы, оставленные вредоносным ПО в папке Temp
+finding.temp.detail = Агент называет свои временные файлы k2f-bcreds-* (собранные учетные данные браузеров), k2f-keyscan-* (ранняя сборка) и k2f_screen_* (снимки экрана: .jpg, а в ранней сборке .png).
+finding.hex_id.title = Файл с шестнадцатеричным ID в папке Temp
+finding.hex_id.detail = Файл .tmp размером 22 байта в папке Temp содержит шестнадцатеричный ID из 22 символов. На изученном зараженном компьютере такой файл был записан за секунду до загрузки агента. Файл с таким же именем создают и другие программы Tencent (он найден в префиксе Delta Force от 20 сентября 2026 года, то есть до изменения файлов на CDN), поэтому сам по себе он не является признаком заражения.
+finding.registry.title = Найдено закрепление в реестре (подмена CLSID в HKCU)
+# {detail} is one of the two "where" texts below.
+finding.registry.detail = {detail} Вредоносное ПО создает этот раздел, чтобы Google Chrome загружал его DLL. Копия раздела в HKLM, которая указывает на wpc.dll, входит в состав Windows, и это нормально.
+finding.registry_leftover.title = Остаток закрепления в реестре (CLSID в HKCU)
+finding.registry_leftover.detail = {detail} Параметр «(По умолчанию)» этого раздела пуст или отсутствует: агент установил DLL, а затем удалил ее, при этом значение очищается, а раздел остается. DLL может все еще находиться на диске. Копия раздела в HKLM, которая указывает на wpc.dll, входит в состав Windows, и это нормально.
+finding.registry.where_windows = Раздел {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32 существует в HKCU (см. ниже).
+finding.registry.where_wine = Файл user.reg, куст HKCU этого префикса Wine, содержит раздел {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+finding.launcher_running.title = Лаунчер NIKKE сейчас запущен
+finding.launcher_running.detail = Немедленно закройте лаунчер (завершите процесс, если он не закрывается) и отключитесь от сети. Пока он работает, злоумышленник может отправлять команды на этот компьютер.
+finding.dll_loaded.title = DLL вредоносного ПО сейчас загружена
+finding.dll_loaded.detail = В эти программы загружен файл вредоносного ПО platform_experience_helper.dll. Windows не дает удалить файл, пока эти программы не будут закрыты, а Chrome загрузит его снова при следующем запуске, пока в HKCU есть раздел. Удалите раздел реестра, перезагрузите Windows, затем удалите папку DLL.
+
+# "Show technical details": lines the tool writes among the lines quoted from files.
+evidence.luajit = Заголовок байт-кода LuaJIT (1B 4C 4A), {size} байт. Известные сборки имеют размер 205 135 байт, а сборка от 23 октября, сохраненная как k2f.lua, имела размер 165 108 байт.
+# One TransportSecurity entry. {host} is a domain, {time} a UTC time.
+evidence.hsts = Запись HSTS для {host}, последний раз получена {time}
+evidence.hsts_no_time = Запись HSTS для {host}
+evidence.in_file = {file}: {text}
+evidence.empty_folder = (пустая папка)
+evidence.registry_value = {key}\\InprocServer32 (По умолчанию) = {value}
+evidence.value_not_set = (значение не присвоено)
+evidence.dll_loaded = PID {pid}: в {program} ({exe}) загружена {dll}
+# The last line of a list that was cut.
+evidence.total = ... всего: {total}
+
+# "Open folder" and the other buttons that open a window, when it fails.
+open.gone = {path} больше не существует.
+open.windows_only = {program} есть только в Windows.
+open.failed = не удалось открыть файловый менеджер ({status})
+open.shell_execute = Ошибка ShellExecute {code}
+
+# The window.
+ui.tab.happened = Что произошло
+ui.tab.todo = Что делать
+ui.tab.details = Подробности
+ui.copied = Скопировано
+ui.button.scan_computer = Проверить этот компьютер
+ui.button.full_scan = Полная проверка
+ui.button.scan_folder = Проверить папку...
+ui.button.scan_again = Проверить снова
+ui.button.new_scan = Новая проверка
+ui.button.stop = Остановить проверку
+ui.button.copy_report = Копировать отчет
+ui.button.save_report = Сохранить отчет...
+ui.button.see_todo = Посмотреть, что делать
+ui.button.open_folder = Открыть папку
+ui.button.task_manager = Открыть диспетчер задач
+ui.button.registry_editor = Открыть редактор реестра
+ui.button.copy_path = Копировать путь
+ui.button.copy_link = Копировать ссылку
+ui.button.open_link = Открыть ссылку
+ui.button.show = Показать
+ui.button.hide = Скрыть
+ui.button.show_details = Показать технические подробности
+ui.button.hide_details = Скрыть технические подробности
+ui.hide_info = Скрыть мои данные
+ui.hide_info_note = «Скрыть мои данные» действует на «Копировать отчет» и «Сохранить отчет...». Окно по-прежнему показывает все данные.
+ui.done = Выполнено
+# File dialogs.
+ui.dialog.pick_folder = Выберите папку для проверки
+ui.dialog.save = Сохранение отчета
+ui.dialog.text_files = Текстовые файлы
+# One line shown above the screen.
+ui.notice.only_folders = Проверять можно только папки. Перетащите папку, в которой лежит этот файл.
+ui.notice.stopped = Проверка остановлена.
+ui.notice.saved = Отчет сохранен: {path}.
+ui.notice.save_failed = Не удалось сохранить отчет: {error}
+ui.notice.save_failed_plain = Не удалось сохранить отчет.
+ui.notice.open_failed = Не удалось открыть: {error}
+ui.notice.open_failed_plain = Не удалось открыть.
+# Start screen. The helper's speech bubble comes first.
+ui.home.hint = Здравствуйте, я MotherSphere. Начните с кнопки «Проверить этот компьютер». Программа только читает файлы: она ничего не удаляет и ничего не отправляет по сети.
+ui.home.title = Проверка еще не выполнялась
+ui.home.computer = Проверка компьютера
+ui.home.quick_windows = Читает пути установки, которые лаунчер записывает в реестр, ваш профиль пользователя, данные лаунчера и все папки до 5 уровней в глубину на каждом локальном диске. Обычно занимает несколько секунд.
+ui.home.quick_macos = Читает префиксы Wine, CrossOver, Whisky, Wineskin и Heroic и записанные в них пути установки, а также все папки до 5 уровней ниже /, включая локальные тома. Сетевые тома пропускаются.
+ui.home.quick_linux = Читает все префиксы Wine из Steam, Lutris, Heroic, Bottles и Faugus и записанные в них пути установки, а также все папки до 5 уровней ниже /, ниже вашей домашней папки и ниже каждого диска в /mnt, /media и /run/media. Сетевые точки монтирования пропускаются.
+ui.home.full = Полная проверка открывает все папки на всех локальных дисках, чтобы найти папку NIKKE глубже 5 уровней, о которой лаунчер больше не хранит запись. На больших дисках она может занять много времени.
+ui.home.folder = Проверка папки
+ui.home.folder_text = Проверяет одну папку и все ее содержимое, включая префиксы Wine внутри нее.
+ui.home.drop = Папку также можно перетащить в это окно.
+ui.home.no_dialog = Если окно выбора папки не открывается, выполните в терминале nikke-check --cli <folder>.
+# Scan screen.
+ui.scan.title = Идет проверка: {target}
+ui.scan.elapsed = прошло
+ui.scan.searching = Поиск установок NIKKE и префиксов Wine
+ui.scan.programs = Проверка запущенных программ
+ui.scan.locations = Проверка найденных мест
+ui.scan.locations_one = Проверка 1 места
+ui.scan.locations_other = Проверка найденных мест: {n}
+ui.scan.progress = {done} из {total}
+ui.scan.hosts = Проверка файла hosts
+ui.tile.items = Проверено элементов
+ui.tile.folders = Папки
+ui.tile.locations = Найдено мест
+ui.tile.findings = Пока обнаружено
+ui.failed.windows = Проверка остановилась из-за внутренней ошибки. Попробуйте еще раз или, чтобы увидеть отчет, выполните {command} в PowerShell, открытом в папке с этой программой.
+ui.failed.other = Проверка остановилась из-за внутренней ошибки. Попробуйте еще раз или выполните nikke-check --cli, чтобы увидеть отчет в терминале.
+# Result screen.
+ui.happened.payload_build = Сборка агента
+ui.happened.agent_runs = Запуски агента в журналах
+ui.todo.hint = Выполняйте шаги по одному, по порядку. Кнопки открывают нужную папку или программу, но файлы вы удаляете сами. Эта программа никогда ничего не удаляет.
+ui.todo.note = Эти шаги составлены по результатам этой проверки и идут в том порядке, в котором их нужно выполнять. Отметки «Выполнено» не сохраняются.
+ui.tile.critical = Критические
+ui.tile.warnings = Предупреждения
+ui.tile.info = Сведения
+ui.tile.duration = Длительность
+ui.details.checked = Проверено: {summary}. Область проверки: {scope}.
+# A section title and its number of findings: "Information (3)".
+ui.details.section_count = {title} ({n})
+ui.details.hosts = Файл hosts: {path}. Это не проверка на заражение: здесь показано, заблокированы ли домены.
+ui.details.protection = Защита
+ui.details.limits = Ограничения этой проверки
+ui.details.locations = Проверенные места
+ui.details.none_found = Не найдено.
+ui.details.folders_checked = Проверенные папки

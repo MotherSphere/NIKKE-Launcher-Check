@@ -11,6 +11,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering::Relaxed};
 use std::time::{Duration, Instant};
 
+use crate::i18n::{Lang, tr};
+
 /// Safety stop for one scan. Full-scan walks have no depth limit; a full disk stays far below this.
 pub const ENTRY_CAP: u64 = 50_000_000;
 
@@ -107,13 +109,18 @@ pub enum TargetKind {
 }
 
 impl TargetKind {
-    pub fn label(self) -> &'static str {
+    /// The catalog key of the label ("NIKKE install").
+    pub fn key(self) -> &'static str {
         match self {
-            TargetKind::InstallDir => "NIKKE install",
-            TargetKind::LauncherData => "Launcher data",
-            TargetKind::WinePrefix => "Wine prefix",
-            TargetKind::UserProfile => "User profile",
+            TargetKind::InstallDir => "kind.install",
+            TargetKind::LauncherData => "kind.launcher_data",
+            TargetKind::WinePrefix => "kind.wine_prefix",
+            TargetKind::UserProfile => "kind.user_profile",
         }
+    }
+
+    pub fn label(self, lang: Lang) -> &'static str {
+        tr(lang, self.key())
     }
 }
 

@@ -19,6 +19,8 @@ rfd = "0.17"
 walkdir = "2"
 # Process list only, for the "launcher is running now" check.
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+# The system's preferred UI languages, in order, for the language at start. cosmic-text uses it already.
+sys-locale = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [

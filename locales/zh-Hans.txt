@@ -1,0 +1,527 @@
+# NIKKE Launcher Check：简体中文文本，键与 en.txt 相同。系统首选语言为简体中文时（zh-CN、zh-SG、zh-Hans 等，以及不带地区的 zh），程序启动时自动使用本文件；也可以用 --lang zh-Hans 指定。
+#
+# 每行一个条目：key = 文本。以 # 开头的行是注释。
+# 只翻译“=”后面的文本，不要修改键。
+# 文本中，\n 表示换行，\\ 表示一个反斜杠。
+# {name} 是程序填入的值：路径、数字、文件名或另一段文本。
+# 保留英文文本中的每个 {name}，名称不变，可以移动位置。
+# 其他花括号，例如 CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}，是普通文本：保留。
+# 文件名、路径、注册表项、命令、域名、IP 地址和哈希值保持原样。
+# 引号中的文字（如“扫描文件夹...”）指本窗口中的按钮或区域：使用该按钮自身条目的文字。
+# Windows 的菜单和按钮（以管理员身份运行、结束任务、文件 > 打开）
+# 按简体中文版 Windows 中显示的名称书写。
+# 翻译中缺少的条目会显示英文文本。
+
+# 命令行：nikke-check --help，以及终端中输出的错误。
+cli.usage = NIKKE Launcher Check：查找2026年11月 NIKKE PC 启动器被入侵事件留下的痕迹。\n只读，不访问网络。\n\n用法：\n  nikke-check                  打开窗口\n  nikke-check PATH             打开窗口并扫描这个文件夹\n  nikke-check --cli            快速扫描这台电脑，以报告形式输出\n  nikke-check --cli --full     完整扫描：打开每个本地驱动器上的每个文件夹\n  nikke-check --cli PATH...    只扫描这些文件夹（不限层数），并输出报告\n  nikke-check --cli --redact   在报告中替换计算机名、用户名、远程控制程序 ID\n                               和主文件夹（可用于任何 --cli 用法）\n  nikke-check --help           显示此帮助\n\n语言：\n  --lang CODE    可加在上面任意一种用法后，设置窗口和报告的语言。\n                 不加此参数时，自动使用系统语言。\n                 CODE：{codes}\n\n退出代码（--cli）：\n  0  未发现痕迹\n  1  已暴露（只有警告）\n  2  已感染（有严重痕迹）\n  3  未找到 NIKKE 安装文件夹或启动器数据\n  4  参数无效，或有文件夹无法读取\n
+cli.unknown_argument = 未知参数：{arg}
+cli.lang_missing = --lang 后面需要一个语言代码：{codes}
+cli.lang_unknown = 未知的语言代码：{code}。可用的代码：{codes}
+cli.cannot_read_folder = 无法读取文件夹 {path}：{error}
+cli.not_a_folder = 不是文件夹：{path}
+cli.window_failed = 无法打开窗口：{error}
+# 窗口无法打开时的 Windows 错误对话框。{command} 是一条 PowerShell 命令。
+cli.error_box = 窗口无法打开：\n{error}\n\n要在不打开窗口的情况下获取报告，请在本程序所在的文件夹中打开 PowerShell，然后运行：\n\n{command}
+
+# 顶栏、开始界面和报告抬头。
+report.read_only = 只读，不访问网络。
+report.about = 2026年9月27日，Level Infinite CDN 上的四个文件被篡改，让 NIKKE PC 启动器加载来自 insightjs.com 的脚本。最晚从2026年10月23日起，该脚本会下载一个远程控制程序（insight.bundle），它可以执行命令、读取文件、截屏和收集浏览器数据。其中三个文件已于11月3日被替换。第四个文件已于10月28日清理，但11月3日仍有部分 CDN 服务器提供旧版本。本工具查找加载器和远程控制程序在磁盘上留下的痕迹。
+# 扫描的对象（“扫描范围：...”“正在扫描：...”）。
+report.scope.computer = 这台电脑
+report.scope.quick = 这台电脑（快速扫描）
+report.scope.full = 这台电脑（完整扫描）
+
+# 结论：一个标题，加一句话。
+verdict.infected.title = 已感染
+verdict.infected.summary = 发现了严重痕迹：远程控制程序曾被下载或运行过、留下了持久化机制，或者启动器正在运行。请把这台电脑视为已被入侵。
+verdict.exposed.title = 已暴露
+verdict.exposed.summary = 启动器加载过恶意脚本或连接过 insightjs.com，但没有发现远程控制程序运行过的迹象。
+verdict.no_traces.title = 未发现痕迹
+verdict.no_traces.summary = 在本次扫描找到的 NIKKE 文件中，没有发现恶意脚本或远程控制程序的痕迹。
+verdict.not_found.title = 未找到 NIKKE
+verdict.not_found.summary = 在本次扫描检查的位置中，没有找到 NIKKE 安装文件夹或启动器数据。
+
+# 发现项的严重程度标记，以及报告中的标签（“[严重]”）。
+severity.critical = 严重
+severity.warning = 警告
+severity.info = 信息
+
+# 扫描检查的位置类型（报告中的“[NIKKE 安装文件夹] /path”）。
+kind.install = NIKKE 安装文件夹
+kind.launcher_data = 启动器数据
+kind.wine_prefix = Wine 前缀
+kind.user_profile = 用户配置文件
+# 没有文件夹的发现项分组。
+group.running = 正在运行的程序
+group.coverage = 扫描覆盖范围
+
+# “本检查的局限”，用于窗口和报告。
+report.caveat.debug_log = 删除 NIKKE 文件夹或重新安装 NIKKE 后，debug.log 会丢失。启动器数据中的 k2f.agent.state 检查不依赖它。
+report.caveat.not_proof = 什么都没发现，并不能证明这台电脑是干净的。
+report.caveat.no_logs = 远程控制程序执行的命令不会留下日志，所以本工具无法判断攻击者做了什么。
+
+# 防护：hosts 文件，用于“详情”和报告。
+hosts.blocked = 已屏蔽
+hosts.not_blocked = 未屏蔽
+hosts.unknown = 未知
+hosts.missing = hosts 文件不存在，因此它不会屏蔽任何域名。
+hosts.unreadable = 无法读取 hosts 文件，因此不知道它屏蔽了哪些域名。
+hosts.block_lines_intro = 要屏蔽未显示为“已屏蔽”的域名，请在 hosts 文件中加入以下几行：
+hosts.note = 编辑 hosts 文件需要管理员权限。本工具从不修改它。
+hosts.ip_note = IP 地址 89.127.233.127 和 89.126.250.172 无法通过 hosts 文件屏蔽。请在防火墙或路由器中屏蔽它们。
+
+# “详情”中的“已检查：...”和报告中的“检查的位置：...”，用逗号连接。
+report.checked.install_one = {n} 个 NIKKE 安装文件夹
+report.checked.install_other = {n} 个 NIKKE 安装文件夹
+report.checked.launcher_data_one = {n} 个启动器数据文件夹
+report.checked.launcher_data_other = {n} 个启动器数据文件夹
+report.checked.wine_prefix_one = {n} 个 Wine 前缀
+report.checked.wine_prefix_other = {n} 个 Wine 前缀
+report.checked.user_profile_one = {n} 个用户配置文件
+report.checked.user_profile_other = {n} 个用户配置文件
+report.checked.nothing = 没有可检查的内容
+
+# “扫描统计：...”。{skipped} 是下面两个“跳过”文本之一，或为空。
+report.stats = 访问了 {entries} 个条目（{folders} 个文件夹），{errors} 个权限错误{skipped}，用时 {seconds} 秒。
+report.stats.skipped_one = ，跳过了 1 个网络驱动器
+report.stats.skipped_other = ，跳过了 {n} 个网络驱动器
+report.stats.cap = 已达到条目上限，因此有些文件夹没有访问到。
+
+# 文本报告（CLI 输出、“复制报告”和“保存报告...”）。
+report.scan_of = 扫描范围：{scope}
+report.started = 开始时间：{time}
+report.verdict = 结论：{verdict}
+report.what_happened = 发生了什么
+# “发生了什么”中的一个回答：问题及其答复（是、否……）。
+report.answer = {question}{reply}。
+report.agent_runs = 日志中的远程控制程序运行记录：
+report.payload_build = 载荷构建版本：{build}
+report.what_to_do = 该怎么做
+report.open = 打开：{path}
+report.details = 详情
+report.locations_checked = 检查的位置：{summary}
+report.exposure_heading = {heading}：
+report.exposure_none = {heading}：未发现。
+report.exposure_item = {what}：{path}
+report.folders_checked = 检查的文件夹：
+report.no_findings = 无发现。
+report.protection = 防护（hosts 文件：{path}）
+report.protection_note = 这不是感染检查。它只显示这些域名是否已被屏蔽。
+report.domain_state = {domain}：{state}
+report.limits = 本检查的局限
+report.write_up = 分析文章：{url}
+report.scan_stats = 扫描统计：{stats}
+# 发现项的位置：“NIKKE 安装文件夹：/path”。
+report.location = {label}：{path}
+
+# 发现项的各行，用于“详情”和报告。
+details.meaning = 这意味着：{text}
+details.found_in = 发现位置：{location}
+details.path = 路径：{path}
+details.time = 时间：{time}
+# 注册表项或要复制的文本：“注册表项：HKCU\...”。
+details.copy = {label}：{text}
+details.copy_label.registry = 注册表项
+details.copy_label.text = 文本
+
+# 从日志中读取的时间。日志时间使用运行启动器的那台电脑的时钟。
+time.local = {time}（本地时间）
+time.local_no_year = {time}（本地时间，日志未记录年份）
+
+# “发生了什么”：四个问题，每个都有答复和理由。
+answer.yes = 是
+answer.no = 否
+answer.cannot_tell = 无法判断
+answer.partly = 部分
+# 作为一条理由使用的发现项标题。
+answer.finding = {title}。
+answer.ran.question = 恶意软件在这台电脑上运行过吗？
+answer.ran.nothing_checked = 没有找到 NIKKE 安装文件夹或启动器数据，因此没有可检查的内容。
+answer.ran.no_agent_log = 没有日志显示远程控制程序本身启动过，但日志可能被删除或截断。
+answer.ran.loader = 启动器加载过恶意脚本，但没有发现远程控制程序的痕迹。
+answer.ran.act_as_if = 远程控制程序最晚从2026年10月23日开始下发，而且只在部分启动时下发。如果启动器在当天或之后打开过，请按它已经运行过来处理。
+answer.ran.nothing = 没有发现恶意脚本或远程控制程序的痕迹。
+answer.ran.no_install = 没有找到 NIKKE 安装文件夹，因此没有检查 debug.log 和下载日志。
+answer.ran.gaps = 本次扫描有一部分未能完成。请查看“详情”中的“本次扫描未能检查的内容”。
+answer.ran.quick = 这是快速扫描，只打开 {depth} 层以内的文件夹。完整扫描还会检查更深的文件夹。
+answer.active.question = 恶意软件是否仍在活动？
+answer.active.launcher = NIKKE 启动器正在运行。在它运行期间，攻击者可以向它发送命令。
+answer.active.dll_loaded = 恶意软件的 DLL 目前已加载到 {programs} 中。
+answer.active.registry = 让浏览器加载恶意软件 DLL 的注册表项已设置。
+answer.active.none = 启动器没有运行，也没有已安装或被设置为加载的 DLL。
+answer.clean.question = 有需要清理的东西吗？
+answer.clean.dll_folder = {browser} 的 DLL 文件夹：{path}
+answer.clean.registry = HKCU 注册表项 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
+answer.clean.leftover = 空的 HKCU 注册表项 {E77CC89B-7401-4C04-8CED-149DB35ADD04}，是恶意软件清除其中的 DLL 路径后留下的。
+answer.clean.legacy = {path} 中的旧版 DLL 文件
+answer.clean.temp = {path} 中的 k2f 文件
+answer.clean.cache = 存有恶意软件痕迹的启动器缓存：{path}
+answer.clean.none_cache = 没有发现恶意软件留下的文件。不过，再次打开启动器之前，仍请删除启动器缓存（tbs_cache）：其中可能还存有修复之前的恶意脚本。
+answer.clean.none = 没有发现恶意软件留下的任何东西。
+answer.protected.question = 是否已为下次做好防护？
+answer.protected.not_checked = 没有检查 hosts 文件。
+answer.protected.domain = {domain}：{state}（hosts 文件）。
+answer.protected.ip = hosts 文件无法屏蔽 IP 地址，本次扫描也无法检查防火墙。请在防火墙或路由器中屏蔽 89.127.233.127 和 89.126.250.172。
+
+# 日志中找到的远程控制程序运行记录，每条一行：“{time}：{what}”。
+run.line = {time}：{what}
+run.line_from = {time}：{what}（来自 {file}）
+run.no_time = 未记录时间
+run.downloaded = 启动器下载了远程控制程序
+run.downloaded_as = 启动器下载了远程控制程序，并将其保存为 {file}
+run.adopted = 远程控制程序首次在这台电脑上启动，并创建了它的 ID
+run.resumed = 远程控制程序使用之前保存的 ID 再次启动
+run.started = 远程控制程序把计算机名发送给了攻击者
+run.started_as = 远程控制程序把计算机名 {host} 发送给了攻击者
+
+# “载荷构建版本”：远程控制程序文件的每个构建版本一行。各部分在同一行中依次连接。
+build.no_etag = 无 ETag
+build.uploaded = ，上传于 {time}
+build.last_modified = ，最后修改于 {time}
+build.size = ，{size} 字节
+build.known = ，是已知的 {n} 个构建版本之一。
+build.unknown = 。它不是已知的 {n} 个构建版本之一。
+build.received = 启动器收到它的时间：{time}。
+
+# 多个界面共用的按钮。
+common.copy = 复制
+common.copy_command = 复制命令
+common.copy_key_path = 复制注册表项路径
+common.copy_hosts_path = 复制 hosts 路径
+common.copy_lines = 复制这些行
+common.copy_list = 复制此列表
+# 连接两个名称，如“删除 Chrome 和 Edge 的 DLL”。
+common.and = {a} 和 {b}
+common.files_one = {n} 个文件
+common.files_other = {n} 个文件
+
+# “该怎么做”：各个步骤。每个标题后面是它的文本。
+step.scan_folder.title = 扫描 NIKKE 的安装文件夹
+step.scan_folder.windows = 如果 NIKKE 安装在本次扫描没有查看的位置（例如另一个驱动器），请用“扫描文件夹...”扫描那个文件夹。也可以在 PowerShell 中，从本程序所在的文件夹运行下面的命令来扫描它。请把 D:\\Games\\NIKKE 换成你的 NIKKE 文件夹。
+step.scan_folder.other = 如果 NIKKE 安装在本次扫描没有查看的位置（例如另一个驱动器），请扫描那个文件夹：在窗口中使用“扫描文件夹...”，或在终端中运行 nikke-check --cli <folder>。
+step.full_scan.title = 运行完整扫描
+step.full_scan.intro = 这是快速扫描，只打开 {depth} 层以内的文件夹。如果你不知道 NIKKE 装在哪里，或者更深的位置可能还有旧的副本，完整扫描会打开每个本地驱动器上的每个文件夹。在大容量驱动器上，完整扫描可能需要很长时间。
+step.full_scan.powershell = 在 PowerShell 中，从本程序所在的文件夹运行：
+step.full_scan.terminal = 在终端中运行：nikke-check --cli --full
+step.close.title_launcher = 关闭启动器
+step.close.title_programs = 关闭运行恶意软件的程序
+step.close.launcher = NIKKE 启动器正在运行。在它运行期间，攻击者可以向这台电脑发送命令。请立即关闭它，并断开这台电脑的网络连接。
+step.close.dll_loaded_one = {programs} 已加载恶意软件的 DLL。如果可以，请关闭它。后面步骤中的重启会让所有程序卸载这个 DLL。
+step.close.dll_loaded_other = {programs} 已加载恶意软件的 DLL。如果可以，请关闭这些程序。后面步骤中的重启会让所有程序卸载这个 DLL。
+step.close.explorer = 不要结束 explorer.exe：任务栏和桌面由它运行。重启会让它卸载这个 DLL。
+step.close.programs = 需要结束的程序：{programs}。
+step.close.task_manager = 如果某个程序无法关闭，请打开任务管理器（Ctrl+Shift+Esc），在“详细信息”选项卡中找到它，选中后点击“结束任务”。
+step.close.pkill = 如果启动器无法关闭，请在终端中运行以下命令：
+step.save.title = 删除任何东西之前，先保存报告
+# 这一步的第一段文本由下面几句依次组成。
+step.save.record = 报告记录了本次扫描的发现。
+step.save.agent_state = 删除 tbs_cache 也会删除 k2f.agent.state 这一痕迹。
+step.save.cache_traces = 删除 tbs_cache 也会删除本次扫描在其中发现的痕迹。
+step.save.restart = 下一步中的重启会关闭这个窗口。
+step.save.hide = 分享报告之前，请打开“隐藏我的信息”（命令行中为 --redact）：它会在复制或保存的报告中替换你的计算机名、用户名、远程控制程序 ID 和主文件夹。窗口中仍会显示这些信息。
+step.dll.title_files = 删除 {browsers} 的 DLL
+step.dll.title_leftover = 删除残留的注册表项
+step.dll.title_key = 删除注册表项
+step.dll.offline_loaded = 完成这一步之前，请让这台电脑保持断网：现在有程序已加载这个 DLL。
+step.dll.offline_key = 完成这一步之前，请让这台电脑保持断网：只要这个注册表项还设置着，浏览器每次启动都会加载这个 DLL。
+step.dll.order = 请按以下顺序操作。Windows 在重启前会一直锁定这个 DLL，所以要先删除注册表项。
+step.dll.delete_key = 删除注册表项。打开注册表编辑器（按 Win+R，输入 regedit 后按 Enter），把下面的注册表项路径粘贴到顶部的地址栏中，然后按 Enter。在左侧窗格中右键单击已选中的项，选择“删除”。
+step.dll.leftover = 空的注册表项是残留：恶意软件删除了其中的 DLL 路径，但保留了这个项。请用同样的方法删除它。
+step.dll.restart = 重启 Windows。然后再次打开本工具并扫描：它会显示还有哪些需要删除。
+step.dll.wine_files = 这些文件位于 Wine 前缀中。请先关闭启动器以及该前缀中的其他所有程序。
+step.dll.wine_key = 这个注册表项位于 Wine 前缀中。请先关闭启动器以及该前缀中的其他所有程序。
+step.dll.drive = 这些文件位于从当前系统访问的一个 Windows 驱动器上。那个 Windows 没有在运行，所以 DLL 没有被锁定，可以直接在这里删除。如果当前系统无法删除该驱动器上的文件（Windows 的“快速启动”会让它变成只读），请改为在那个 Windows 中完成这一步：删除注册表项，重启，然后删除文件。
+step.dll.delete_folder = 删除下面的 DLL 文件夹，即名称由 64 个十六进制字符组成的那个。不要动 PlatformExperienceHelper 文件夹中的其他内容：Chrome 自己的 platform_experience_helper.exe 和 LoadFeatures 也放在那里。
+step.dll.delete_folder_after_restart = 重启之后，删除下面的 DLL 文件夹，即名称由 64 个十六进制字符组成的那个。不要动 PlatformExperienceHelper 文件夹中的其他内容：Chrome 自己的 platform_experience_helper.exe 和 LoadFeatures 也放在那里。
+step.dll.delete_legacy = 在下面的文件夹中，只删除 platform_experience_helper.dll、platform_experience_helper.dll.old 和 old-clsid.txt 中实际存在的文件。保留 platform_experience_helper.exe：它属于 Chrome。
+step.dll.delete_legacy_after_restart = 重启之后，在下面的文件夹中只删除 platform_experience_helper.dll、platform_experience_helper.dll.old 和 old-clsid.txt 中实际存在的文件。保留 platform_experience_helper.exe：它属于 Chrome。
+step.dll.delete_file = 删除下面的 DLL 文件。
+step.dll.delete_file_after_restart = 重启之后，删除下面的 DLL 文件。
+# 接在上面三条“删除”文本之一之后，用于 Windows。
+step.dll.in_use = 如果 Windows 提示文件正在使用，请重启 Windows 后再删除一次。
+step.dll.wine_regedit = 删除该前缀 user.reg 文件中的注册表项。用下面的命令在该前缀中打开 Wine 的 regedit，转到 HKEY_CURRENT_USER\\Software\\Classes\\CLSID，然后删除 {E77CC89B-7401-4C04-8CED-149DB35ADD04} 项。
+step.dll.protontricks = 如果没有安装 Wine（例如在 Steam Deck 上），可以用 protontricks 在这个 Proton 前缀中打开 regedit：
+step.dll.drive_key = 启动那个 Windows，删除下面的注册表项，如果 WOW6432Node 中也有副本，一并删除：本次扫描无法读取那个 Windows 的注册表。打开注册表编辑器（按 Win+R，输入 regedit 后按 Enter），把注册表项路径粘贴到顶部的地址栏中，然后按 Enter。在左侧窗格中右键单击已选中的项，选择“删除”。
+step.dll.scan_again = 之后再扫描一次：这些发现项应该会消失。
+step.dll.defender = 在一台已感染的电脑上，Microsoft Defender 没有检测到这个 DLL，所以杀毒软件扫描结果干净，并不代表它已被清除。
+step.cache.title = 清除启动器缓存
+step.cache.intro = 先关闭启动器。然后删除 tbs_cache 文件夹，它是启动器内置浏览器的缓存。其中可能还存有修复之前的恶意脚本，启动器会再次加载它。
+step.cache.none = 本次扫描没有找到启动器数据文件夹。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 启动器为 nikke_launcher_hmt）；在 Proton 或 Wine 前缀中，它是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
+step.password.title = 用另一台设备修改密码
+step.password.intro_infected = 请使用从未运行过 NIKKE 启动器的手机或另一台电脑。远程控制程序运行期间，它的命令可以读取这台电脑上的文件和浏览器数据。请修改或更换以下内容：
+step.password.intro_exposed = 远程控制程序最晚从2026年10月23日开始下发，而且只在部分启动时下发。如果启动器在当天或之后打开过，请按它已经运行过来处理：用从未运行过该启动器的手机或另一台电脑，修改或更换以下内容：
+step.password.title_maybe = 如果10月23日当天或之后打开过启动器，请修改 NIKKE 密码
+step.password.maybe = 如果2026年10月23日当天或之后打开过启动器，无论如何都请用从未运行过该启动器的手机或另一台电脑修改 NIKKE / Level Infinite 密码。
+step.password.not_opened = 本次扫描只检查了这些文件是否存在，没有打开它们。
+# 要修改的账号和密钥列表（“复制此列表”会复制它）。
+step.password.first = 首先是 NIKKE / Level Infinite 账号，然后是电子邮箱、Discord 和网上银行。
+step.password.browsers = 浏览器中保存的所有密码。
+step.password.browser_one = {browser} 中保存的所有密码（配置文件 {profiles}）。
+step.password.browser_other = {browser} 中保存的所有密码（配置文件 {profiles}）。
+step.password.sessions = 退出这些服务上的所有登录会话。远程控制程序可以收集浏览器 Cookie，被盗的 Cookie 不需要密码就能使用。
+step.password.crypto = 如果你持有加密货币，请在另一台设备上创建一个使用新助记词的新钱包，并把资产转入其中。
+step.password.wallet = {browser} 中的 {wallet}（配置文件 {profile}）：在另一台设备上创建一个使用新助记词的新钱包，并把资金转入其中。
+step.password.tokens = 吊销这台电脑上存储的 API 令牌和 SSH 密钥。
+step.password.secret = 吊销并更换：{what}，{path}。
+step.password.other = 这台电脑上存储的其他任何密码、API 令牌、SSH 密钥或钱包。
+step.password.wine = 在 Wine 下，远程控制程序可以通过 Z: 盘读取你的整个主文件夹，以及启动器进程的环境变量，而不仅仅是 Wine 前缀。
+step.block.title_domains = 屏蔽这些域名
+step.block.title_ips = 屏蔽攻击者的 IP 地址
+step.block.all_blocked = 你的 hosts 文件已屏蔽这三个域名。
+step.block.notepad = 打开“开始”菜单，输入“记事本”，右键单击它并选择“以管理员身份运行”。在记事本中选择“文件 > 打开”，把下面的 hosts 文件路径粘贴到“文件名”框中，然后按 Enter。
+step.block.paste = 把这些行粘贴到文件末尾，然后保存：
+step.block.tee = 在终端中运行这条命令。它会把这些行添加到 /etc/hosts，并要求输入你的密码。
+# 接在上面的文本之后，用于 macOS 以外的系统。
+step.block.deck = 在 Steam Deck 上，如果你从未设置过密码，请先用 passwd 设置一个。
+step.block.scan_again = 之后再扫描一次：“详情”中的“防护”会显示每个域名都已屏蔽。
+step.block.ips = hosts 文件无法屏蔽 IP 地址。请在防火墙或路由器中屏蔽 89.127.233.127 和 89.126.250.172。
+step.block.firewall = 要添加 Windows 防火墙规则，请右键单击“开始”按钮，选择“终端管理员”或“Windows PowerShell (管理员)”，然后运行：
+step.block.macos = 在 macOS 上，请在路由器的设置中屏蔽它们。
+step.block.ufw = 如果使用 ufw，请运行这条命令。ufw 关闭时，这些规则不会屏蔽任何东西：sudo ufw status 必须显示 "Status: active"，sudo ufw enable 可以开启它。如果没有 ufw，请在路由器的设置中屏蔽它们。
+step.wait.title = 在 Level Infinite 确认修复之前，不要打开启动器
+step.wait.servers = 2026年11月3日，Level Infinite 的部分服务器仍在发送恶意文件。在修复之前启动，可能会再次加载该脚本。
+step.wait.reinstall = 远程控制程序可以执行任何命令，所以重装操作系统是确认这台电脑干净的最稳妥方法。
+
+# “详情”：发现项的分组。
+section.proof = 恶意软件运行过的证据
+section.cleanup = 需要清理的内容
+section.signs = 暴露迹象
+section.info = 信息
+section.coverage = 本次扫描未能检查的内容
+
+# “详情”：每种发现项的“这意味着：...”。
+meaning.agent_ran = 远程控制程序曾在启动器中运行。启动器打开期间，攻击者可以控制这台电脑。
+meaning.payload_downloaded = 启动器从攻击者的服务器收到了远程控制程序。
+meaning.payload_file = 启动器的日志文件夹中仍有一份远程控制程序的副本。
+meaning.agent_state = 远程控制程序把它的 ID 保存在了启动器的浏览器存储中，因此它至少运行过一次。
+meaning.agent_server = 启动器连接过下发远程控制程序的服务器，说明它已经进行到请求远程控制程序这一步。
+meaning.loader_cached = 恶意脚本曾在启动器中运行。仅凭这一点，不能说明远程控制程序已被下发。
+meaning.launcher_contacted = 启动器连接过攻击者的域名。
+meaning.chrome_dll = 浏览器启动时会加载这个 DLL，因此恶意软件不需要启动器也能再次运行。即使没有安装 Chrome，恶意软件也会创建 Chrome 的这个文件夹。
+meaning.registry_key = 这个注册表项会让浏览器加载恶意软件的 DLL。
+meaning.registry_leftover = 这个注册表项中的 DLL 路径已被删除，但注册表项本身还在。请删除它。
+meaning.legacy_dll = 早期版本的远程控制程序把它的 DLL 放在这里。
+meaning.dll_loaded = 这些程序现在正在运行恶意软件的 DLL。在它们退出或 Windows 重启之前，Windows 会一直保持它的加载状态。
+meaning.temp_file = 远程控制程序在收集浏览器凭据或截屏时写入了这些文件。
+meaning.launcher_running = 启动器运行期间，攻击者可以向它发送命令。
+meaning.coverage = 本次扫描有一部分未能完成。上面的文字说明了该怎么做。
+meaning.info = 仅供参考，不影响结论。
+
+# “详情”：“恶意软件可能读取的你的数据”。
+exposure.title = 恶意软件可能读取的你的数据
+exposure.note = 本次扫描只检查了这些文件是否存在，没有打开它们。远程控制程序运行期间，它的命令可以读取这些文件。
+exposure.home_note = 因为找到了 Wine 前缀，所以检查了这台电脑的主文件夹。如果扫描的前缀是在另一台电脑上运行的，请改为检查那台电脑。
+exposure.saved_passwords = 保存的密码
+exposure.wallets = 钱包扩展
+exposure.secrets = 机密文件
+# {files} 是文件名，例如“Login Data, key4.db”。
+exposure.login = {browser}，配置文件 {profile}（{files}）
+exposure.wallet = {wallet}（{id}），位于 {browser} 的配置文件 {profile}
+# 找到的每种机密文件中包含的内容。
+secret.aws = AWS 凭据
+secret.github_cli = GitHub CLI 令牌
+secret.git = Git 凭据
+secret.npm = npm 配置，可能含有令牌
+secret.docker = Docker 镜像仓库登录信息
+secret.kubernetes = Kubernetes 配置
+secret.gcloud = Google Cloud 凭据
+secret.azure = Azure CLI 令牌
+secret.claude = Claude Code 凭据
+secret.codex = Codex CLI 凭据
+secret.gemini = Gemini CLI 凭据
+secret.copilot = GitHub Copilot CLI 的 MCP 配置
+secret.opencode = opencode 凭据
+secret.filezilla = FileZilla 保存的服务器
+secret.netrc = netrc 登录信息
+secret.pypi = PyPI 令牌
+secret.crates = crates.io 令牌
+secret.vault = HashiCorp Vault 令牌
+secret.terraform = Terraform 令牌
+secret.pulumi = Pulumi 凭据
+secret.kaggle = Kaggle API 密钥
+secret.huggingface = Hugging Face 令牌
+secret.rclone = rclone 配置
+secret.s3cmd = s3cmd 配置
+secret.databricks = Databricks 配置
+secret.oci = Oracle Cloud 配置
+secret.gnupg = GnuPG 私钥
+secret.env = .env 文件
+secret.ssh = SSH 私钥
+
+# 发现项：每项一个标题和一段说明。{file} 是日志文件名，{files} 是数量，例如“2 个文件”。
+finding.no_install.title = 没有找到 NIKKE 安装文件夹
+finding.no_install.detail = 找到了启动器数据，但没有找到安装文件夹，因此没有检查 debug.log 和下载日志。如果你知道 NIKKE 装在哪里，请扫描那个文件夹：在窗口中使用“扫描文件夹...”，或运行 nikke-check --cli <folder>。
+finding.quick_scan.title = 这是快速扫描
+finding.quick_scan.detail_windows = 它读取了启动器记录在注册表中的安装路径、启动器数据，以及每个本地驱动器根目录下 {depth} 层以内的所有文件夹。如果 NIKKE 文件夹位于超过 {depth} 层的深处，且启动器已不再记录它，只有完整扫描（窗口中的“完整扫描”，或 nikke-check --cli --full）或“扫描文件夹...”才能找到。
+finding.quick_scan.detail_macos = 它读取了常见的 Wine 前缀文件夹、这些前缀记录的安装路径，以及 / 下 {depth} 层以内的所有文件夹。如果 NIKKE 文件夹位于超过 {depth} 层的深处，且启动器已不再记录它，只有完整扫描（窗口中的“完整扫描”，或 nikke-check --cli --full）或“扫描文件夹...”才能找到。
+finding.quick_scan.detail_linux = 它读取了常见的 Wine 前缀文件夹、这些前缀记录的安装路径，以及 /、你的主文件夹和 /mnt、/media、/run/media 下每个驱动器中 {depth} 层以内的所有文件夹。如果 NIKKE 文件夹位于超过 {depth} 层的深处，且启动器已不再记录它，只有完整扫描（窗口中的“完整扫描”，或 nikke-check --cli --full）或“扫描文件夹...”才能找到。
+finding.unreadable.title = 有些文件夹无法读取
+finding.unreadable.detail = 扫描没有权限打开这些文件夹，因此没有检查其中的任何内容。在 macOS 上，请在“系统设置 > 隐私与安全性”中为“终端”（或你用来启动本工具的应用）开启“完全磁盘访问权限”，然后重新扫描。在其他系统上，请以能读取这些文件夹的用户身份重新扫描。
+finding.network.title = 没有扫描网络驱动器
+finding.network.detail = 扫描电脑时会跳过网络驱动器和远程挂载，因为读取它们很慢，而且已断开的驱动器可能会让扫描卡住。如果 NIKKE 安装在这样的驱动器上，请用“扫描文件夹...”或 nikke-check --cli <folder> 扫描它。
+finding.log_server.title = {file} 提到了远程控制程序的服务器
+finding.log_server.detail = {file} 中出现了 analytics.insightjs.com 或 insight.bundle。该服务器负责下发远程控制程序，所以启动器已经进行到请求它这一步。
+finding.log_mention.title = {file} 提到了 insightjs
+finding.log_mention.detail = {file} 中出现了 insightjs，即恶意加载器脚本所在的域名。没有任何一行提到远程控制程序的服务器（analytics.insightjs.com 或 insight.bundle），所以仅凭这一点不能说明远程控制程序已被下载。
+finding.debug_unreadable.title = 无法读取 debug.log
+finding.debug_unreadable.detail = Launcher/intl_service/debug.log 存在，但本次扫描没有权限打开它，因此无法检查远程控制程序是否运行过。请以能读取它的用户身份重新扫描。
+finding.agent_ran.title = 恶意远程控制程序运行过
+finding.agent_ran.detail = debug.log 显示远程控制程序在启动器中启动（k2f_chan registered）。启动器打开期间，攻击者可以在这台电脑上执行命令。
+finding.payload_file.title = 恶意文件仍在磁盘上
+finding.payload_file.detail = 启动器日志文件夹中的这个文件是 LuaJIT 字节码。启动器把下载的远程控制程序（insight.bundle）以 tinyget 日志的文件名保存了下来。
+finding.downloaded.title = 启动器下载了恶意软件
+finding.downloaded.detail = {file} 记录了启动器从 analytics.insightjs.com 下载 insight.bundle。这个文件就是远程控制程序。
+finding.download_attempt.title = 启动器请求过恶意软件，但没有完成下载
+finding.download_attempt.detail = {file} 记录了一次从 analytics.insightjs.com 请求 insight.bundle 的操作，但没有任何一行显示下载完成。失败的请求会记录 curl_error 和 total=0。加载器请求过远程控制程序，但仅凭这一点不能说明它已送达：debug.log 能显示它是否运行过。
+finding.install_found.title = 在 {path} 找到 NIKKE 安装文件夹
+finding.install_found.debug_missing = 没有找到 Launcher/intl_service/debug.log。它可能已被删除，或者从未从这个文件夹启动过启动器。
+finding.install_found.debug_unreadable = Launcher/intl_service/debug.log 存在，但无法读取（没有权限）。
+finding.install_found.debug_checked = 已检查 Launcher/intl_service/debug.log。它记录了该文件创建以来的所有启动。
+# {note} 是上面三段文本之一。
+finding.install_found.written = {note}最后写入时间：{time}。
+finding.data_link.title = 启动器数据文件夹是一个链接，没有读取
+finding.data_link.detail = 这个文件夹链接到 {target}，该目标不存在、是驱动器根目录或是链接上层的文件夹，因此没有检查其中的文件。请用“扫描文件夹...”或 nikke-check --cli <folder> 扫描真正的启动器数据文件夹。
+finding.data_link.unknown_target = 未知目标
+finding.agent_state.title = 恶意远程控制程序在启动器数据中留下了痕迹
+finding.agent_state.detail = k2f_chan（远程控制程序的桥接通道名）或 k2f.agent.state（远程控制程序保存的 ID）出现在启动器数据的 {files}中。这说明远程控制程序运行过。
+finding.agent_server.title = 启动器连接过远程控制程序的服务器
+finding.agent_server.detail = 网络状态数据中有 {files}记录了 analytics.insightjs.com。该服务器负责下发远程控制程序（insight.bundle）并接收它的回连。只运行了加载器、没有下发远程控制程序的启动，只会记录 insightjs.com。
+finding.loader_cached.title = 启动器加载过恶意脚本
+finding.loader_cached.detail = 启动器内置浏览器缓存的 {files}中出现了 insightjs.com 加载器地址。注入的脚本已运行；仅凭这一点不能说明远程控制程序已被下载。
+finding.network_state.title = 启动器连接过 insightjs.com
+finding.network_state.detail = 网络状态数据中有 {files}记录了 insightjs.com，说明启动器的内置浏览器连接过它。
+finding.data_mention.title = 启动器数据中提到了 insightjs.com
+finding.data_mention.detail = 启动器数据中有 {files}出现了 insightjs.com。
+finding.data_clean.title = 启动器数据中没有痕迹
+finding.data_clean.detail = 已检查 {files}。
+# {browser} 是浏览器名称，例如 Chrome 或 Edge。
+finding.persistence.title = 已安装 {browser} 持久化机制
+finding.persistence.dll = 恶意软件的文件夹存在于 {browser} 的用户数据中，里面有 platform_experience_helper.dll；被劫持的 HKCU COM 注册会让 {browser} 加载它。
+finding.persistence.hash_dir = 恶意软件的文件夹存在于 {browser} 的用户数据中：一个名称由 64 个十六进制字符（SHA-256）组成的子文件夹，恶意软件会把 platform_experience_helper.dll 放在这里。没有找到 DLL 本身，所以它可能已被删除。
+# 对于 Chrome，{text} 是上面两段文本之一。
+finding.persistence.chrome = {text}即使没有安装 Chrome，恶意软件也会创建这个文件夹。
+finding.helper_folder.title = {browser} 的 Platform Experience Helper 文件夹
+finding.helper_folder.chrome = 这个文件夹中没有 platform_experience_helper.dll，也没有名称由 64 个十六进制字符组成的子文件夹。这与 Chrome 自己的 Platform Experience Helper（platform_experience_helper.exe、LoadFeatures）一致，按用户安装的 Chrome 会把它放在这里。这不是感染迹象。
+finding.helper_folder.other = 这个文件夹中没有 platform_experience_helper.dll，也没有名称由 64 个十六进制字符组成的子文件夹，因此与恶意软件的文件布局不符。这不是感染迹象。
+finding.legacy.title = 已安装旧版 Chrome 持久化机制的文件
+finding.legacy.detail = Chrome 的 Application\\PlatformExperienceHelper 文件夹中有远程控制程序的清理代码会删除的文件：platform_experience_helper.dll、platform_experience_helper.dll.old 或 old-clsid.txt。早期版本的远程控制程序把它的 DLL 放在这里。这个文件夹中 Chrome 自己的 platform_experience_helper.exe 是正常的。
+finding.temp.title = 恶意软件在 Temp 中留下的文件
+finding.temp.detail = 远程控制程序把它的临时文件命名为 k2f-bcreds-*（收集到的浏览器凭据）、k2f-keyscan-*（早期构建版本）和 k2f_screen_*（截屏，.jpg 格式，早期构建版本为 .png）。
+finding.hex_id.title = Temp 中的十六进制 ID 文件
+finding.hex_id.detail = Temp 中有一个 22 字节的 .tmp 文件，内容是 22 个字符的十六进制 ID。在研究过的那台已感染电脑上，这样的文件是在远程控制程序下载前一秒写入的。其他腾讯软件也会写入同名文件（在一个日期为2026-09-20、早于 CDN 文件被篡改的 Delta Force 前缀中见过），所以单凭它不能算作感染迹象。
+finding.registry.title = 发现注册表持久化（HKCU CLSID 劫持）
+# {detail} 是下面两段“位置”文本之一。
+finding.registry.detail = {detail}恶意软件注册这个注册表项，是为了让 Google Chrome 加载它的 DLL。指向 wpc.dll 的 HKLM 副本属于 Windows，是正常的。
+finding.registry_leftover.title = 持久化机制的注册表残留（HKCU CLSID）
+finding.registry_leftover.detail = {detail}它的默认值为空或不存在：远程控制程序安装过这个 DLL，后来又卸载了它，卸载会清空该值但保留注册表项。DLL 可能仍在磁盘上。指向 wpc.dll 的 HKLM 副本属于 Windows，是正常的。
+finding.registry.where_windows = HKCU 下存在注册表项 {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32（见下方）。
+finding.registry.where_wine = 这个 Wine 前缀的 HKCU 配置单元 user.reg 中有注册表项 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
+finding.launcher_running.title = NIKKE 启动器正在运行
+finding.launcher_running.detail = 请立即关闭启动器（如果关不掉，就结束它的进程），并断开网络连接。在它运行期间，攻击者可以向这台电脑发送命令。
+finding.dll_loaded.title = 持久化 DLL 当前已加载
+finding.dll_loaded.detail = 这些程序已加载恶意软件的 platform_experience_helper.dll。在它们退出之前，Windows 会一直锁定这个文件；只要 HKCU 注册表项还在，Chrome 下次启动时就会再次加载它。请删除注册表项，重启 Windows，然后删除 DLL 所在的文件夹。
+
+# “显示技术细节”：工具在引用的文件内容之间写入的行。
+evidence.luajit = LuaJIT 字节码文件头（1B 4C 4A），{size} 字节。已知的构建版本为 205,135 字节；10月23日的一个构建版本保存为 k2f.lua，大小为 165,108 字节。
+# 一条 TransportSecurity 条目。{host} 是域名，{time} 是 UTC 时间。
+evidence.hsts = {host} 的 HSTS 条目，最后接收时间 {time}
+evidence.hsts_no_time = {host} 的 HSTS 条目
+evidence.in_file = {file}：{text}
+evidence.empty_folder = （空文件夹）
+evidence.registry_value = {key}\\InprocServer32 (默认) = {value}
+evidence.value_not_set = (数值未设置)
+evidence.dll_loaded = PID {pid}：{program}（{exe}）已加载 {dll}
+# 被截断的列表的最后一行。
+evidence.total = ……共 {total} 项
+
+# “打开文件夹”和其他打开窗口的按钮失败时的提示。
+open.gone = {path} 已不存在。
+open.windows_only = {program} 只在 Windows 上提供。
+open.failed = 无法打开文件管理器（{status}）
+open.shell_execute = ShellExecute 错误 {code}
+
+# 窗口。
+ui.tab.happened = 发生了什么
+ui.tab.todo = 该怎么做
+ui.tab.details = 详情
+ui.copied = 已复制
+ui.button.scan_computer = 扫描这台电脑
+ui.button.full_scan = 完整扫描
+ui.button.scan_folder = 扫描文件夹...
+ui.button.scan_again = 重新扫描
+ui.button.new_scan = 新建扫描
+ui.button.stop = 停止扫描
+ui.button.copy_report = 复制报告
+ui.button.save_report = 保存报告...
+ui.button.see_todo = 查看该怎么做
+ui.button.open_folder = 打开文件夹
+ui.button.task_manager = 打开任务管理器
+ui.button.registry_editor = 打开注册表编辑器
+ui.button.copy_path = 复制路径
+ui.button.copy_link = 复制链接
+ui.button.open_link = 打开链接
+ui.button.show = 显示
+ui.button.hide = 隐藏
+ui.button.show_details = 显示技术细节
+ui.button.hide_details = 隐藏技术细节
+ui.hide_info = 隐藏我的信息
+ui.hide_info_note = “隐藏我的信息”只作用于“复制报告”和“保存报告”。窗口中仍显示全部内容。
+ui.done = 已完成
+# 文件对话框。
+ui.dialog.pick_folder = 选择要扫描的文件夹
+ui.dialog.save = 保存报告
+ui.dialog.text_files = 文本文件
+# 显示在界面上方的一行提示。
+ui.notice.only_folders = 只能扫描文件夹。请拖入包含该文件的文件夹。
+ui.notice.stopped = 扫描已停止。
+ui.notice.saved = 报告已保存到 {path}。
+ui.notice.save_failed = 无法保存报告：{error}
+ui.notice.save_failed_plain = 无法保存报告。
+ui.notice.open_failed = 无法打开：{error}
+ui.notice.open_failed_plain = 无法打开。
+# 开始界面。助手的对话气泡在最前面。
+ui.home.hint = 你好，我是 MotherSphere。请先点击“扫描这台电脑”。本工具只读取文件：不删除任何东西，也不通过网络发送任何内容。
+ui.home.title = 尚未扫描
+ui.home.computer = 电脑扫描
+ui.home.quick_windows = 读取启动器记录在注册表中的安装路径、你的用户配置文件和启动器数据，以及每个本地驱动器上 5 层以内的所有文件夹。通常几秒钟就能完成。
+ui.home.quick_macos = 读取 Wine、CrossOver、Whisky、Wineskin 和 Heroic 的前缀及其记录的安装路径，以及 / 下 5 层以内的所有文件夹（包括本地宗卷）。网络宗卷会被跳过。
+ui.home.quick_linux = 读取 Steam、Lutris、Heroic、Bottles 和 Faugus 的所有 Wine 前缀及其记录的安装路径，以及 /、你的主文件夹和 /mnt、/media、/run/media 下每个驱动器中 5 层以内的所有文件夹。网络挂载会被跳过。
+ui.home.full = 完整扫描会打开每个本地驱动器上的每个文件夹，用于查找位于超过 5 层深处、启动器已不再记录的 NIKKE 文件夹。在大容量驱动器上可能需要很长时间。
+ui.home.folder = 文件夹扫描
+ui.home.folder_text = 扫描一个文件夹及其下的全部内容，包括其中的任何 Wine 前缀。
+ui.home.drop = 也可以把文件夹拖到这个窗口上。
+ui.home.no_dialog = 如果没有弹出选择文件夹的对话框，请在终端中运行 nikke-check --cli <folder>。
+# 扫描界面。
+ui.scan.title = 正在扫描：{target}
+ui.scan.elapsed = 已用时间
+ui.scan.searching = 正在查找 NIKKE 安装文件夹和 Wine 前缀
+ui.scan.programs = 正在检查运行中的程序
+ui.scan.locations = 正在检查找到的位置
+ui.scan.locations_one = 正在检查 1 个位置
+ui.scan.locations_other = 正在检查 {n} 个位置
+ui.scan.progress = {done} / {total}
+ui.scan.hosts = 正在检查 hosts 文件
+ui.tile.items = 已扫描项目
+ui.tile.folders = 文件夹
+ui.tile.locations = 找到的位置
+ui.tile.findings = 目前的发现项
+ui.failed.windows = 扫描因内部错误而停止。请重试，或在 PowerShell 中，从本程序所在的文件夹运行 {command} 来查看报告。
+ui.failed.other = 扫描因内部错误而停止。请重试，或在终端中运行 nikke-check --cli 来查看报告。
+# 结果界面。
+ui.happened.payload_build = 载荷构建版本
+ui.happened.agent_runs = 日志中的远程控制程序运行记录
+ui.todo.hint = 请按顺序一次完成一个步骤。按钮会帮你打开对应的文件夹或工具，但文件需要你自己删除。本程序从不删除任何东西。
+ui.todo.note = 这些步骤根据本次扫描的发现生成，并按操作顺序排列。“已完成”标记不会保存。
+ui.tile.critical = 严重
+ui.tile.warnings = 警告
+ui.tile.info = 信息
+ui.tile.duration = 用时
+ui.details.checked = 已检查：{summary}。扫描范围：{scope}。
+# 分区标题及其发现项数量：“信息（3）”。
+ui.details.section_count = {title}（{n}）
+ui.details.hosts = hosts 文件：{path}。这不是感染检查：它只显示这些域名是否已被屏蔽。
+ui.details.protection = 防护
+ui.details.limits = 本检查的局限
+ui.details.locations = 检查的位置
+ui.details.none_found = 未发现。
+ui.details.folders_checked = 检查的文件夹

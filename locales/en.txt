@@ -1,0 +1,527 @@
+# NIKKE Launcher Check: the English texts. Every other file in this folder uses the same keys.
+#
+# One entry per line: key = text. Lines that start with # are comments.
+# Translate only the text after "=". Do not change the keys.
+# In the text, \n starts a new line and \\ is one backslash.
+# {name} is a value the program fills in: a path, a number, a file name or another text.
+# Keep every {name} of the English text with the same name. You can move it in the sentence.
+# Other braces, such as the CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}, are plain text: keep them.
+# Keep file names, paths, registry keys, commands, domains, IP addresses and hashes as they are.
+# Text in quotes such as "Scan a folder..." names a button or a part of this window: use the
+# words of that button's own entry. Windows menus and buttons (Run as administrator, End task,
+# File > Open) are named as Windows shows them in your language.
+# An entry missing from a translation shows the English text.
+
+# Command line: nikke-check --help, and errors printed in the terminal.
+cli.usage = NIKKE Launcher Check: looks for traces of the November 2026 NIKKE PC launcher compromise.\nRead-only. No network access.\n\nUsage:\n  nikke-check                  Open the window\n  nikke-check PATH             Open the window and scan this folder\n  nikke-check --cli            Quick scan of this computer, printed as a report\n  nikke-check --cli --full     Full scan: open every folder on every local drive\n  nikke-check --cli PATH...    Scan only these folders, in full, and print a report\n  nikke-check --cli --redact   Replace the computer name, user names, agent IDs\n                               and home folder in the report (any --cli form)\n  nikke-check --help           Show this help\n\nLanguage:\n  --lang CODE    Add to any form above to set the language of the window and\n                 the report. Without it, the language of the system is used.\n                 CODE: {codes}\n\nExit codes (--cli):\n  0  no traces found\n  1  exposed (warnings only)\n  2  infected (critical traces)\n  3  no NIKKE install or launcher data found\n  4  invalid arguments, or a folder that cannot be read\n
+cli.unknown_argument = Unknown argument: {arg}
+cli.lang_missing = --lang needs a language code: {codes}
+cli.lang_unknown = Unknown language code: {code}. Use one of: {codes}
+cli.cannot_read_folder = Cannot read folder {path}: {error}
+cli.not_a_folder = Not a folder: {path}
+cli.window_failed = Could not open the window: {error}
+# Windows error box when the window cannot open. {command} is a PowerShell command.
+cli.error_box = The window could not open:\n{error}\n\nTo get the report without the window, open PowerShell in the folder that holds this program and run:\n\n{command}
+
+# Top bar, start screen and report header.
+report.read_only = Read-only. No network access.
+report.about = On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.
+# What was scanned ("Scan of: ...", "Scanning ...").
+report.scope.computer = this computer
+report.scope.quick = this computer (quick scan)
+report.scope.full = this computer (full scan)
+
+# The verdict: a title, then one sentence.
+verdict.infected.title = Infected
+verdict.infected.summary = Critical traces were found: the agent was downloaded or ran, it left persistence, or the launcher is running now. Treat this computer as compromised.
+verdict.exposed.title = Exposed
+verdict.exposed.summary = The launcher loaded the malicious script or contacted insightjs.com, but no sign that the agent ran was found.
+verdict.no_traces.title = No traces found
+verdict.no_traces.summary = No trace of the malicious script or the agent was found in the NIKKE files this scan located.
+verdict.not_found.title = NIKKE not found
+verdict.not_found.summary = No NIKKE install or launcher data was found in the places this scan checked.
+
+# Severity badges of the findings, and the tags of the report ("[CRITICAL]").
+severity.critical = CRITICAL
+severity.warning = WARNING
+severity.info = INFO
+
+# The kinds of locations a scan checks ("[NIKKE install] /path" in the report).
+kind.install = NIKKE install
+kind.launcher_data = Launcher data
+kind.wine_prefix = Wine prefix
+kind.user_profile = User profile
+# Groups of findings with no folder.
+group.running = Running programs
+group.coverage = Scan coverage
+
+# "Limits of this check", in the window and the report.
+report.caveat.debug_log = debug.log is lost when the NIKKE folder is deleted or reinstalled. The k2f.agent.state check in the launcher data does not depend on it.
+report.caveat.not_proof = Finding nothing is not proof that the computer is clean.
+report.caveat.no_logs = The commands the agent ran leave no logs, so this tool cannot tell what the attacker did.
+
+# Protection: the hosts file, in Details and in the report.
+hosts.blocked = blocked
+hosts.not_blocked = not blocked
+hosts.unknown = unknown
+hosts.missing = The hosts file does not exist, so it blocks nothing.
+hosts.unreadable = The hosts file could not be read, so it is not known which domains it blocks.
+hosts.block_lines_intro = To block the domains that are not shown as blocked, add these lines to the hosts file:
+hosts.note = Editing the hosts file needs administrator rights. This tool never edits it.
+hosts.ip_note = The IPs 89.127.233.127 and 89.126.250.172 cannot be blocked in the hosts file. Block them in your firewall or router.
+
+# "Checked: ..." in Details and "Locations checked: ..." in the report, joined with commas.
+report.checked.install_one = {n} NIKKE install
+report.checked.install_other = {n} NIKKE installs
+report.checked.launcher_data_one = {n} launcher data folder
+report.checked.launcher_data_other = {n} launcher data folders
+report.checked.wine_prefix_one = {n} Wine prefix
+report.checked.wine_prefix_other = {n} Wine prefixes
+report.checked.user_profile_one = {n} user profile
+report.checked.user_profile_other = {n} user profiles
+report.checked.nothing = nothing to check
+
+# "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
+report.stats = {entries} entries visited ({folders} folders), {errors} permission errors{skipped}, {seconds} s.
+report.stats.skipped_one = , 1 network drive skipped
+report.stats.skipped_other = , {n} network drives skipped
+report.stats.cap = The entry limit was reached, so some folders were not visited.
+
+# The text report (CLI output, "Copy report" and "Save report...").
+report.scan_of = Scan of: {scope}
+report.started = Started: {time}
+report.verdict = VERDICT: {verdict}
+report.what_happened = WHAT HAPPENED
+# One answer of "What happened": the question and its reply (Yes, No...).
+report.answer = {question} {reply}.
+report.agent_runs = Agent runs in the logs:
+report.payload_build = Payload build: {build}
+report.what_to_do = WHAT TO DO
+report.open = Open: {path}
+report.details = DETAILS
+report.locations_checked = Locations checked: {summary}
+report.exposure_heading = {heading}:
+report.exposure_none = {heading}: none found.
+report.exposure_item = {what}: {path}
+report.folders_checked = Folders checked:
+report.no_findings = No findings.
+report.protection = PROTECTION (hosts file: {path})
+report.protection_note = This is not an infection check. It shows whether the domains are blocked.
+report.domain_state = {domain}: {state}
+report.limits = LIMITS OF THIS CHECK
+report.write_up = Write-up: {url}
+report.scan_stats = Scan stats: {stats}
+# Where a finding was found: "NIKKE install: /path".
+report.location = {label}: {path}
+
+# The lines of a finding, in Details and in the report.
+details.meaning = What this means: {text}
+details.found_in = Found in: {location}
+details.path = Path: {path}
+details.time = Time: {time}
+# A registry key or a text to copy: "Registry key: HKCU\...".
+details.copy = {label}: {text}
+details.copy_label.registry = Registry key
+details.copy_label.text = Text
+
+# Times read from the logs. Log times use the clock of the computer that ran the launcher.
+time.local = {time} (local time)
+time.local_no_year = {time} (local time, year not logged)
+
+# "What happened": four questions, each with a reply and the reasons.
+answer.yes = Yes
+answer.no = No
+answer.cannot_tell = Cannot tell
+answer.partly = Partly
+# A finding title used as one reason.
+answer.finding = {title}.
+answer.ran.question = Did the malware run on this computer?
+answer.ran.nothing_checked = No NIKKE install or launcher data was found, so there was nothing to check.
+answer.ran.no_agent_log = No log shows the agent itself starting, but logs can be deleted or cut.
+answer.ran.loader = The launcher loaded the malicious script, but no trace of the agent was found.
+answer.ran.act_as_if = The agent was sent only on some launches, from October 23, 2026 at the latest. If the launcher was open on or after that date, act as if it ran.
+answer.ran.nothing = No trace of the malicious script or the agent was found.
+answer.ran.no_install = The NIKKE install folder was not found, so debug.log and the download logs were not checked.
+answer.ran.gaps = Part of this scan could not be done. See "What this scan could not check" in Details.
+answer.ran.quick = This was a quick scan, which opens folders only {depth} levels deep. The full scan also checks deeper folders.
+answer.active.question = Is anything still active?
+answer.active.launcher = The NIKKE launcher is running now. While it runs, the attacker can send it commands.
+answer.active.dll_loaded = The malware's DLL is loaded now in {programs}.
+answer.active.registry = The registry key that makes the browser load the malware's DLL is set.
+answer.active.none = The launcher is not running, and no DLL is installed or set to load.
+answer.clean.question = Is there something to clean up?
+answer.clean.dll_folder = The {browser} DLL folder: {path}
+answer.clean.registry = The HKCU registry key {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+answer.clean.leftover = The empty HKCU registry key {E77CC89B-7401-4C04-8CED-149DB35ADD04}, left after the malware cleared the DLL path from it.
+answer.clean.legacy = Older DLL files in {path}
+answer.clean.temp = k2f files in {path}
+answer.clean.cache = The launcher cache, which holds traces of the malware: {path}
+answer.clean.none_cache = No file left by the malware was found. Delete the launcher cache (tbs_cache) anyway before you open the launcher again: it can still hold the malicious script from before the fix.
+answer.clean.none = Nothing left by the malware was found.
+answer.protected.question = Are you protected for next time?
+answer.protected.not_checked = The hosts file was not checked.
+answer.protected.domain = {domain}: {state} in the hosts file.
+answer.protected.ip = The hosts file cannot block IP addresses, and this scan cannot check a firewall. Block 89.127.233.127 and 89.126.250.172 in your firewall or router.
+
+# The agent runs found in the logs, one line each: "{time}: {what}".
+run.line = {time}: {what}
+run.line_from = {time}: {what} (from {file})
+run.no_time = time not logged
+run.downloaded = the launcher downloaded the agent
+run.downloaded_as = the launcher downloaded the agent and saved it as {file}
+run.adopted = the agent started for the first time on this computer and created its ID
+run.resumed = the agent started again with the ID it saved
+run.started = the agent sent the computer name to the attacker
+run.started_as = the agent sent the computer name {host} to the attacker
+
+# "Payload build": one line per build of the agent file. The parts follow each other on one line.
+build.no_etag = No ETag
+build.uploaded = , uploaded {time}
+build.last_modified = , last modified {time}
+build.size = , {size} bytes
+build.known = , one of the {n} known builds.
+build.unknown = . It is not one of the {n} known builds.
+build.received = The launcher received it {time}.
+
+# Buttons shared by several screens.
+common.copy = Copy
+common.copy_command = Copy command
+common.copy_key_path = Copy key path
+common.copy_hosts_path = Copy hosts path
+common.copy_lines = Copy these lines
+common.copy_list = Copy this list
+# Two names joined, as in "Remove the Chrome and Edge DLL".
+common.and = {a} and {b}
+common.files_one = {n} file
+common.files_other = {n} files
+
+# "What to do": the steps. Each title is followed by its texts.
+step.scan_folder.title = Scan the folder where NIKKE is installed
+step.scan_folder.windows = If NIKKE is installed somewhere this scan did not look, such as another drive, scan that folder with "Scan a folder...". In PowerShell, from the folder that holds this program, this command scans it too. Put your NIKKE folder in place of D:\\Games\\NIKKE.
+step.scan_folder.other = If NIKKE is installed somewhere this scan did not look, such as another drive, scan that folder: "Scan a folder..." in the window, or nikke-check --cli <folder> in a terminal.
+step.full_scan.title = Run the full scan
+step.full_scan.intro = This was a quick scan, which opens folders only {depth} levels deep. If you do not know where NIKKE is, or an older copy may be deeper, the full scan opens every folder on every local drive. It can take a long time on large drives.
+step.full_scan.powershell = In PowerShell, from the folder that holds this program:
+step.full_scan.terminal = In a terminal: nikke-check --cli --full
+step.close.title_launcher = Close the launcher
+step.close.title_programs = Close the programs that run the malware
+step.close.launcher = The NIKKE launcher is running. While it runs, the attacker can send commands to this computer. Close it now and disconnect this computer from the network.
+step.close.dll_loaded_one = {programs} has the malware's DLL loaded. Close it if you can. The restart in a later step unloads the DLL from every program.
+step.close.dll_loaded_other = {programs} have the malware's DLL loaded. Close them if you can. The restart in a later step unloads the DLL from every program.
+step.close.explorer = Do not end explorer.exe: it runs the taskbar and the desktop. The restart unloads the DLL from it.
+step.close.programs = Programs to end: {programs}.
+step.close.task_manager = If a program does not close, open Task Manager (Ctrl+Shift+Esc), find it on the Details tab, select it and click End task.
+step.close.pkill = If the launcher does not close, run this command in a terminal:
+step.save.title = Save the report before you delete anything
+# The first text of this step is these sentences, one after the other.
+step.save.record = The report is the record of what this scan found.
+step.save.agent_state = Deleting tbs_cache also deletes the k2f.agent.state trace.
+step.save.cache_traces = Deleting tbs_cache also deletes the traces this scan found in it.
+step.save.restart = The restart in the next step closes this window.
+step.save.hide = Turn on "Hide my info" (--redact on the command line) before you share it: it replaces your computer name, user names, agent ID and home folder in the copied or saved report. The window still shows them.
+step.dll.title_files = Remove the {browsers} DLL
+step.dll.title_leftover = Delete the leftover registry key
+step.dll.title_key = Delete the registry key
+step.dll.offline_loaded = Keep this computer offline until this step is done: a program has the DLL loaded now.
+step.dll.offline_key = Keep this computer offline until this step is done: while the key is set, the browser loads the DLL each time it starts.
+step.dll.order = Do these in this order. Windows keeps the DLL locked until it restarts, so the registry key goes first.
+step.dll.delete_key = Delete the registry key. Open Registry Editor (press Win+R, type regedit and press Enter), paste the key path below into the address bar at the top and press Enter. Right-click the selected key in the left pane and choose Delete.
+step.dll.leftover = An empty key is a leftover: the malware removed the DLL path but kept the key. Delete it the same way.
+step.dll.restart = Restart Windows. Then open this tool again and scan: it shows what is left to delete.
+step.dll.wine_files = These files are inside a Wine prefix. Close the launcher and every other program of that prefix first.
+step.dll.wine_key = The key is inside a Wine prefix. Close the launcher and every other program of that prefix first.
+step.dll.drive = These files are on a Windows drive seen from this system. That Windows is not running, so the DLL is not locked and you can delete it from here. If this system cannot delete files on that drive (Windows Fast Startup leaves it read-only), do this step from that Windows instead: delete the key, restart, then delete the files.
+step.dll.delete_folder = Delete the DLL folder below, the one named with 64 hex characters. Leave the rest of the PlatformExperienceHelper folder alone: Chrome keeps its own platform_experience_helper.exe and LoadFeatures there.
+step.dll.delete_folder_after_restart = After the restart, delete the DLL folder below, the one named with 64 hex characters. Leave the rest of the PlatformExperienceHelper folder alone: Chrome keeps its own platform_experience_helper.exe and LoadFeatures there.
+step.dll.delete_legacy = In the folder below, delete only platform_experience_helper.dll, platform_experience_helper.dll.old and old-clsid.txt, the ones that are there. Keep platform_experience_helper.exe: it belongs to Chrome.
+step.dll.delete_legacy_after_restart = In the folder below, after the restart, delete only platform_experience_helper.dll, platform_experience_helper.dll.old and old-clsid.txt, the ones that are there. Keep platform_experience_helper.exe: it belongs to Chrome.
+step.dll.delete_file = Delete the DLL file below.
+step.dll.delete_file_after_restart = After the restart, delete the DLL file below.
+# Follows one of the three "delete" texts above, on Windows.
+step.dll.in_use = If Windows says the file is in use, restart Windows and delete it again.
+step.dll.wine_regedit = Delete the registry key in the prefix's user.reg file. Open Wine's regedit in that prefix with the command below, go to HKEY_CURRENT_USER\\Software\\Classes\\CLSID and delete the {E77CC89B-7401-4C04-8CED-149DB35ADD04} key.
+step.dll.protontricks = Without Wine installed, as on a Steam Deck, protontricks opens regedit in this Proton prefix:
+step.dll.drive_key = Start that Windows and delete the registry key below, and the WOW6432Node copy if it is there: this scan could not read that Windows' registry. Open Registry Editor (press Win+R, type regedit and press Enter), paste the key path into the address bar at the top and press Enter. Right-click the selected key in the left pane and choose Delete.
+step.dll.scan_again = Scan again afterwards: these findings should be gone.
+step.dll.defender = Microsoft Defender did not detect this DLL on one infected computer, so a clean antivirus scan does not show that it is gone.
+step.cache.title = Clear the launcher cache
+step.cache.intro = Close the launcher first. Then delete the tbs_cache folder, the cache of the launcher's built-in browser. It can still hold the malicious script from before the fix, and the launcher would load it again.
+step.cache.none = This scan found no launcher data folder. It is %APPDATA%\\nikke_launcher\\tbs_cache on Windows (nikke_launcher_hmt for the HMT launcher), or drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache inside the Proton or Wine prefix.
+step.password.title = Change your passwords from another device
+step.password.intro_infected = Use a phone or another computer that never ran the NIKKE launcher. While the agent ran, its commands could read this computer's files and browser data. Change or replace these:
+step.password.intro_exposed = The agent was sent from October 23, 2026 at the latest, and only on some launches. If the launcher was open on or after that date, act as if it ran: from a phone or another computer that never ran the launcher, change or replace these:
+step.password.title_maybe = Change your NIKKE password if the launcher was open on or after October 23
+step.password.maybe = If the launcher was open on or after October 23, 2026, change your NIKKE / Level Infinite password anyway, from a phone or another computer that never ran the launcher.
+step.password.not_opened = This scan only checked that these files exist. It did not open them.
+# The list of accounts and secrets to change ("Copy this list" copies it).
+step.password.first = Your NIKKE / Level Infinite account first, then email, Discord and banking.
+step.password.browsers = Every password saved in your browsers.
+step.password.browser_one = Every password saved in {browser} (profile {profiles}).
+step.password.browser_other = Every password saved in {browser} (profiles {profiles}).
+step.password.sessions = Log out of every session on those services. The agent can collect browser cookies, and a stolen cookie works without the password.
+step.password.crypto = If you hold cryptocurrency, move it to a new wallet with a new seed phrase created on the other device.
+step.password.wallet = {wallet} in {browser} (profile {profile}): move the funds to a new wallet with a new seed phrase, created on the other device.
+step.password.tokens = Revoke the API tokens and SSH keys stored on this computer.
+step.password.secret = Revoke and replace: {what}, {path}.
+step.password.other = Any other password, API token, SSH key or wallet stored on this computer.
+step.password.wine = Under Wine, the agent could read your whole home folder through the Z: drive, and the environment variables of the launcher process, not only the Wine prefix.
+step.block.title_domains = Block the domains
+step.block.title_ips = Block the attacker's IP addresses
+step.block.all_blocked = Your hosts file blocks the three domains.
+step.block.notepad = Open the Start menu, type Notepad, right-click it and choose "Run as administrator". In Notepad, choose File > Open, paste the hosts file path below into the File name box and press Enter.
+step.block.paste = Paste these lines at the end of the file and save:
+step.block.tee = Run this command in a terminal. It adds the lines to /etc/hosts and asks for your password.
+# Follows the text above, outside macOS.
+step.block.deck = On a Steam Deck, set a password with passwd first if you never did.
+step.block.scan_again = Scan again afterwards: Protection, in Details, then shows each domain as blocked.
+step.block.ips = The hosts file cannot block IP addresses. Block 89.127.233.127 and 89.126.250.172 in your firewall or router.
+step.block.firewall = To add a Windows firewall rule, right-click the Start button, choose Terminal (Admin) or Windows PowerShell (Admin), and run:
+step.block.macos = On macOS, block them in your router's settings.
+step.block.ufw = With ufw, run this command. The rules block nothing while ufw is off: sudo ufw status must show "Status: active", and sudo ufw enable turns it on. Without ufw, block them in your router's settings.
+step.wait.title = Do not open the launcher until Level Infinite confirms a fix
+step.wait.servers = Some of Level Infinite's servers still sent the malicious file on November 3, 2026. A launch before the fix can load the script again.
+step.wait.reinstall = The agent could run any command, so reinstalling the operating system is the safest way to be sure this computer is clean.
+
+# Details: the groups of findings.
+section.proof = Proof the malware ran
+section.cleanup = Things to clean up
+section.signs = Signs of exposure
+section.info = Information
+section.coverage = What this scan could not check
+
+# Details: "What this means: ..." for each kind of finding.
+meaning.agent_ran = The agent ran inside the launcher. While the launcher was open, the attacker could control this computer.
+meaning.payload_downloaded = The launcher received the agent from the attacker's server.
+meaning.payload_file = A copy of the agent is still in the launcher's log folder.
+meaning.agent_state = The agent saved its ID in the launcher's browser storage, so it ran at least once.
+meaning.agent_server = The launcher reached the server that sends the agent, so it got as far as asking for the agent.
+meaning.loader_cached = The malicious script ran in the launcher. This alone does not show that the agent was sent.
+meaning.launcher_contacted = The launcher contacted the attacker's domain.
+meaning.chrome_dll = The browser loads this DLL when it starts, so the malware can run again without the launcher. The malware creates Chrome's folder even when Chrome is not installed.
+meaning.registry_key = This key makes the browser load the malware's DLL.
+meaning.registry_leftover = The DLL path was removed from this key, but the key is still there. Delete it.
+meaning.legacy_dll = An earlier version of the agent put its DLL here.
+meaning.dll_loaded = These programs run the malware's DLL now. Windows keeps it loaded until they exit or Windows restarts.
+meaning.temp_file = The agent wrote these files while it collected browser credentials or screenshots.
+meaning.launcher_running = While the launcher runs, the attacker can send it commands.
+meaning.coverage = Part of this scan could not be done. The text above says what to do.
+meaning.info = Context only. It does not change the verdict.
+
+# Details: "Your data the malware could reach".
+exposure.title = Your data the malware could reach
+exposure.note = This scan only checked that these files exist. It did not open them. While the agent ran, its commands could read them.
+exposure.home_note = This computer's home folder was checked because a Wine prefix was found. If the scanned prefix ran on another computer, check that computer instead.
+exposure.saved_passwords = Saved passwords
+exposure.wallets = Wallet extensions
+exposure.secrets = Secret files
+# {files} are file names such as "Login Data, key4.db".
+exposure.login = {browser}, profile {profile} ({files})
+exposure.wallet = {wallet} ({id}) in {browser}, profile {profile}
+# What each secret file found holds.
+secret.aws = AWS credentials
+secret.github_cli = GitHub CLI token
+secret.git = Git credentials
+secret.npm = npm config, can hold a token
+secret.docker = Docker registry logins
+secret.kubernetes = Kubernetes config
+secret.gcloud = Google Cloud credentials
+secret.azure = Azure CLI tokens
+secret.claude = Claude Code credentials
+secret.codex = Codex CLI credentials
+secret.gemini = Gemini CLI credentials
+secret.copilot = GitHub Copilot CLI MCP config
+secret.opencode = opencode credentials
+secret.filezilla = FileZilla saved servers
+secret.netrc = netrc logins
+secret.pypi = PyPI token
+secret.crates = crates.io token
+secret.vault = HashiCorp Vault token
+secret.terraform = Terraform token
+secret.pulumi = Pulumi credentials
+secret.kaggle = Kaggle API key
+secret.huggingface = Hugging Face token
+secret.rclone = rclone config
+secret.s3cmd = s3cmd config
+secret.databricks = Databricks config
+secret.oci = Oracle Cloud config
+secret.gnupg = GnuPG private keys
+secret.env = .env file
+secret.ssh = SSH private key
+
+# Findings: a title and a detail each. {file} is a log file name, {files} is a count such as "2 files".
+finding.no_install.title = The NIKKE install folder was not found
+finding.no_install.detail = Launcher data was found, but not the install folder, so debug.log and the download logs were not checked. If you know where NIKKE is installed, scan that folder: "Scan a folder..." in the window, or nikke-check --cli <folder>.
+finding.quick_scan.title = This was a quick scan
+finding.quick_scan.detail_windows = It read the install paths the launcher records in the registry, the launcher data and every folder up to {depth} levels below the root of each local drive. A NIKKE folder more than {depth} levels deep that the launcher no longer records is found only by the full scan ("Full scan" in the window, or nikke-check --cli --full) or by "Scan a folder...".
+finding.quick_scan.detail_macos = It read the usual Wine prefix folders, the install paths those prefixes record, and every folder up to {depth} levels below /. A NIKKE folder more than {depth} levels deep that the launcher no longer records is found only by the full scan ("Full scan" in the window, or nikke-check --cli --full) or by "Scan a folder...".
+finding.quick_scan.detail_linux = It read the usual Wine prefix folders, the install paths those prefixes record, and every folder up to {depth} levels below /, your home folder and each drive under /mnt, /media and /run/media. A NIKKE folder more than {depth} levels deep that the launcher no longer records is found only by the full scan ("Full scan" in the window, or nikke-check --cli --full) or by "Scan a folder...".
+finding.unreadable.title = Some folders could not be read
+finding.unreadable.detail = The scan was not allowed to open these folders, so nothing in them was checked. On macOS, give Terminal (or the app you started this tool from) Full Disk Access in System Settings > Privacy & Security, then scan again. Elsewhere, scan again as a user who can read them.
+finding.network.title = Network drives were not scanned
+finding.network.detail = A computer scan skips network drives and remote mounts, because reading them is slow and a disconnected one can stop the scan. If NIKKE is installed on one, scan it with "Scan a folder..." or nikke-check --cli <folder>.
+finding.log_server.title = {file} names the agent server
+finding.log_server.detail = {file} names analytics.insightjs.com or insight.bundle. That server sends the agent, so the launcher got as far as asking for it.
+finding.log_mention.title = {file} mentions insightjs
+finding.log_mention.detail = {file} names insightjs, the domain of the malicious loader script. No line names the agent server (analytics.insightjs.com or insight.bundle), so this alone does not show that the agent was downloaded.
+finding.debug_unreadable.title = debug.log could not be read
+finding.debug_unreadable.detail = Launcher/intl_service/debug.log exists, but this scan was not allowed to open it, so it could not check whether the agent ran. Scan again as a user who can read it.
+finding.agent_ran.title = The malware agent ran
+finding.agent_ran.detail = debug.log shows the remote-access agent starting inside the launcher (k2f_chan registered). While the launcher was open, the attacker could run commands on this computer.
+finding.payload_file.title = The malware file is still on disk
+finding.payload_file.detail = This file in the launcher's log folder is LuaJIT bytecode. The launcher saved the downloaded agent (insight.bundle) under a tinyget log name.
+finding.downloaded.title = The launcher downloaded the malware
+finding.downloaded.detail = {file} records the launcher downloading insight.bundle from analytics.insightjs.com. That file is the remote-access agent.
+finding.download_attempt.title = The launcher asked for the malware, but no download finished
+finding.download_attempt.detail = {file} records a request for insight.bundle from analytics.insightjs.com, but no line shows it finishing. A failed request logs curl_error and total=0. The loader asked for the agent, which alone does not show that the agent arrived: debug.log shows whether it ran.
+finding.install_found.title = NIKKE install found at {path}
+finding.install_found.debug_missing = No Launcher/intl_service/debug.log was found. It may have been deleted, or the launcher was never started from this folder.
+finding.install_found.debug_unreadable = Launcher/intl_service/debug.log exists but could not be read (no permission).
+finding.install_found.debug_checked = Launcher/intl_service/debug.log was checked. It holds the launches since the file was created.
+# {note} is one of the three texts above.
+finding.install_found.written = {note} Last written {time}.
+finding.data_link.title = Launcher data folder is a link and was not read
+finding.data_link.detail = This folder links to {target}, which is missing, a drive root or a folder above the link, so its files were not checked. Scan the real launcher data folder with "Scan a folder..." or nikke-check --cli <folder>.
+finding.data_link.unknown_target = an unknown target
+finding.agent_state.title = The malware agent left traces in the launcher data
+finding.agent_state.detail = k2f_chan (the agent's bridge channel name) or k2f.agent.state (the ID the agent saves) appears in {files} in the launcher data. This shows that the agent ran.
+finding.agent_server.title = The launcher contacted the agent server
+finding.agent_server.detail = analytics.insightjs.com is recorded in {files} of network state. That server sends the agent (insight.bundle) and receives its check-ins. A launch where the loader ran without the agent recorded only insightjs.com.
+finding.loader_cached.title = The launcher loaded the malicious script
+finding.loader_cached.detail = The insightjs.com loader address appears in {files} cached by the launcher's built-in browser. The injected script ran; this alone does not show that the agent was downloaded.
+finding.network_state.title = The launcher connected to insightjs.com
+finding.network_state.detail = insightjs.com is recorded in {files} of network state, so the launcher's built-in browser contacted it.
+finding.data_mention.title = Launcher data mentions insightjs.com
+finding.data_mention.detail = insightjs.com appears in {files} in the launcher data.
+finding.data_clean.title = No traces in the launcher data
+finding.data_clean.detail = Checked {files}.
+# {browser} is a browser name such as Chrome or Edge.
+finding.persistence.title = {browser} persistence is installed
+finding.persistence.dll = The malware's folder exists in {browser}'s user data and holds platform_experience_helper.dll, which a hijacked HKCU COM registration makes {browser} load.
+finding.persistence.hash_dir = The malware's folder exists in {browser}'s user data: a subfolder named with 64 hex characters (a SHA-256), where the malware puts platform_experience_helper.dll. The DLL itself was not found, so it may already have been removed.
+# For Chrome, {text} is one of the two texts above.
+finding.persistence.chrome = {text} The malware creates this folder even when Chrome is not installed.
+finding.helper_folder.title = {browser}'s Platform Experience Helper folder
+finding.helper_folder.chrome = This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters. That matches Chrome's own Platform Experience Helper (platform_experience_helper.exe, LoadFeatures), which per-user Chrome installs keep here. It is not a sign of infection.
+finding.helper_folder.other = This folder holds no platform_experience_helper.dll and no subfolder named with 64 hex characters, so it does not match the malware's layout. It is not a sign of infection.
+finding.legacy.title = Files of an older Chrome persistence are installed
+finding.legacy.detail = Chrome's Application\\PlatformExperienceHelper folder holds files that the agent's cleanup code deletes: platform_experience_helper.dll, platform_experience_helper.dll.old or old-clsid.txt. An earlier version of the agent put its DLL here. Chrome's own platform_experience_helper.exe in this folder is normal.
+finding.temp.title = Files left by the malware in Temp
+finding.temp.detail = The agent names its temporary files k2f-bcreds-* (collected browser credentials), k2f-keyscan-* (an early build) and k2f_screen_* (screenshots, .jpg, or .png in the early build).
+finding.hex_id.title = Hex ID file in Temp
+finding.hex_id.detail = A 22-byte .tmp file in Temp holds a 22-character hex ID. On the infected computer studied, a file like this was written one second before the agent download. Other Tencent software writes a file with the same name (seen in a Delta Force prefix dated 2026-09-20, before the CDN files were changed), so on its own it is not a sign of infection.
+finding.registry.title = Registry persistence found (HKCU CLSID hijack)
+# {detail} is one of the two "where" texts below.
+finding.registry.detail = {detail} The malware registers it so Google Chrome loads its DLL. The HKLM copy that points to wpc.dll is part of Windows and is normal.
+finding.registry_leftover.title = Registry leftover of the persistence (HKCU CLSID)
+finding.registry_leftover.detail = {detail} Its default value is empty or missing: the agent installed the DLL and later uninstalled it, which clears the value but leaves the key. The DLL may still be on disk. The HKLM copy that points to wpc.dll is part of Windows and is normal.
+finding.registry.where_windows = The key {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32 exists under HKCU (see below).
+finding.registry.where_wine = user.reg, the HKCU hive of this Wine prefix, holds the key {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+finding.launcher_running.title = The NIKKE launcher is running now
+finding.launcher_running.detail = Close the launcher immediately (end the process if it does not close) and disconnect from the network. While it runs, the attacker can send commands to this computer.
+finding.dll_loaded.title = The persistence DLL is loaded now
+finding.dll_loaded.detail = These programs have the malware's platform_experience_helper.dll loaded. Windows keeps the file locked until they exit, and Chrome loads it again at its next start while the HKCU key is there. Delete the registry key, restart Windows, then delete the DLL's folder.
+
+# "Show technical details": lines the tool writes among the lines quoted from files.
+evidence.luajit = LuaJIT bytecode header (1B 4C 4A), {size} bytes. The known builds are 205,135 bytes, and an Oct 23 build saved as k2f.lua was 165,108 bytes.
+# One TransportSecurity entry. {host} is a domain, {time} a UTC time.
+evidence.hsts = HSTS entry for {host}, last received {time}
+evidence.hsts_no_time = HSTS entry for {host}
+evidence.in_file = {file}: {text}
+evidence.empty_folder = (empty folder)
+evidence.registry_value = {key}\\InprocServer32 (Default) = {value}
+evidence.value_not_set = (value not set)
+evidence.dll_loaded = PID {pid}: {program} ({exe}) has {dll} loaded
+# The last line of a list that was cut.
+evidence.total = ... {total} in total
+
+# "Open folder" and the other buttons that open a window, when it fails.
+open.gone = {path} no longer exists.
+open.windows_only = {program} is only on Windows.
+open.failed = the file manager could not be opened ({status})
+open.shell_execute = ShellExecute error {code}
+
+# The window.
+ui.tab.happened = What happened
+ui.tab.todo = What to do
+ui.tab.details = Details
+ui.copied = Copied
+ui.button.scan_computer = Scan this computer
+ui.button.full_scan = Full scan
+ui.button.scan_folder = Scan a folder...
+ui.button.scan_again = Scan again
+ui.button.new_scan = New scan
+ui.button.stop = Stop scan
+ui.button.copy_report = Copy report
+ui.button.save_report = Save report...
+ui.button.see_todo = See what to do
+ui.button.open_folder = Open folder
+ui.button.task_manager = Open Task Manager
+ui.button.registry_editor = Open Registry Editor
+ui.button.copy_path = Copy path
+ui.button.copy_link = Copy link
+ui.button.open_link = Open link
+ui.button.show = Show
+ui.button.hide = Hide
+ui.button.show_details = Show technical details
+ui.button.hide_details = Hide technical details
+ui.hide_info = Hide my info
+ui.hide_info_note = Hide my info applies to Copy report and Save report. The window still shows everything.
+ui.done = Done
+# File dialogs.
+ui.dialog.pick_folder = Choose a folder to scan
+ui.dialog.save = Save the report
+ui.dialog.text_files = Text
+# One line shown above the screen.
+ui.notice.only_folders = Only folders can be scanned. Drop the folder that holds the file.
+ui.notice.stopped = Scan stopped.
+ui.notice.saved = Report saved to {path}.
+ui.notice.save_failed = Could not save the report: {error}
+ui.notice.save_failed_plain = Could not save the report.
+ui.notice.open_failed = Could not open it: {error}
+ui.notice.open_failed_plain = Could not open it.
+# Start screen. The helper's speech bubble comes first.
+ui.home.hint = Hi, I'm MotherSphere. Start with "Scan this computer". It only reads files: it deletes nothing and sends nothing over the network.
+ui.home.title = Not scanned yet
+ui.home.computer = Computer scan
+ui.home.quick_windows = Reads the install paths the launcher records in the registry, your user profile and the launcher data, and every folder up to 5 levels deep on each local drive. Usually done in seconds.
+ui.home.quick_macos = Reads the Wine, CrossOver, Whisky, Wineskin and Heroic prefixes and the install paths they record, and every folder up to 5 levels below /, local volumes included. Network volumes are skipped.
+ui.home.quick_linux = Reads every Wine prefix of Steam, Lutris, Heroic, Bottles and Faugus and the install paths they record, and every folder up to 5 levels below /, your home folder and each drive under /mnt, /media and /run/media. Network mounts are skipped.
+ui.home.full = The full scan opens every folder on every local drive, for a NIKKE folder more than 5 levels deep that the launcher no longer records. It can take a long time on large drives.
+ui.home.folder = Folder scan
+ui.home.folder_text = Scans one folder and everything under it, including any Wine prefix inside.
+ui.home.drop = You can also drop a folder on this window.
+ui.home.no_dialog = If no folder dialog opens, run nikke-check --cli <folder> in a terminal.
+# Scan screen.
+ui.scan.title = Scanning {target}
+ui.scan.elapsed = elapsed
+ui.scan.searching = Looking for NIKKE installs and Wine prefixes
+ui.scan.programs = Checking running programs
+ui.scan.locations = Checking the locations found
+ui.scan.locations_one = Checking 1 location
+ui.scan.locations_other = Checking {n} locations
+ui.scan.progress = {done} of {total}
+ui.scan.hosts = Checking the hosts file
+ui.tile.items = Items scanned
+ui.tile.folders = Folders
+ui.tile.locations = Locations found
+ui.tile.findings = Findings so far
+ui.failed.windows = The scan stopped with an internal error. Try again, or run {command} in PowerShell, from the folder that holds this program, to see the report.
+ui.failed.other = The scan stopped with an internal error. Try again, or run nikke-check --cli to see the report in a terminal.
+# Result screen.
+ui.happened.payload_build = Payload build
+ui.happened.agent_runs = Agent runs in the logs
+ui.todo.hint = Do the steps one at a time, in order. The buttons open the right folder or tool for you, but you delete the files yourself. This program never deletes anything.
+ui.todo.note = These steps come from what this scan found, in the order to do them. The Done marks are not saved.
+ui.tile.critical = Critical
+ui.tile.warnings = Warnings
+ui.tile.info = Info
+ui.tile.duration = Duration
+ui.details.checked = Checked: {summary}. Scan of {scope}.
+# A section title and its number of findings: "Information (3)".
+ui.details.section_count = {title} ({n})
+ui.details.hosts = Hosts file: {path}. This is not an infection check: it shows whether the domains are blocked.
+ui.details.protection = Protection
+ui.details.limits = Limits of this check
+ui.details.locations = Locations checked
+ui.details.none_found = None found.
+ui.details.folders_checked = Folders checked

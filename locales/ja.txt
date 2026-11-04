@@ -1,0 +1,527 @@
+# NIKKE Launcher Check: the Japanese texts (ja). The keys are the same as in en.txt.
+#
+# One entry per line: key = text. Lines that start with # are comments.
+# Translate only the text after "=". Do not change the keys.
+# In the text, \n starts a new line and \\ is one backslash.
+# {name} is a value the program fills in: a path, a number, a file name or another text.
+# Keep every {name} of the English text with the same name. You can move it in the sentence.
+# Other braces, such as the CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}, are plain text: keep them.
+# Keep file names, paths, registry keys, commands, domains, IP addresses and hashes as they are.
+# Text in quotes such as "Scan a folder..." names a button or a part of this window: use the
+# words of that button's own entry. Windows menus and buttons (Run as administrator, End task,
+# File > Open) are named as Windows shows them in your language.
+# An entry missing from a translation shows the English text.
+
+# Command line: nikke-check --help, and errors printed in the terminal.
+cli.usage = NIKKE Launcher Check: 2026 年 11 月の NIKKE PC ランチャー侵害の痕跡を調べます。\n読み取り専用です。ネットワークにはアクセスしません。\n\n使い方:\n  nikke-check                  ウィンドウを開きます\n  nikke-check PATH             ウィンドウを開き、このフォルダーをスキャンします\n  nikke-check --cli            このコンピューターをクイック スキャンし、\n                               レポートを出力します\n  nikke-check --cli --full     フル スキャン: すべてのローカル ドライブの\n                               すべてのフォルダーを開きます\n  nikke-check --cli PATH...    指定したフォルダーだけを全階層までスキャンし、\n                               レポートを出力します\n  nikke-check --cli --redact   レポート内のコンピューター名、ユーザー名、\n                               エージェント ID、ホーム フォルダーを置き換えます\n                               (--cli のどの形式でも使えます)\n  nikke-check --help           このヘルプを表示します\n\n言語:\n  --lang CODE    上のどの形式にも追加でき、ウィンドウとレポートの言語を\n                 設定します。指定しない場合は、システムの言語が自動的に使われます。\n                 CODE: {codes}\n\n終了コード (--cli):\n  0  痕跡は見つかりませんでした\n  1  危険にさらされました (警告のみ)\n  2  感染しています (重大な痕跡)\n  3  NIKKE のインストールもランチャー データも見つかりませんでした\n  4  引数が無効か、読み取れないフォルダーがあります\n
+cli.unknown_argument = 不明な引数です: {arg}
+cli.lang_missing = --lang には言語コードが必要です: {codes}
+cli.lang_unknown = 不明な言語コードです: {code}。次のいずれかを使ってください: {codes}
+cli.cannot_read_folder = フォルダー {path} を読み取れません: {error}
+cli.not_a_folder = フォルダーではありません: {path}
+cli.window_failed = ウィンドウを開けませんでした: {error}
+# Windows error box when the window cannot open. {command} is a PowerShell command.
+cli.error_box = ウィンドウを開けませんでした:\n{error}\n\nウィンドウを使わずにレポートを表示するには、このプログラムがあるフォルダーで PowerShell を開き、次のコマンドを実行してください:\n\n{command}
+
+# Top bar, start screen and report header.
+report.read_only = 読み取り専用です。ネットワークにはアクセスしません。
+report.about = 2026 年 9 月 27 日、Level Infinite の CDN 上にある 4 つのファイルが書き換えられ、NIKKE PC ランチャー内で insightjs.com のスクリプトを読み込むようになりました。遅くとも 2026 年 10 月 23 日から、このスクリプトはリモート アクセス エージェント (insight.bundle) をダウンロードしていました。このエージェントは、コマンドの実行、ファイルの読み取り、スクリーンショットの撮影、ブラウザー データの収集ができます。4 つのうち 3 つのファイルは 11 月 3 日に置き換えられました。残りの 1 つは 10 月 28 日に修正されましたが、11 月 3 日の時点でも一部の CDN サーバーが古いファイルを配信していました。このツールは、ローダーとエージェントがディスクに残す痕跡を調べます。
+# What was scanned ("Scan of: ...", "Scanning ...").
+report.scope.computer = このコンピューター
+report.scope.quick = このコンピューター (クイック スキャン)
+report.scope.full = このコンピューター (フル スキャン)
+
+# The verdict: a title, then one sentence.
+verdict.infected.title = 感染しています
+verdict.infected.summary = 重大な痕跡が見つかりました。エージェントがダウンロードまたは実行されたか、永続化の仕組みを残したか、ランチャーが現在実行中です。このコンピューターは侵害されたものとして扱ってください。
+verdict.exposed.title = 危険にさらされました
+verdict.exposed.summary = ランチャーが悪意のあるスクリプトを読み込んだか insightjs.com に接続しましたが、エージェントが実行された形跡は見つかりませんでした。
+verdict.no_traces.title = 痕跡は見つかりませんでした
+verdict.no_traces.summary = このスキャンで見つかった NIKKE のファイルに、悪意のあるスクリプトやエージェントの痕跡は見つかりませんでした。
+verdict.not_found.title = NIKKE が見つかりませんでした
+verdict.not_found.summary = このスキャンで調べた場所に、NIKKE のインストールもランチャー データも見つかりませんでした。
+
+# Severity badges of the findings, and the tags of the report ("[CRITICAL]").
+severity.critical = 重大
+severity.warning = 警告
+severity.info = 情報
+
+# The kinds of locations a scan checks ("[NIKKE install] /path" in the report).
+kind.install = NIKKE のインストール
+kind.launcher_data = ランチャー データ
+kind.wine_prefix = Wine プレフィックス
+kind.user_profile = ユーザー プロファイル
+# Groups of findings with no folder.
+group.running = 実行中のプログラム
+group.coverage = スキャンの範囲
+
+# "Limits of this check", in the window and the report.
+report.caveat.debug_log = debug.log は、NIKKE フォルダーを削除または再インストールすると失われます。ランチャー データにある k2f.agent.state のチェックは、debug.log に依存しません。
+report.caveat.not_proof = 何も見つからなくても、このコンピューターが感染していないことの証明にはなりません。
+report.caveat.no_logs = エージェントが実行したコマンドはログに残らないため、攻撃者が何をしたかはこのツールではわかりません。
+
+# Protection: the hosts file, in Details and in the report.
+hosts.blocked = ブロック済み
+hosts.not_blocked = ブロックされていません
+hosts.unknown = 不明
+hosts.missing = hosts ファイルが存在しないため、何もブロックされていません。
+hosts.unreadable = hosts ファイルを読み取れなかったため、どのドメインがブロックされているかはわかりません。
+hosts.block_lines_intro = ブロック済みと表示されていないドメインをブロックするには、次の行を hosts ファイルに追加してください:
+hosts.note = hosts ファイルの編集には管理者権限が必要です。このツールが hosts ファイルを編集することはありません。
+hosts.ip_note = IP アドレス 89.127.233.127 と 89.126.250.172 は hosts ファイルではブロックできません。ファイアウォールまたはルーターでブロックしてください。
+
+# "Checked: ..." in Details and "Locations checked: ..." in the report, joined with commas.
+report.checked.install_one = NIKKE のインストール {n} 件
+report.checked.install_other = NIKKE のインストール {n} 件
+report.checked.launcher_data_one = ランチャー データ フォルダー {n} 件
+report.checked.launcher_data_other = ランチャー データ フォルダー {n} 件
+report.checked.wine_prefix_one = Wine プレフィックス {n} 件
+report.checked.wine_prefix_other = Wine プレフィックス {n} 件
+report.checked.user_profile_one = ユーザー プロファイル {n} 件
+report.checked.user_profile_other = ユーザー プロファイル {n} 件
+report.checked.nothing = 確認する対象なし
+
+# "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
+report.stats = {entries} 件の項目を確認 (フォルダー {folders} 件)、アクセス許可エラー {errors} 件{skipped}、{seconds} 秒。
+report.stats.skipped_one = 、ネットワーク ドライブ 1 台をスキップ
+report.stats.skipped_other = 、ネットワーク ドライブ {n} 台をスキップ
+report.stats.cap = 項目数の上限に達したため、一部のフォルダーは確認していません。
+
+# The text report (CLI output, "Copy report" and "Save report...").
+report.scan_of = スキャン対象: {scope}
+report.started = 開始: {time}
+report.verdict = 判定: {verdict}
+report.what_happened = 何が起きたか
+# One answer of "What happened": the question and its reply (Yes, No...).
+report.answer = {question} {reply}。
+report.agent_runs = ログに記録されたエージェントの実行:
+report.payload_build = ペイロードのビルド: {build}
+report.what_to_do = 対処方法
+report.open = 開く: {path}
+report.details = 詳細
+report.locations_checked = 確認した場所: {summary}
+report.exposure_heading = {heading}:
+report.exposure_none = {heading}: 見つかりませんでした。
+report.exposure_item = {what}: {path}
+report.folders_checked = 確認したフォルダー:
+report.no_findings = 検出結果はありません。
+report.protection = 保護 (hosts ファイル: {path})
+report.protection_note = これは感染のチェックではありません。ドメインがブロックされているかどうかを示します。
+report.domain_state = {domain}: {state}
+report.limits = このチェックの限界
+report.write_up = 解説: {url}
+report.scan_stats = スキャンの統計: {stats}
+# Where a finding was found: "NIKKE install: /path".
+report.location = {label}: {path}
+
+# The lines of a finding, in Details and in the report.
+details.meaning = 意味: {text}
+details.found_in = 検出場所: {location}
+details.path = パス: {path}
+details.time = 日時: {time}
+# A registry key or a text to copy: "Registry key: HKCU\...".
+details.copy = {label}: {text}
+details.copy_label.registry = レジストリ キー
+details.copy_label.text = テキスト
+
+# Times read from the logs. Log times use the clock of the computer that ran the launcher.
+time.local = {time} (ローカル時刻)
+time.local_no_year = {time} (ローカル時刻、年は記録されていません)
+
+# "What happened": four questions, each with a reply and the reasons.
+answer.yes = はい
+answer.no = いいえ
+answer.cannot_tell = 判断できません
+answer.partly = 一部のみ
+# A finding title used as one reason.
+answer.finding = {title}。
+answer.ran.question = このコンピューターでマルウェアは実行されましたか?
+answer.ran.nothing_checked = NIKKE のインストールもランチャー データも見つからなかったため、確認できるものがありませんでした。
+answer.ran.no_agent_log = エージェント自体の起動を示すログはありません。ただし、ログは削除されたり途中で切れたりすることがあります。
+answer.ran.loader = ランチャーは悪意のあるスクリプトを読み込みましたが、エージェントの痕跡は見つかりませんでした。
+answer.ran.act_as_if = エージェントは、遅くとも 2026 年 10 月 23 日から、一部の起動時にだけ送り込まれていました。その日以降にランチャーを開いていた場合は、エージェントが実行されたものとして行動してください。
+answer.ran.nothing = 悪意のあるスクリプトやエージェントの痕跡は見つかりませんでした。
+answer.ran.no_install = NIKKE のインストール フォルダーが見つからなかったため、debug.log とダウンロード ログは確認していません。
+answer.ran.gaps = このスキャンの一部を実行できませんでした。「詳細」の「このスキャンで確認できなかったこと」を参照してください。
+answer.ran.quick = 今回はクイック スキャンで、フォルダーを {depth} 階層までしか開いていません。フル スキャンでは、さらに深いフォルダーも確認します。
+answer.active.question = まだ動作しているものはありますか?
+answer.active.launcher = NIKKE ランチャーが現在実行中です。実行中は、攻撃者がランチャーにコマンドを送れます。
+answer.active.dll_loaded = マルウェアの DLL が現在 {programs} に読み込まれています。
+answer.active.registry = ブラウザーにマルウェアの DLL を読み込ませるレジストリ キーが設定されています。
+answer.active.none = ランチャーは実行されておらず、DLL のインストールも読み込みの設定もありません。
+answer.clean.question = 削除が必要なものはありますか?
+answer.clean.dll_folder = {browser} の DLL フォルダー: {path}
+answer.clean.registry = HKCU のレジストリ キー {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
+answer.clean.leftover = HKCU の空のレジストリ キー {E77CC89B-7401-4C04-8CED-149DB35ADD04}。マルウェアがこのキーから DLL のパスを消去した後に残ったものです。
+answer.clean.legacy = {path} にある古い DLL ファイル
+answer.clean.temp = {path} にある k2f ファイル
+answer.clean.cache = マルウェアの痕跡が残っているランチャーのキャッシュ: {path}
+answer.clean.none_cache = マルウェアが残したファイルは見つかりませんでした。それでも、次にランチャーを開く前に、ランチャーのキャッシュ (tbs_cache) を削除してください。修正前の悪意のあるスクリプトがまだ残っている可能性があります。
+answer.clean.none = マルウェアが残したものは見つかりませんでした。
+answer.protected.question = 次回に備えて保護されていますか?
+answer.protected.not_checked = hosts ファイルは確認していません。
+answer.protected.domain = {domain}: {state} (hosts ファイル)。
+answer.protected.ip = hosts ファイルでは IP アドレスをブロックできず、このスキャンではファイアウォールを確認できません。89.127.233.127 と 89.126.250.172 をファイアウォールまたはルーターでブロックしてください。
+
+# The agent runs found in the logs, one line each: "{time}: {what}".
+run.line = {time}: {what}
+run.line_from = {time}: {what} ({file} より)
+run.no_time = 時刻の記録なし
+run.downloaded = ランチャーがエージェントをダウンロードしました
+run.downloaded_as = ランチャーがエージェントをダウンロードし、{file} として保存しました
+run.adopted = エージェントがこのコンピューターで初めて起動し、ID を作成しました
+run.resumed = エージェントが保存済みの ID で再び起動しました
+run.started = エージェントがコンピューター名を攻撃者に送信しました
+run.started_as = エージェントがコンピューター名 {host} を攻撃者に送信しました
+
+# "Payload build": one line per build of the agent file. The parts follow each other on one line.
+build.no_etag = ETag なし
+build.uploaded = 、アップロード日時 {time}
+build.last_modified = 、最終更新日時 {time}
+build.size = 、{size} バイト
+build.known = 、既知の {n} 種類のビルドの 1 つです。
+build.unknown = 。既知の {n} 種類のビルドのどれでもありません。
+build.received = ランチャーが受信した日時: {time}。
+
+# Buttons shared by several screens.
+common.copy = コピー
+common.copy_command = コマンドをコピー
+common.copy_key_path = キーのパスをコピー
+common.copy_hosts_path = hosts のパスをコピー
+common.copy_lines = これらの行をコピー
+common.copy_list = このリストをコピー
+# Two names joined, as in "Remove the Chrome and Edge DLL".
+common.and = {a} と {b}
+common.files_one = {n} 個のファイル
+common.files_other = {n} 個のファイル
+
+# "What to do": the steps. Each title is followed by its texts.
+step.scan_folder.title = NIKKE がインストールされているフォルダーをスキャンする
+step.scan_folder.windows = 別のドライブなど、このスキャンで調べていない場所に NIKKE がインストールされている場合は、「フォルダーをスキャン...」でそのフォルダーをスキャンしてください。このプログラムがあるフォルダーから PowerShell で次のコマンドを実行しても、同じようにスキャンできます。D:\\Games\\NIKKE の部分は、実際の NIKKE フォルダーに置き換えてください。
+step.scan_folder.other = 別のドライブなど、このスキャンで調べていない場所に NIKKE がインストールされている場合は、そのフォルダーをスキャンしてください。ウィンドウでは「フォルダーをスキャン...」、ターミナルでは nikke-check --cli <folder> を使います。
+step.full_scan.title = フル スキャンを実行する
+step.full_scan.intro = 今回はクイック スキャンで、フォルダーを {depth} 階層までしか開いていません。NIKKE の場所がわからない場合や、古いコピーがもっと深い場所にある可能性がある場合は、すべてのローカル ドライブのすべてのフォルダーを開くフル スキャンを使ってください。大容量のドライブでは長い時間がかかることがあります。
+step.full_scan.powershell = このプログラムがあるフォルダーから PowerShell で実行します:
+step.full_scan.terminal = ターミナルで実行します: nikke-check --cli --full
+step.close.title_launcher = ランチャーを閉じる
+step.close.title_programs = マルウェアを実行しているプログラムを閉じる
+step.close.launcher = NIKKE ランチャーが実行中です。実行中は、攻撃者がこのコンピューターにコマンドを送れます。今すぐランチャーを閉じ、このコンピューターをネットワークから切断してください。
+step.close.dll_loaded_one = {programs} にマルウェアの DLL が読み込まれています。可能であれば閉じてください。後の手順で再起動すると、すべてのプログラムから DLL が解放されます。
+step.close.dll_loaded_other = {programs} にマルウェアの DLL が読み込まれています。可能であれば、これらのプログラムを閉じてください。後の手順で再起動すると、すべてのプログラムから DLL が解放されます。
+step.close.explorer = explorer.exe は終了しないでください。タスク バーとデスクトップを動かしているプログラムです。再起動すると、explorer.exe からも DLL が解放されます。
+step.close.programs = 終了するプログラム: {programs}。
+step.close.task_manager = プログラムが閉じない場合は、タスク マネージャー (Ctrl+Shift+Esc) を開き、「詳細」タブでそのプログラムを探して選択し、「タスクを終了する」をクリックします。
+step.close.pkill = ランチャーが閉じない場合は、ターミナルで次のコマンドを実行してください:
+step.save.title = 何かを削除する前にレポートを保存する
+# The first text of this step is these sentences, one after the other.
+step.save.record = レポートは、このスキャンで見つかったものの記録です。
+step.save.agent_state = tbs_cache を削除すると、k2f.agent.state の痕跡も削除されます。
+step.save.cache_traces = tbs_cache を削除すると、このスキャンがその中で見つけた痕跡も削除されます。
+step.save.restart = 次の手順で再起動すると、このウィンドウは閉じます。
+step.save.hide = 共有する前に「個人情報を隠す」をオンにしてください (コマンド ラインでは --redact)。コピーまたは保存したレポートでは、コンピューター名、ユーザー名、エージェント ID、ホーム フォルダーが置き換えられます。ウィンドウには引き続き表示されます。
+step.dll.title_files = {browsers} の DLL を削除する
+step.dll.title_leftover = 残ったレジストリ キーを削除する
+step.dll.title_key = レジストリ キーを削除する
+step.dll.offline_loaded = この手順が終わるまで、このコンピューターをオフラインにしておいてください。現在、DLL を読み込んでいるプログラムがあります。
+step.dll.offline_key = この手順が終わるまで、このコンピューターをオフラインにしておいてください。このキーが設定されている間、ブラウザーは起動するたびに DLL を読み込みます。
+step.dll.order = 次の順序で行ってください。Windows は再起動するまで DLL をロックしたままにするため、レジストリ キーを先に削除します。
+step.dll.delete_key = レジストリ キーを削除します。レジストリ エディターを開き (Win+R キーを押し、regedit と入力して Enter キーを押します)、下のキーのパスを上部のアドレス バーに貼り付けて Enter キーを押します。左側のウィンドウで選択されたキーを右クリックし、「削除」を選びます。
+step.dll.leftover = 空のキーは残骸です。マルウェアは DLL のパスを消しましたが、キー自体は残しました。同じ方法で削除してください。
+step.dll.restart = Windows を再起動します。その後、このツールをもう一度開いてスキャンしてください。まだ削除が必要なものが表示されます。
+step.dll.wine_files = これらのファイルは Wine プレフィックス内にあります。先に、ランチャーとそのプレフィックスのほかのプログラムをすべて閉じてください。
+step.dll.wine_key = このキーは Wine プレフィックス内にあります。先に、ランチャーとそのプレフィックスのほかのプログラムをすべて閉じてください。
+step.dll.drive = これらのファイルは、このシステムから見える Windows のドライブ上にあります。その Windows は実行されていないため、DLL はロックされておらず、ここから削除できます。このシステムからそのドライブ上のファイルを削除できない場合 (Windows の高速スタートアップによって、ドライブが読み取り専用のままになります) は、その Windows 上でこの手順を行ってください。キーを削除し、再起動してから、ファイルを削除します。
+step.dll.delete_folder = 下の DLL フォルダー (64 文字の 16 進数の名前が付いたフォルダー) を削除します。PlatformExperienceHelper フォルダーのそれ以外の内容はそのままにしてください。Chrome は自身の platform_experience_helper.exe と LoadFeatures をそこに置いています。
+step.dll.delete_folder_after_restart = 再起動後に、下の DLL フォルダー (64 文字の 16 進数の名前が付いたフォルダー) を削除します。PlatformExperienceHelper フォルダーのそれ以外の内容はそのままにしてください。Chrome は自身の platform_experience_helper.exe と LoadFeatures をそこに置いています。
+step.dll.delete_legacy = 下のフォルダーで、platform_experience_helper.dll、platform_experience_helper.dll.old、old-clsid.txt のうち、存在するものだけを削除します。platform_experience_helper.exe は Chrome のファイルなので残してください。
+step.dll.delete_legacy_after_restart = 再起動後に、下のフォルダーで、platform_experience_helper.dll、platform_experience_helper.dll.old、old-clsid.txt のうち、存在するものだけを削除します。platform_experience_helper.exe は Chrome のファイルなので残してください。
+step.dll.delete_file = 下の DLL ファイルを削除します。
+step.dll.delete_file_after_restart = 再起動後に、下の DLL ファイルを削除します。
+# Follows one of the three "delete" texts above, on Windows.
+step.dll.in_use = ファイルが使用中であると Windows に表示された場合は、Windows を再起動してから、もう一度削除してください。
+step.dll.wine_regedit = プレフィックスの user.reg ファイルにあるレジストリ キーを削除します。下のコマンドで、そのプレフィックスの Wine の regedit を開き、HKEY_CURRENT_USER\\Software\\Classes\\CLSID に移動して、{E77CC89B-7401-4C04-8CED-149DB35ADD04} キーを削除します。
+step.dll.protontricks = Steam Deck のように Wine がインストールされていない場合は、protontricks でこの Proton プレフィックスの regedit を開けます:
+step.dll.drive_key = その Windows を起動し、下のレジストリ キーと、存在する場合はその WOW6432Node のコピーを削除してください。このスキャンでは、その Windows のレジストリを読み取れませんでした。レジストリ エディターを開き (Win+R キーを押し、regedit と入力して Enter キーを押します)、キーのパスを上部のアドレス バーに貼り付けて Enter キーを押します。左側のウィンドウで選択されたキーを右クリックし、「削除」を選びます。
+step.dll.scan_again = その後、もう一度スキャンしてください。これらの検出結果は消えているはずです。
+step.dll.defender = 感染したコンピューターの 1 台で、Microsoft Defender はこの DLL を検出しませんでした。そのため、ウイルス対策ソフトのスキャンで何も見つからなくても、DLL がなくなったとは言えません。
+step.cache.title = ランチャーのキャッシュを削除する
+step.cache.intro = 先にランチャーを閉じてください。次に、ランチャーの内蔵ブラウザーのキャッシュである tbs_cache フォルダーを削除します。このフォルダーには修正前の悪意のあるスクリプトがまだ残っている可能性があり、その場合はランチャーがそれを再び読み込みます。
+step.cache.none = このスキャンでは、ランチャー データ フォルダーが見つかりませんでした。Windows では %APPDATA%\\nikke_launcher\\tbs_cache (HMT 版ランチャーの場合は nikke_launcher_hmt)、Proton または Wine のプレフィックス内では drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache にあります。
+step.password.title = 別のデバイスからパスワードを変更する
+step.password.intro_infected = NIKKE ランチャーを一度も実行したことのないスマートフォンまたは別のコンピューターを使ってください。エージェントの実行中は、そのコマンドでこのコンピューターのファイルやブラウザー データを読み取ることができました。次のものを変更または交換してください:
+step.password.intro_exposed = エージェントは、遅くとも 2026 年 10 月 23 日から、一部の起動時にだけ送り込まれていました。その日以降にランチャーを開いていた場合は、エージェントが実行されたものとして行動してください。ランチャーを一度も実行したことのないスマートフォンまたは別のコンピューターから、次のものを変更または交換してください:
+step.password.title_maybe = 10 月 23 日以降にランチャーを開いていた場合は、NIKKE のパスワードを変更する
+step.password.maybe = 2026 年 10 月 23 日以降にランチャーを開いていた場合は、念のため NIKKE / Level Infinite のパスワードを変更してください。ランチャーを一度も実行したことのないスマートフォンまたは別のコンピューターから行ってください。
+step.password.not_opened = このスキャンでは、これらのファイルが存在することだけを確認しました。ファイルは開いていません。
+# The list of accounts and secrets to change ("Copy this list" copies it).
+step.password.first = まず NIKKE / Level Infinite のアカウント、その後にメール、Discord、オンライン バンキング。
+step.password.browsers = ブラウザーに保存されているすべてのパスワード。
+step.password.browser_one = {browser} (プロファイル {profiles}) に保存されているすべてのパスワード。
+step.password.browser_other = {browser} (プロファイル {profiles}) に保存されているすべてのパスワード。
+step.password.sessions = それらのサービスのすべてのセッションからログアウトしてください。エージェントはブラウザーの Cookie を収集でき、盗まれた Cookie はパスワードなしで使えます。
+step.password.crypto = 暗号資産を保有している場合は、別のデバイスで作成した新しいシード フレーズを持つ新しいウォレットに移してください。
+step.password.wallet = {browser} (プロファイル {profile}) の {wallet}: 別のデバイスで作成した新しいシード フレーズを持つ新しいウォレットに資金を移してください。
+step.password.tokens = このコンピューターに保存されている API トークンと SSH キーを失効させてください。
+step.password.secret = 失効させて新しいものに置き換える: {what}、{path}。
+step.password.other = このコンピューターに保存されているその他のパスワード、API トークン、SSH キー、ウォレット。
+step.password.wine = Wine では、エージェントは Wine プレフィックスだけでなく、Z: ドライブを通じてホーム フォルダー全体と、ランチャー プロセスの環境変数も読み取ることができました。
+step.block.title_domains = ドメインをブロックする
+step.block.title_ips = 攻撃者の IP アドレスをブロックする
+step.block.all_blocked = hosts ファイルで 3 つのドメインがブロックされています。
+step.block.notepad = スタート メニューを開き、「メモ帳」と入力して、表示されたメモ帳を右クリックし、「管理者として実行」を選びます。メモ帳で「ファイル」>「開く」を選び、下の hosts ファイルのパスを「ファイル名」ボックスに貼り付けて Enter キーを押します。
+step.block.paste = ファイルの末尾に次の行を貼り付けて保存します:
+step.block.tee = ターミナルで次のコマンドを実行します。/etc/hosts に行が追加され、パスワードの入力を求められます。
+# Follows the text above, outside macOS.
+step.block.deck = Steam Deck でパスワードを一度も設定したことがない場合は、先に passwd で設定してください。
+step.block.scan_again = その後、もう一度スキャンしてください。「詳細」の「保護」に、各ドメインがブロック済みと表示されます。
+step.block.ips = hosts ファイルでは IP アドレスをブロックできません。89.127.233.127 と 89.126.250.172 をファイアウォールまたはルーターでブロックしてください。
+step.block.firewall = Windows ファイアウォールの規則を追加するには、スタート ボタンを右クリックし、「ターミナル (管理者)」または「Windows PowerShell (管理者)」を選んで、次のコマンドを実行します:
+step.block.macos = macOS では、ルーターの設定でブロックしてください。
+step.block.ufw = ufw を使う場合は、次のコマンドを実行します。ufw が無効の間、この規則は何もブロックしません。sudo ufw status で「Status: active」と表示される必要があり、sudo ufw enable で有効にできます。ufw を使わない場合は、ルーターの設定でブロックしてください。
+step.wait.title = Level Infinite が修正を確認するまでランチャーを開かない
+step.wait.servers = 2026 年 11 月 3 日の時点でも、Level Infinite の一部のサーバーが悪意のあるファイルを配信していました。修正前に起動すると、スクリプトが再び読み込まれる可能性があります。
+step.wait.reinstall = エージェントは任意のコマンドを実行できたため、このコンピューターが感染していないと確実に言うには、OS を再インストールするのが最も安全な方法です。
+
+# Details: the groups of findings.
+section.proof = マルウェアが実行された証拠
+section.cleanup = 削除が必要なもの
+section.signs = 危険にさらされた形跡
+section.info = 情報
+section.coverage = このスキャンで確認できなかったこと
+
+# Details: "What this means: ..." for each kind of finding.
+meaning.agent_ran = ランチャー内でエージェントが実行されました。ランチャーが開いている間、攻撃者はこのコンピューターを操作できました。
+meaning.payload_downloaded = ランチャーが攻撃者のサーバーからエージェントを受け取りました。
+meaning.payload_file = エージェントのコピーが、ランチャーのログ フォルダーにまだ残っています。
+meaning.agent_state = エージェントがランチャーのブラウザー ストレージに ID を保存しているため、少なくとも 1 回は実行されています。
+meaning.agent_server = ランチャーがエージェントを配信するサーバーに接続しているため、少なくともエージェントを要求する段階までは進んでいます。
+meaning.loader_cached = 悪意のあるスクリプトがランチャー内で実行されました。これだけでは、エージェントが送り込まれたかどうかはわかりません。
+meaning.launcher_contacted = ランチャーが攻撃者のドメインに接続しました。
+meaning.chrome_dll = ブラウザーは起動時にこの DLL を読み込むため、ランチャーがなくてもマルウェアが再び実行されることがあります。マルウェアは、Chrome がインストールされていなくても Chrome のフォルダーを作成します。
+meaning.registry_key = このキーによって、ブラウザーがマルウェアの DLL を読み込みます。
+meaning.registry_leftover = このキーから DLL のパスは削除されていますが、キー自体は残っています。削除してください。
+meaning.legacy_dll = 以前のバージョンのエージェントが、ここに DLL を置いていました。
+meaning.dll_loaded = これらのプログラムは現在、マルウェアの DLL を実行しています。プログラムが終了するか Windows が再起動するまで、Windows は DLL を読み込んだままにします。
+meaning.temp_file = エージェントがブラウザーの資格情報を収集したり、スクリーンショットを撮影したりしたときに、これらのファイルを書き込みました。
+meaning.launcher_running = ランチャーが実行されている間、攻撃者はランチャーにコマンドを送れます。
+meaning.coverage = このスキャンの一部を実行できませんでした。対処方法は上の説明に書かれています。
+meaning.info = 参考情報です。判定には影響しません。
+
+# Details: "Your data the malware could reach".
+exposure.title = マルウェアがアクセスできたデータ
+exposure.note = このスキャンでは、これらのファイルが存在することだけを確認しました。ファイルは開いていません。エージェントの実行中は、そのコマンドでこれらのファイルを読み取ることができました。
+exposure.home_note = Wine プレフィックスが見つかったため、このコンピューターのホーム フォルダーを確認しました。スキャンしたプレフィックスが別のコンピューターで使われていた場合は、そのコンピューターを確認してください。
+exposure.saved_passwords = 保存されたパスワード
+exposure.wallets = ウォレット拡張機能
+exposure.secrets = 機密ファイル
+# {files} are file names such as "Login Data, key4.db".
+exposure.login = {browser}、プロファイル {profile} ({files})
+exposure.wallet = {browser}、プロファイル {profile} の {wallet} ({id})
+# What each secret file found holds.
+secret.aws = AWS の資格情報
+secret.github_cli = GitHub CLI のトークン
+secret.git = Git の資格情報
+secret.npm = npm の設定 (トークンが含まれる場合があります)
+secret.docker = Docker レジストリのログイン情報
+secret.kubernetes = Kubernetes の設定
+secret.gcloud = Google Cloud の資格情報
+secret.azure = Azure CLI のトークン
+secret.claude = Claude Code の資格情報
+secret.codex = Codex CLI の資格情報
+secret.gemini = Gemini CLI の資格情報
+secret.copilot = GitHub Copilot CLI の MCP 設定
+secret.opencode = opencode の資格情報
+secret.filezilla = FileZilla に保存されたサーバー
+secret.netrc = netrc のログイン情報
+secret.pypi = PyPI のトークン
+secret.crates = crates.io のトークン
+secret.vault = HashiCorp Vault のトークン
+secret.terraform = Terraform のトークン
+secret.pulumi = Pulumi の資格情報
+secret.kaggle = Kaggle の API キー
+secret.huggingface = Hugging Face のトークン
+secret.rclone = rclone の設定
+secret.s3cmd = s3cmd の設定
+secret.databricks = Databricks の設定
+secret.oci = Oracle Cloud の設定
+secret.gnupg = GnuPG の秘密鍵
+secret.env = .env ファイル
+secret.ssh = SSH の秘密鍵
+
+# Findings: a title and a detail each. {file} is a log file name, {files} is a count such as "2 files".
+finding.no_install.title = NIKKE のインストール フォルダーが見つかりませんでした
+finding.no_install.detail = ランチャー データは見つかりましたが、インストール フォルダーが見つからなかったため、debug.log とダウンロード ログは確認していません。NIKKE のインストール先がわかる場合は、そのフォルダーをスキャンしてください。ウィンドウでは「フォルダーをスキャン...」、コマンドでは nikke-check --cli <folder> を使います。
+finding.quick_scan.title = 今回はクイック スキャンでした
+finding.quick_scan.detail_windows = ランチャーがレジストリに記録しているインストール パス、ランチャー データ、各ローカル ドライブのルートから {depth} 階層下までのすべてのフォルダーを読み取りました。{depth} 階層より深い場所にあり、ランチャーに記録されなくなった NIKKE フォルダーは、フル スキャン (ウィンドウの「フル スキャン」、または nikke-check --cli --full) か「フォルダーをスキャン...」でしか見つかりません。
+finding.quick_scan.detail_macos = 一般的な Wine プレフィックスのフォルダー、それらのプレフィックスに記録されているインストール パス、/ から {depth} 階層下までのすべてのフォルダーを読み取りました。{depth} 階層より深い場所にあり、ランチャーに記録されなくなった NIKKE フォルダーは、フル スキャン (ウィンドウの「フル スキャン」、または nikke-check --cli --full) か「フォルダーをスキャン...」でしか見つかりません。
+finding.quick_scan.detail_linux = 一般的な Wine プレフィックスのフォルダー、それらのプレフィックスに記録されているインストール パス、そして /、ホーム フォルダー、および /mnt、/media、/run/media の下にある各ドライブのそれぞれから {depth} 階層下までのすべてのフォルダーを読み取りました。{depth} 階層より深い場所にあり、ランチャーに記録されなくなった NIKKE フォルダーは、フル スキャン (ウィンドウの「フル スキャン」、または nikke-check --cli --full) か「フォルダーをスキャン...」でしか見つかりません。
+finding.unreadable.title = 読み取れないフォルダーがありました
+finding.unreadable.detail = これらのフォルダーを開く権限がスキャンになかったため、中身は確認していません。macOS では、「システム設定」>「プライバシーとセキュリティ」で、ターミナル (またはこのツールを起動したアプリ) に「フルディスクアクセス」を許可してから、もう一度スキャンしてください。それ以外の OS では、これらのフォルダーを読み取れるユーザーとしてもう一度スキャンしてください。
+finding.network.title = ネットワーク ドライブはスキャンしていません
+finding.network.detail = コンピューターのスキャンでは、ネットワーク ドライブとリモート マウントをスキップします。読み取りに時間がかかり、接続が切れているとスキャンが止まることがあるためです。そこに NIKKE がインストールされている場合は、「フォルダーをスキャン...」または nikke-check --cli <folder> でスキャンしてください。
+finding.log_server.title = {file} にエージェント サーバーの名前があります
+finding.log_server.detail = {file} に analytics.insightjs.com または insight.bundle が記録されています。このサーバーはエージェントを配信するため、ランチャーは少なくともエージェントを要求する段階まで進んでいます。
+finding.log_mention.title = {file} に insightjs の記録があります
+finding.log_mention.detail = {file} に、悪意のあるローダー スクリプトのドメインである insightjs が記録されています。エージェント サーバー (analytics.insightjs.com または insight.bundle) を示す行はないため、これだけではエージェントがダウンロードされたかどうかはわかりません。
+finding.debug_unreadable.title = debug.log を読み取れませんでした
+finding.debug_unreadable.detail = Launcher/intl_service/debug.log は存在しますが、このスキャンには開く権限がなかったため、エージェントが実行されたかどうかを確認できませんでした。このファイルを読み取れるユーザーとしてもう一度スキャンしてください。
+finding.agent_ran.title = マルウェアのエージェントが実行されました
+finding.agent_ran.detail = debug.log に、リモート アクセス エージェントがランチャー内で起動したことが記録されています (k2f_chan registered)。ランチャーが開いている間、攻撃者はこのコンピューターでコマンドを実行できました。
+finding.payload_file.title = マルウェアのファイルがまだディスクに残っています
+finding.payload_file.detail = ランチャーのログ フォルダーにあるこのファイルは、LuaJIT バイトコードです。ランチャーは、ダウンロードしたエージェント (insight.bundle) を tinyget のログの名前で保存していました。
+finding.downloaded.title = ランチャーがマルウェアをダウンロードしました
+finding.downloaded.detail = {file} に、ランチャーが analytics.insightjs.com から insight.bundle をダウンロードしたことが記録されています。このファイルはリモート アクセス エージェントです。
+finding.download_attempt.title = ランチャーはマルウェアを要求しましたが、完了したダウンロードはありません
+finding.download_attempt.detail = {file} に analytics.insightjs.com への insight.bundle の要求が記録されていますが、完了を示す行はありません。失敗した要求では curl_error と total=0 が記録されます。ローダーはエージェントを要求しましたが、それだけではエージェントが届いたことにはなりません。エージェントが実行されたかどうかは debug.log でわかります。
+finding.install_found.title = NIKKE のインストールが見つかりました: {path}
+finding.install_found.debug_missing = Launcher/intl_service/debug.log は見つかりませんでした。削除されたか、このフォルダーからランチャーが一度も起動されていない可能性があります。
+finding.install_found.debug_unreadable = Launcher/intl_service/debug.log は存在しますが、読み取れませんでした (権限がありません)。
+finding.install_found.debug_checked = Launcher/intl_service/debug.log を確認しました。このファイルには、作成されてからの起動の記録が含まれています。
+# {note} is one of the three texts above.
+finding.install_found.written = {note} 最終書き込み: {time}。
+finding.data_link.title = ランチャー データ フォルダーがリンクのため、読み取っていません
+finding.data_link.detail = このフォルダーは {target} へのリンクです。リンク先が存在しないか、ドライブのルートか、リンクより上位のフォルダーであるため、中のファイルは確認していません。実際のランチャー データ フォルダーを「フォルダーをスキャン...」または nikke-check --cli <folder> でスキャンしてください。
+finding.data_link.unknown_target = 不明なリンク先
+finding.agent_state.title = マルウェアのエージェントがランチャー データに痕跡を残しています
+finding.agent_state.detail = ランチャー データ内の {files}に、k2f_chan (エージェントのブリッジ チャネル名) または k2f.agent.state (エージェントが保存する ID) が含まれています。これはエージェントが実行されたことを示しています。
+finding.agent_server.title = ランチャーがエージェント サーバーに接続しました
+finding.agent_server.detail = ネットワーク状態を記録した {files}に analytics.insightjs.com が記録されています。このサーバーはエージェント (insight.bundle) を配信し、エージェントからの定期的な接続 (チェックイン) を受け付けます。ローダーは実行されたもののエージェントは実行されなかった起動では、insightjs.com だけが記録されていました。
+finding.loader_cached.title = ランチャーが悪意のあるスクリプトを読み込みました
+finding.loader_cached.detail = ランチャーの内蔵ブラウザーがキャッシュした {files}に、insightjs.com のローダーのアドレスが含まれています。挿入されたスクリプトは実行されましたが、これだけではエージェントがダウンロードされたかどうかはわかりません。
+finding.network_state.title = ランチャーが insightjs.com に接続しました
+finding.network_state.detail = ネットワーク状態を記録した {files}に insightjs.com が記録されているため、ランチャーの内蔵ブラウザーはこのドメインに接続しています。
+finding.data_mention.title = ランチャー データに insightjs.com の記録があります
+finding.data_mention.detail = ランチャー データ内の {files}に insightjs.com が含まれています。
+finding.data_clean.title = ランチャー データに痕跡はありません
+finding.data_clean.detail = {files}を確認しました。
+# {browser} is a browser name such as Chrome or Edge.
+finding.persistence.title = {browser} の永続化の仕組みがインストールされています
+finding.persistence.dll = {browser} のユーザー データ内にマルウェアのフォルダーがあり、platform_experience_helper.dll が入っています。乗っ取られた HKCU の COM 登録によって、{browser} はこの DLL を読み込みます。
+finding.persistence.hash_dir = {browser} のユーザー データ内にマルウェアのフォルダーがあります。64 文字の 16 進数 (SHA-256) の名前が付いたサブフォルダーで、マルウェアはここに platform_experience_helper.dll を置きます。DLL 自体は見つからなかったため、すでに削除されている可能性があります。
+# For Chrome, {text} is one of the two texts above.
+finding.persistence.chrome = {text} マルウェアは、Chrome がインストールされていなくてもこのフォルダーを作成します。
+finding.helper_folder.title = {browser} の Platform Experience Helper フォルダー
+finding.helper_folder.chrome = このフォルダーには platform_experience_helper.dll も、64 文字の 16 進数の名前が付いたサブフォルダーもありません。これは Chrome 本来の Platform Experience Helper (platform_experience_helper.exe、LoadFeatures) と一致します。ユーザー単位でインストールされた Chrome は、これをここに置きます。感染の兆候ではありません。
+finding.helper_folder.other = このフォルダーには platform_experience_helper.dll も、64 文字の 16 進数の名前が付いたサブフォルダーもないため、マルウェアの構成とは一致しません。感染の兆候ではありません。
+finding.legacy.title = 以前の Chrome 永続化のファイルがインストールされています
+finding.legacy.detail = Chrome の Application\\PlatformExperienceHelper フォルダーに、エージェントのクリーンアップ コードが削除するファイル (platform_experience_helper.dll、platform_experience_helper.dll.old、または old-clsid.txt) があります。以前のバージョンのエージェントは、ここに DLL を置いていました。このフォルダーにある Chrome 自身の platform_experience_helper.exe は正常なファイルです。
+finding.temp.title = マルウェアが Temp に残したファイル
+finding.temp.detail = エージェントは一時ファイルに、k2f-bcreds-* (収集したブラウザーの資格情報)、k2f-keyscan-* (初期のビルド)、k2f_screen_* (スクリーンショット。.jpg、初期のビルドでは .png) という名前を付けます。
+finding.hex_id.title = Temp にある 16 進数 ID のファイル
+finding.hex_id.detail = Temp にある 22 バイトの .tmp ファイルに、22 文字の 16 進数 ID が入っています。調査した感染コンピューターでは、このようなファイルがエージェントのダウンロードの 1 秒前に書き込まれていました。ほかの Tencent 製ソフトウェアも同じ名前のファイルを書き込むため (CDN のファイルが書き換えられる前の 2026-09-20 の日付の Delta Force のプレフィックスで確認されています)、これだけでは感染の兆候ではありません。
+finding.registry.title = レジストリの永続化が見つかりました (HKCU CLSID の乗っ取り)
+# {detail} is one of the two "where" texts below.
+finding.registry.detail = {detail} マルウェアは、Google Chrome に DLL を読み込ませるためにこのキーを登録します。wpc.dll を指す HKLM のコピーは Windows の一部であり、正常です。
+finding.registry_leftover.title = 永続化に使われたレジストリ キーの残骸 (HKCU CLSID)
+finding.registry_leftover.detail = {detail} 既定値が空か、存在しません。エージェントが DLL をインストールした後にアンインストールすると、値は消去されますがキーは残ります。DLL はまだディスクに残っている可能性があります。wpc.dll を指す HKLM のコピーは Windows の一部であり、正常です。
+finding.registry.where_windows = HKCU の下にキー {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32 が存在します (下記を参照)。
+finding.registry.where_wine = この Wine プレフィックスの HKCU ハイブである user.reg に、キー {E77CC89B-7401-4C04-8CED-149DB35ADD04} が含まれています。
+finding.launcher_running.title = NIKKE ランチャーが現在実行中です
+finding.launcher_running.detail = 今すぐランチャーを閉じ (閉じない場合はプロセスを終了します)、ネットワークから切断してください。実行中は、攻撃者がこのコンピューターにコマンドを送れます。
+finding.dll_loaded.title = 永続化の DLL が現在読み込まれています
+finding.dll_loaded.detail = これらのプログラムに、マルウェアの platform_experience_helper.dll が読み込まれています。プログラムが終了するまで、Windows はこのファイルをロックします。また、HKCU のキーが残っている間は、Chrome が次回の起動時に再び読み込みます。レジストリ キーを削除し、Windows を再起動してから、DLL のフォルダーを削除してください。
+
+# "Show technical details": lines the tool writes among the lines quoted from files.
+evidence.luajit = LuaJIT バイトコードのヘッダー (1B 4C 4A)、{size} バイト。既知のビルドは 205,135 バイトで、k2f.lua として保存された 10 月 23 日のビルドは 165,108 バイトでした。
+# One TransportSecurity entry. {host} is a domain, {time} a UTC time.
+evidence.hsts = {host} の HSTS エントリ、最終受信 {time}
+evidence.hsts_no_time = {host} の HSTS エントリ
+evidence.in_file = {file}: {text}
+evidence.empty_folder = (空のフォルダー)
+evidence.registry_value = {key}\\InprocServer32 (既定) = {value}
+evidence.value_not_set = (値の設定なし)
+evidence.dll_loaded = PID {pid}: {program} ({exe}) に {dll} が読み込まれています
+# The last line of a list that was cut.
+evidence.total = ... 合計 {total} 件
+
+# "Open folder" and the other buttons that open a window, when it fails.
+open.gone = {path} はもう存在しません。
+open.windows_only = {program} は Windows でのみ使用できます。
+open.failed = ファイル マネージャーを開けませんでした ({status})
+open.shell_execute = ShellExecute エラー {code}
+
+# The window.
+ui.tab.happened = 何が起きたか
+ui.tab.todo = 対処方法
+ui.tab.details = 詳細
+ui.copied = コピーしました
+ui.button.scan_computer = このコンピューターをスキャン
+ui.button.full_scan = フル スキャン
+ui.button.scan_folder = フォルダーをスキャン...
+ui.button.scan_again = もう一度スキャン
+ui.button.new_scan = 新しいスキャン
+ui.button.stop = スキャンを停止
+ui.button.copy_report = レポートをコピー
+ui.button.save_report = レポートを保存...
+ui.button.see_todo = 対処方法を見る
+ui.button.open_folder = フォルダーを開く
+ui.button.task_manager = タスク マネージャーを開く
+ui.button.registry_editor = レジストリ エディターを開く
+ui.button.copy_path = パスをコピー
+ui.button.copy_link = リンクをコピー
+ui.button.open_link = リンクを開く
+ui.button.show = 表示
+ui.button.hide = 非表示
+ui.button.show_details = 技術的な詳細を表示
+ui.button.hide_details = 技術的な詳細を非表示
+ui.hide_info = 個人情報を隠す
+ui.hide_info_note = 「個人情報を隠す」は、「レポートをコピー」と「レポートを保存...」に適用されます。ウィンドウにはすべての情報が表示されたままです。
+ui.done = 完了
+# File dialogs.
+ui.dialog.pick_folder = スキャンするフォルダーを選択
+ui.dialog.save = レポートを保存
+ui.dialog.text_files = テキスト
+# One line shown above the screen.
+ui.notice.only_folders = スキャンできるのはフォルダーだけです。ファイルが入っているフォルダーをドロップしてください。
+ui.notice.stopped = スキャンを停止しました。
+ui.notice.saved = レポートを {path} に保存しました。
+ui.notice.save_failed = レポートを保存できませんでした: {error}
+ui.notice.save_failed_plain = レポートを保存できませんでした。
+ui.notice.open_failed = 開けませんでした: {error}
+ui.notice.open_failed_plain = 開けませんでした。
+# Start screen. The helper's speech bubble comes first.
+ui.home.hint = こんにちは、MotherSphere です。まずは「このコンピューターをスキャン」から始めてください。このツールはファイルを読み取るだけで、何も削除せず、ネットワーク経由で何も送信しません。
+ui.home.title = まだスキャンしていません
+ui.home.computer = コンピューターのスキャン
+ui.home.quick_windows = ランチャーがレジストリに記録しているインストール パス、ユーザー プロファイル、ランチャー データ、各ローカル ドライブの 5 階層までのすべてのフォルダーを読み取ります。通常は数秒で終わります。
+ui.home.quick_macos = Wine、CrossOver、Whisky、Wineskin、Heroic のプレフィックスと、それらに記録されているインストール パス、/ から 5 階層下までのすべてのフォルダー (ローカル ボリュームを含む) を読み取ります。ネットワーク ボリュームはスキップします。
+ui.home.quick_linux = Steam、Lutris、Heroic、Bottles、Faugus のすべての Wine プレフィックスと、それらに記録されているインストール パス、そして /、ホーム フォルダー、および /mnt、/media、/run/media の下にある各ドライブのそれぞれから 5 階層下までのすべてのフォルダーを読み取ります。ネットワーク マウントはスキップします。
+ui.home.full = フル スキャンでは、5 階層より深い場所にあってランチャーに記録されなくなった NIKKE フォルダーを探すため、すべてのローカル ドライブのすべてのフォルダーを開きます。大容量のドライブでは長い時間がかかることがあります。
+ui.home.folder = フォルダーのスキャン
+ui.home.folder_text = 1 つのフォルダーとその下にあるすべてのもの (中にある Wine プレフィックスを含む) をスキャンします。
+ui.home.drop = このウィンドウにフォルダーをドロップすることもできます。
+ui.home.no_dialog = フォルダーを選ぶダイアログが開かない場合は、ターミナルで nikke-check --cli <folder> を実行してください。
+# Scan screen.
+ui.scan.title = {target} をスキャンしています
+ui.scan.elapsed = 経過時間
+ui.scan.searching = NIKKE のインストールと Wine プレフィックスを探しています
+ui.scan.programs = 実行中のプログラムを確認しています
+ui.scan.locations = 見つかった場所を確認しています
+ui.scan.locations_one = 1 か所を確認しています
+ui.scan.locations_other = {n} か所を確認しています
+ui.scan.progress = {done} / {total}
+ui.scan.hosts = hosts ファイルを確認しています
+ui.tile.items = スキャンした項目
+ui.tile.folders = フォルダー
+ui.tile.locations = 見つかった場所
+ui.tile.findings = これまでの検出結果
+ui.failed.windows = 内部エラーのため、スキャンが停止しました。もう一度試すか、このプログラムがあるフォルダーから PowerShell で {command} を実行して、レポートを表示してください。
+ui.failed.other = 内部エラーのため、スキャンが停止しました。もう一度試すか、nikke-check --cli を実行して、ターミナルにレポートを表示してください。
+# Result screen.
+ui.happened.payload_build = ペイロードのビルド
+ui.happened.agent_runs = ログに記録されたエージェントの実行
+ui.todo.hint = 手順は 1 つずつ、順番に行ってください。ボタンを押すと該当するフォルダーやツールが開きますが、ファイルの削除はご自身で行ってください。このプログラムが何かを削除することはありません。
+ui.todo.note = これらの手順は、このスキャンで見つかったものに基づいており、行う順番に並んでいます。「完了」のチェックは保存されません。
+ui.tile.critical = 重大
+ui.tile.warnings = 警告
+ui.tile.info = 情報
+ui.tile.duration = 所要時間
+ui.details.checked = 確認した場所: {summary}。スキャン対象: {scope}。
+# A section title and its number of findings: "Information (3)".
+ui.details.section_count = {title} ({n})
+ui.details.hosts = hosts ファイル: {path}。これは感染のチェックではありません。ドメインがブロックされているかどうかを示します。
+ui.details.protection = 保護
+ui.details.limits = このチェックの限界
+ui.details.locations = 確認した場所
+ui.details.none_found = 見つかりませんでした。
+ui.details.folders_checked = 確認したフォルダー

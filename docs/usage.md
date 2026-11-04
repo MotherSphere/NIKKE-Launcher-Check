@@ -78,7 +78,61 @@ macOS keeps some folders private until you allow access. When the report says th
 
 ## The window
 
-Start `nikke-check` with no arguments to open the window. The bar at the top shows the version and "Read-only. No network access."
+Start `nikke-check` with no arguments to open the window. The bar at the top shows the version and "Read-only. No network access." The menu at the bottom left sets the language (see [Language](#language)).
+
+### Language
+
+The window and the report are available in 16 languages. Each start uses the language of the system, so in most cases there is nothing to set. The codes are the ones `--lang` takes, and the menu shows each language under its own name:
+
+| Language | Name in the menu | Code |
+|---|---|---|
+| English | English | `en` |
+| Japanese | 日本語 | `ja` |
+| Korean | 한국어 | `ko` |
+| Simplified Chinese | 简体中文 | `zh-Hans` |
+| Traditional Chinese | 繁體中文 | `zh-Hant` |
+| Thai | ไทย | `th` |
+| Vietnamese | Tiếng Việt | `vi` |
+| Indonesian | Bahasa Indonesia | `id` |
+| French | Français | `fr` |
+| German | Deutsch | `de` |
+| Spanish | Español | `es` |
+| Portuguese (Brazil) | Português (Brasil) | `pt-BR` |
+| Russian | Русский | `ru` |
+| Polish | Polski | `pl` |
+| Turkish | Türkçe | `tr` |
+| Italian | Italiano | `it` |
+
+A text that has no translation yet shows in English.
+
+#### How the system language is chosen
+
+At start, the tool reads the system's list of preferred languages, top first, and takes the first one in the table above. If none of them is in the table, it uses English. The list comes from:
+
+- Windows: the Windows display language, then the other languages in Settings > Time & language > Language & region, top first.
+- macOS: Preferred languages in System Settings > General > Language & Region, top first.
+- Linux and Steam Deck: the `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` and `LANG` environment variables, in that order. `LANGUAGE` can hold several languages separated by colons, such as `fr:de`.
+
+The tool looks at the language part and ignores the country, the encoding and letter case, so `fr-CA`, `fr_BE.UTF-8` and `FR` all give French, and `es-419` gives Spanish. A few cases need a rule:
+
+- Chinese: a script in the name decides first, so `zh-Hans` gives Simplified Chinese and `zh-Hant` gives Traditional Chinese. Without a script, `zh-TW`, `zh-HK` and `zh-MO` give Traditional Chinese, and `zh`, `zh-CN`, `zh-SG` or any other Chinese gives Simplified Chinese.
+- Portuguese: `pt-PT` and plain `pt` give Portuguese (Brazil), the only Portuguese translation.
+- Indonesian: the old code `in` gives Indonesian, like `id`.
+- A language that is not in the table, such as Norwegian (`nb-NO`), is skipped and the next one in the list is tried. On Linux, `LANGUAGE=nb_NO:de` gives German.
+- The `C` and `POSIX` locales are skipped too. With `LANG=C` and nothing else set, the tool uses English.
+
+#### Changing the language
+
+The menu at the bottom left of every screen shows the current language. Pick another one and the window changes at once, including a result already on screen and the report that "Copy report" and "Save report..." give. It does not scan again, the open tab stays, and the "Done" marks stay.
+
+The choice is not saved, since the tool writes no file except a report you save. The next start uses the system language again. To start in a given language every time, add `--lang` and a code to the command (see [Command line](#command-line)):
+
+- Windows: right-click the `.exe` and pick "Show more options" > "Create shortcut" (on Windows 10, "Create shortcut"). Open the shortcut's Properties and, in "Target", add a space and `--lang fr` at the end, after the path and its closing quote if it has one: `C:\Users\you\Downloads\nikke-check-windows-x86_64.exe --lang fr`. Start the tool from that shortcut.
+- Linux, Steam Deck and macOS: start it from the terminal with `--lang`, such as `./nikke-check-linux-x86_64 --lang fr`.
+
+#### Fonts
+
+The window draws Japanese, Korean, Chinese and Thai with the fonts installed on the system: it has none of its own. Windows and macOS include fonts for these scripts. On Linux, any installed font that has the characters is used. If none has them, they show as empty boxes; install Noto Sans CJK (`noto-fonts-cjk` on Arch, `fonts-noto-cjk` on Debian and Ubuntu, `google-noto-sans-cjk-fonts` on Fedora) and Noto Sans Thai (`noto-fonts` on Arch, `fonts-noto-core` on Debian and Ubuntu, `google-noto-sans-thai-fonts` on Fedora). The `--cli` report is plain UTF-8 text, so the terminal's own fonts show it.
 
 ### Start screen
 
@@ -152,7 +206,7 @@ If the scan stops with an internal error, the window says so and offers "Scan ag
 
 ## The report
 
-"Copy report", "Save report..." and `--cli` give the same text report. Its parts, in order:
+"Copy report", "Save report..." and `--cli` give the same text report, in the language of the window or of `--lang`. The headings below are the English ones. Its parts, in order:
 
 1. The tool name and version, `Scan of:` (what was scanned) and `Started:` (the start time in UTC).
 2. `VERDICT:` and the summary of the verdict.
@@ -189,9 +243,14 @@ nikke-check --cli PATH...    Scan only these folders, in full, and print a repor
 nikke-check --cli --redact   Replace the computer name, user names, agent IDs
                              and home folder in the report (any --cli form)
 nikke-check --help           Show this help
+
+Language:
+  --lang CODE    Add to any form above to set the language of the window and
+                 the report. Without it, the language of the system is used.
+                 CODE: en ja ko zh-Hans zh-Hant th vi id fr de es pt-BR ru pl tr it
 ```
 
-`-h` is the same as `--help`. Examples:
+`-h` is the same as `--help`. `--lang` can go anywhere on the command line and the code can use any letter case, so `--lang PT-br` works. The help itself is printed in that language. Examples:
 
 ```
 nikke-check --cli                          # quick scan of this computer
@@ -199,6 +258,8 @@ nikke-check --cli --full                   # open every folder on every local dr
 nikke-check --cli /mnt/Games/NIKKE ~/.wine # scan only these folders
 nikke-check --cli --redact > report.txt    # scan this computer, save a report to share
 nikke-check /mnt/Games/NIKKE               # open the window and scan this folder
+nikke-check --lang ja                      # open the window in Japanese
+nikke-check --cli --lang de > bericht.txt  # report in German
 ```
 
 `--redact` and `--full` go after `--cli`, before or after the folders. A folder scan always opens every folder, so `--full` changes nothing there.
@@ -213,9 +274,9 @@ Exit codes with `--cli`:
 | 1 | Exposed (warnings only) |
 | 2 | Infected (critical traces) |
 | 3 | No NIKKE install or launcher data found |
-| 4 | Invalid arguments: an unknown option, or with `--cli` a path that is not a folder or a folder that cannot be read |
+| 4 | Invalid arguments: an unknown option, an unknown or missing `--lang` code, or with `--cli` a path that is not a folder or a folder that cannot be read |
 
-An unknown option such as `--foo` also exits with code 4 without `--cli`. `nikke-check PATH` does not check the path before the window opens. If PATH is not a folder, the window opens and says "Only folders can be scanned. Drop the folder that holds the file." If the window cannot open, the program prints `Could not open the window:` with the reason and exits with code 1. On Windows, where there is no console to print to, an error box shows the reason and the PowerShell command that gives the report without the window (see [Windows console](#windows-console)).
+An unknown option such as `--foo` also exits with code 4 without `--cli`, and so does `--lang` with an unknown code, which prints the valid codes. `nikke-check PATH` does not check the path before the window opens. If PATH is not a folder, the window opens and says "Only folders can be scanned. Drop the folder that holds the file." If the window cannot open, the program prints `Could not open the window:` with the reason and exits with code 1. On Windows, where there is no console to print to, an error box shows the reason and the PowerShell command that gives the report without the window (see [Windows console](#windows-console)).
 
 ### Windows console
 

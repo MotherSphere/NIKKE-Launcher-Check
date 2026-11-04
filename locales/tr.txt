@@ -1,0 +1,527 @@
+# NIKKE Launcher Check: Türkçe metinler. Bu klasördeki her dosya aynı anahtarları kullanır.
+#
+# Her satırda bir giriş vardır: anahtar = metin. # ile başlayan satırlar açıklamadır.
+# Yalnızca "=" işaretinden sonraki metni çevirin. Anahtarları değiştirmeyin.
+# Metinde \n yeni bir satır başlatır, \\ tek bir ters eğik çizgidir.
+# {name} programın doldurduğu bir değerdir: bir yol, bir sayı, bir dosya adı veya başka bir metin.
+# İngilizce metindeki her {name} değerini aynı adla koruyun. Cümle içindeki yerini değiştirebilirsiniz.
+# CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04} gibi diğer süslü ayraçlar düz metindir: koruyun.
+# Dosya adlarını, yolları, kayıt defteri anahtarlarını, komutları, alan adlarını, IP adreslerini ve karmaları olduğu gibi bırakın.
+# "Klasör tara..." gibi tırnak içindeki metinler bir düğmeyi veya bu pencerenin bir bölümünü adlandırır: o düğmenin
+# kendi girişindeki sözcükleri kullanın. Windows menüleri ve düğmeleri (Yönetici olarak çalıştır, Görevi sonlandır,
+# Dosya > Aç) Windows'un sizin dilinizde gösterdiği adlarla yazılır.
+# Bir çeviride eksik olan giriş İngilizce metni gösterir.
+
+# Komut satırı: nikke-check --help ve terminalde yazılan hatalar.
+cli.usage = NIKKE Launcher Check: Kasım 2026 NIKKE PC başlatıcısı saldırısının izlerini arar.\nSalt okunur. Ağ erişimi yok.\n\nKullanım:\n  nikke-check                  Pencereyi açar\n  nikke-check YOL              Pencereyi açar ve bu klasörü tarar\n  nikke-check --cli            Bu bilgisayarı hızlı tarar ve bir rapor yazar\n  nikke-check --cli --full     Tam tarama: her yerel sürücüdeki her klasörü açar\n  nikke-check --cli YOL...     Yalnızca bu klasörleri eksiksiz tarar ve bir rapor yazar\n  nikke-check --cli --redact   Rapordaki bilgisayar adını, kullanıcı adlarını,\n                               ajan kimliklerini ve ana klasörü başka bir metinle\n                               değiştirir (her --cli biçiminde)\n  nikke-check --help           Bu yardımı gösterir\n\nDil:\n  --lang KOD     Pencerenin ve raporun dilini seçmek için yukarıdaki\n                 biçimlerden herhangi birine ekleyin. Belirtilmezse\n                 sistemin dili otomatik olarak kullanılır.\n                 KOD: {codes}\n\nÇıkış kodları (--cli):\n  0  iz bulunamadı\n  1  maruz kalmış (yalnızca uyarılar)\n  2  enfekte (kritik izler)\n  3  NIKKE kurulumu veya başlatıcı verisi bulunamadı\n  4  geçersiz bağımsız değişkenler veya okunamayan bir klasör\n
+cli.unknown_argument = Bilinmeyen bağımsız değişken: {arg}
+cli.lang_missing = --lang için bir dil kodu gerekir: {codes}
+cli.lang_unknown = Bilinmeyen dil kodu: {code}. Şunlardan birini kullanın: {codes}
+cli.cannot_read_folder = {path} klasörü okunamıyor: {error}
+cli.not_a_folder = Klasör değil: {path}
+cli.window_failed = Pencere açılamadı: {error}
+# Pencere açılamadığında gösterilen Windows hata kutusu. {command} bir PowerShell komutudur.
+cli.error_box = Pencere açılamadı:\n{error}\n\nRaporu pencere olmadan almak için bu programın bulunduğu klasörde PowerShell'i açın ve şu komutu çalıştırın:\n\n{command}
+
+# Üst çubuk, başlangıç ekranı ve rapor başlığı.
+report.read_only = Salt okunur. Ağ erişimi yok.
+report.about = 27 Eylül 2026'da Level Infinite CDN'i üzerindeki dört dosya, NIKKE PC başlatıcısının içinde insightjs.com adresinden bir betik yükleyecek şekilde değiştirildi. Bu betik en geç 23 Ekim 2026'dan itibaren bir uzaktan erişim ajanı (insight.bundle) indirdi. Bu ajan komut çalıştırabilir, dosya okuyabilir, ekran görüntüsü alabilir ve tarayıcı verilerini toplayabilir. Dosyalardan üçü 3 Kasım'da yenileriyle değiştirildi. Dördüncüsü 28 Ekim'de temizlendi, ancak bazı CDN sunucuları 3 Kasım'da hâlâ eski kopyayı dağıtıyordu. Bu araç, yükleyicinin ve ajanın diskte bıraktığı izleri arar.
+# Taranan yer ("Taranan: ...", "Taranıyor: ...").
+report.scope.computer = bu bilgisayar
+report.scope.quick = bu bilgisayar (hızlı tarama)
+report.scope.full = bu bilgisayar (tam tarama)
+
+# Sonuç: bir başlık, ardından bir cümle.
+verdict.infected.title = Enfekte
+verdict.infected.summary = Kritik izler bulundu: ajan indirildi veya çalıştı, kalıcılık kurdu ya da başlatıcı şu anda çalışıyor. Bu bilgisayarı ele geçirilmiş kabul edin.
+verdict.exposed.title = Maruz kalmış
+verdict.exposed.summary = Başlatıcı kötü amaçlı betiği yükledi veya insightjs.com ile bağlantı kurdu, ancak ajanın çalıştığına dair bir işaret bulunamadı.
+verdict.no_traces.title = İz bulunamadı
+verdict.no_traces.summary = Bu taramanın bulduğu NIKKE dosyalarında kötü amaçlı betiğe veya ajana ait bir iz bulunamadı.
+verdict.not_found.title = NIKKE bulunamadı
+verdict.not_found.summary = Bu taramanın kontrol ettiği yerlerde NIKKE kurulumu veya başlatıcı verisi bulunamadı.
+
+# Bulguların önem etiketleri ve rapordaki etiketler ("[KRİTİK]").
+severity.critical = KRİTİK
+severity.warning = UYARI
+severity.info = BİLGİ
+
+# Bir taramanın kontrol ettiği konum türleri (raporda "[NIKKE kurulumu] /yol").
+kind.install = NIKKE kurulumu
+kind.launcher_data = Başlatıcı verileri
+kind.wine_prefix = Wine prefix'i
+kind.user_profile = Kullanıcı profili
+# Klasörü olmayan bulgu grupları.
+group.running = Çalışan programlar
+group.coverage = Tarama kapsamı
+
+# Pencerede ve raporda "Bu kontrolün sınırları".
+report.caveat.debug_log = NIKKE klasörü silindiğinde veya yeniden kurulduğunda debug.log kaybolur. Başlatıcı verilerindeki k2f.agent.state kontrolü bu dosyaya bağlı değildir.
+report.caveat.not_proof = Hiçbir şey bulunmaması, bilgisayarın temiz olduğunu kanıtlamaz.
+report.caveat.no_logs = Ajanın çalıştırdığı komutlar günlük bırakmaz, bu nedenle bu araç saldırganın ne yaptığını belirleyemez.
+
+# Koruma: Ayrıntılar'da ve raporda hosts dosyası.
+hosts.blocked = engellenmiş
+hosts.not_blocked = engellenmemiş
+hosts.unknown = durumu bilinmiyor
+hosts.missing = Bu bilgisayarda hosts dosyası yok, bu nedenle hiçbir şeyi engellemiyor.
+hosts.unreadable = Bu araç hosts dosyasını okuyamadı, bu nedenle dosyanın hangi alan adlarını engellediği bilinmiyor.
+hosts.block_lines_intro = Engellenmiş olarak gösterilmeyen alan adlarını engellemek için hosts dosyasına şu satırları ekleyin:
+hosts.note = Hosts dosyasını düzenlemek için yönetici hakları gerekir. Bu araç dosyayı hiçbir zaman düzenlemez.
+hosts.ip_note = 89.127.233.127 ve 89.126.250.172 IP adresleri hosts dosyasıyla engellenemez. Bunları güvenlik duvarınızda veya yönlendiricinizde engelleyin.
+
+# Ayrıntılar'da "Kontrol edilen: ..." ve raporda "Kontrol edilen konumlar: ...", virgülle birleştirilir.
+report.checked.install_one = {n} NIKKE kurulumu
+report.checked.install_other = {n} NIKKE kurulumu
+report.checked.launcher_data_one = {n} başlatıcı verisi klasörü
+report.checked.launcher_data_other = {n} başlatıcı verisi klasörü
+report.checked.wine_prefix_one = {n} Wine prefix'i
+report.checked.wine_prefix_other = {n} Wine prefix'i
+report.checked.user_profile_one = {n} kullanıcı profili
+report.checked.user_profile_other = {n} kullanıcı profili
+report.checked.nothing = kontrol edilecek bir şey yok
+
+# "Tarama istatistikleri: ...". {skipped}, aşağıdaki iki "atlandı" metninden biridir veya boştur.
+report.stats = {entries} öğe incelendi ({folders} klasör), {errors} izin hatası{skipped}, {seconds} sn.
+report.stats.skipped_one = , 1 ağ sürücüsü atlandı
+report.stats.skipped_other = , {n} ağ sürücüsü atlandı
+report.stats.cap = Öğe sınırına ulaşıldı, bu nedenle bazı klasörler incelenmedi.
+
+# Metin raporu (CLI çıktısı, "Raporu kopyala" ve "Raporu kaydet...").
+report.scan_of = Taranan: {scope}
+report.started = Başlangıç: {time}
+report.verdict = SONUÇ: {verdict}
+report.what_happened = NE OLDU
+# "Ne oldu" bölümündeki bir yanıt: soru ve cevabı (Evet, Hayır...).
+report.answer = {question} {reply}.
+report.agent_runs = Günlüklerde ajanın çalışma kayıtları:
+report.payload_build = Ajan dosyası derlemesi: {build}
+report.what_to_do = NE YAPMALI
+report.open = Açın: {path}
+report.details = AYRINTILAR
+report.locations_checked = Kontrol edilen konumlar: {summary}
+report.exposure_heading = {heading}:
+report.exposure_none = {heading}: bulunamadı.
+report.exposure_item = {what}: {path}
+report.folders_checked = Kontrol edilen klasörler:
+report.no_findings = Bulgu yok.
+report.protection = KORUMA (hosts dosyası: {path})
+report.protection_note = Bu bir enfeksiyon kontrolü değildir. Alan adlarının engellenip engellenmediğini gösterir.
+report.domain_state = {domain}: {state}
+report.limits = BU KONTROLÜN SINIRLARI
+report.write_up = İnceleme yazısı: {url}
+report.scan_stats = Tarama istatistikleri: {stats}
+# Bir bulgunun bulunduğu yer: "NIKKE kurulumu: /yol".
+report.location = {label}: {path}
+
+# Ayrıntılar'da ve raporda bir bulgunun satırları.
+details.meaning = Bunun anlamı: {text}
+details.found_in = Bulunduğu yer: {location}
+details.path = Yol: {path}
+details.time = Zaman: {time}
+# Kopyalanacak bir kayıt defteri anahtarı veya metin: "Kayıt defteri anahtarı: HKCU\...".
+details.copy = {label}: {text}
+details.copy_label.registry = Kayıt defteri anahtarı
+details.copy_label.text = Metin
+
+# Günlüklerden okunan zamanlar. Günlük zamanları, başlatıcıyı çalıştıran bilgisayarın saatini kullanır.
+time.local = {time} (yerel saat)
+time.local_no_year = {time} (yerel saat, yıl günlüğe yazılmamış)
+
+# "Ne oldu": dört soru, her birinin cevabı ve gerekçeleri.
+answer.yes = Evet
+answer.no = Hayır
+answer.cannot_tell = Belirlenemiyor
+answer.partly = Kısmen
+# Gerekçe olarak kullanılan bir bulgu başlığı.
+answer.finding = {title}.
+answer.ran.question = Kötü amaçlı yazılım bu bilgisayarda çalıştı mı?
+answer.ran.nothing_checked = NIKKE kurulumu veya başlatıcı verisi bulunamadığı için kontrol edilecek bir şey yoktu.
+answer.ran.no_agent_log = Ajanın kendisinin başladığını gösteren bir günlük yok, ancak günlükler silinebilir veya kırpılabilir.
+answer.ran.loader = Başlatıcı kötü amaçlı betiği yükledi, ancak ajana ait bir iz bulunamadı.
+answer.ran.act_as_if = Ajan en geç 23 Ekim 2026'dan itibaren yalnızca bazı başlatmalarda gönderildi. Başlatıcı bu tarihte veya sonrasında açıldıysa ajan çalışmış gibi davranın.
+answer.ran.nothing = Kötü amaçlı betiğe veya ajana ait bir iz bulunamadı.
+answer.ran.no_install = NIKKE kurulum klasörü bulunamadı, bu nedenle debug.log ve indirme günlükleri kontrol edilmedi.
+answer.ran.gaps = Bu taramanın bir bölümü yapılamadı. Ayrıntılar sekmesindeki "Bu taramada kontrol edilemeyenler" bölümüne bakın.
+answer.ran.quick = Bu bir hızlı taramaydı. Hızlı tarama klasörleri yalnızca {depth} düzey derinliğe kadar açar. Tam tarama daha derindeki klasörleri de kontrol eder.
+answer.active.question = Hâlâ etkin olan bir şey var mı?
+answer.active.launcher = NIKKE başlatıcısı şu anda çalışıyor. Başlatıcı çalıştığı sürece saldırgan ona komut gönderebilir.
+answer.active.dll_loaded = Kötü amaçlı yazılımın DLL dosyası şu anda {programs} içinde yüklü.
+answer.active.registry = Tarayıcının kötü amaçlı yazılımın DLL dosyasını yüklemesini sağlayan kayıt defteri anahtarı ayarlı.
+answer.active.none = Başlatıcı çalışmıyor ve kurulu ya da yüklenmek üzere ayarlanmış bir DLL yok.
+answer.clean.question = Temizlenecek bir şey var mı?
+answer.clean.dll_folder = {browser} DLL klasörü: {path}
+answer.clean.registry = HKCU kayıt defteri anahtarı {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+answer.clean.leftover = Kötü amaçlı yazılım DLL yolunu sildikten sonra geride kalan boş HKCU kayıt defteri anahtarı {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+answer.clean.legacy = {path} konumundaki eski DLL dosyaları
+answer.clean.temp = {path} konumundaki k2f dosyaları
+answer.clean.cache = Kötü amaçlı yazılımın izlerini barındıran başlatıcı önbelleği: {path}
+answer.clean.none_cache = Kötü amaçlı yazılımın bıraktığı bir dosya bulunamadı. Yine de başlatıcıyı yeniden açmadan önce başlatıcı önbelleğini (tbs_cache) silin: düzeltmeden önceki kötü amaçlı betik hâlâ içinde olabilir.
+answer.clean.none = Kötü amaçlı yazılımın bıraktığı hiçbir şey bulunamadı.
+answer.protected.question = Bir dahaki sefere karşı korunuyor musunuz?
+answer.protected.not_checked = Bu tarama hosts dosyasını kontrol etmedi.
+answer.protected.domain = {domain}: hosts dosyasında {state}.
+answer.protected.ip = IP adresleri hosts dosyasıyla engellenemez ve bu tarama güvenlik duvarını kontrol edemez. 89.127.233.127 ve 89.126.250.172 adreslerini güvenlik duvarınızda veya yönlendiricinizde engelleyin.
+
+# Günlüklerde bulunan ajan çalışmaları, her biri bir satır: "{time}: {what}".
+run.line = {time}: {what}
+run.line_from = {time}: {what} (kaynak: {file})
+run.no_time = zaman günlüğe yazılmamış
+run.downloaded = başlatıcı ajanı indirdi
+run.downloaded_as = başlatıcı ajanı indirdi ve {file} adıyla kaydetti
+run.adopted = ajan bu bilgisayarda ilk kez başladı ve kimliğini oluşturdu
+run.resumed = ajan kaydettiği kimlikle yeniden başladı
+run.started = ajan bilgisayar adını saldırgana gönderdi
+run.started_as = ajan {host} bilgisayar adını saldırgana gönderdi
+
+# "Ajan dosyası derlemesi": ajan dosyasının her derlemesi için bir satır. Parçalar aynı satırda art arda gelir.
+build.no_etag = ETag yok
+build.uploaded = , yüklenme: {time}
+build.last_modified = , son değişiklik: {time}
+build.size = , {size} bayt
+build.known = , bilinen {n} derlemeden biri.
+build.unknown = . Bilinen {n} derlemeden biri değil.
+build.received = Başlatıcının dosyayı aldığı zaman: {time}.
+
+# Birkaç ekranda kullanılan düğmeler.
+common.copy = Kopyala
+common.copy_command = Komutu kopyala
+common.copy_key_path = Anahtar yolunu kopyala
+common.copy_hosts_path = Hosts dosyası yolunu kopyala
+common.copy_lines = Bu satırları kopyala
+common.copy_list = Bu listeyi kopyala
+# Birleştirilen iki ad, örneğin "Chrome ve Edge DLL dosyasını kaldırın".
+common.and = {a} ve {b}
+common.files_one = {n} dosya
+common.files_other = {n} dosya
+
+# "Ne yapmalı": adımlar. Her başlığın ardından kendi metinleri gelir.
+step.scan_folder.title = NIKKE'nin kurulu olduğu klasörü tarayın
+step.scan_folder.windows = NIKKE bu taramanın bakmadığı bir yerde, örneğin başka bir sürücüde kuruluysa o klasörü "Klasör tara..." ile tarayın. Bu programın bulunduğu klasörde PowerShell'den aşağıdaki komutu çalıştırarak da tarayabilirsiniz. D:\\Games\\NIKKE yerine kendi NIKKE klasörünüzü yazın.
+step.scan_folder.other = NIKKE bu taramanın bakmadığı bir yerde, örneğin başka bir sürücüde kuruluysa o klasörü tarayın: pencerede "Klasör tara..." ile veya terminalde nikke-check --cli <klasör> ile.
+step.full_scan.title = Tam taramayı çalıştırın
+step.full_scan.intro = Bu bir hızlı taramaydı. Hızlı tarama klasörleri yalnızca {depth} düzey derinliğe kadar açar. NIKKE'nin nerede olduğunu bilmiyorsanız veya daha derinde eski bir kopya olabilirse tam tarama her yerel sürücüdeki her klasörü açar. Büyük sürücülerde uzun sürebilir.
+step.full_scan.powershell = Bu programın bulunduğu klasörde, PowerShell'de:
+step.full_scan.terminal = Terminalde: nikke-check --cli --full
+step.close.title_launcher = Başlatıcıyı kapatın
+step.close.title_programs = Kötü amaçlı yazılımı çalıştıran programları kapatın
+step.close.launcher = NIKKE başlatıcısı çalışıyor. Başlatıcı çalıştığı sürece saldırgan bu bilgisayara komut gönderebilir. Başlatıcıyı hemen kapatın ve bu bilgisayarın ağ bağlantısını kesin.
+step.close.dll_loaded_one = {programs} içinde kötü amaçlı yazılımın DLL dosyası yüklü. Mümkünse bu programı kapatın. Sonraki bir adımdaki yeniden başlatma, DLL dosyasını tüm programların belleğinden kaldırır.
+step.close.dll_loaded_other = {programs} içinde kötü amaçlı yazılımın DLL dosyası yüklü. Mümkünse bu programları kapatın. Sonraki bir adımdaki yeniden başlatma, DLL dosyasını tüm programların belleğinden kaldırır.
+step.close.explorer = explorer.exe işlemini sonlandırmayın: görev çubuğunu ve masaüstünü o çalıştırır. Yeniden başlatma DLL dosyasını explorer.exe belleğinden de kaldırır.
+step.close.programs = Sonlandırılacak programlar: {programs}.
+step.close.task_manager = Bir program kapanmazsa Görev Yöneticisi'ni açın (Ctrl+Shift+Esc), programı Ayrıntılar sekmesinde bulun, seçin ve Görevi sonlandır'a tıklayın.
+step.close.pkill = Başlatıcı kapanmazsa terminalde şu komutu çalıştırın:
+step.save.title = Bir şey silmeden önce raporu kaydedin
+# Bu adımın ilk metni, art arda gelen bu cümlelerden oluşur.
+step.save.record = Rapor, bu taramanın bulduklarının kaydıdır.
+step.save.agent_state = tbs_cache silindiğinde k2f.agent.state izi de silinir.
+step.save.cache_traces = tbs_cache silindiğinde bu taramanın orada bulduğu izler de silinir.
+step.save.restart = Sonraki adımdaki yeniden başlatma bu pencereyi kapatır.
+step.save.hide = Raporu paylaşmadan önce "Bilgilerimi gizle" seçeneğini açın (komut satırında --redact): kopyalanan veya kaydedilen raporda bilgisayar adınızı, kullanıcı adlarınızı, ajan kimliğini ve ana klasörünüzü başka bir metinle değiştirir. Pencere bunları göstermeye devam eder.
+step.dll.title_files = {browsers} DLL dosyasını kaldırın
+step.dll.title_leftover = Geride kalan kayıt defteri anahtarını silin
+step.dll.title_key = Kayıt defteri anahtarını silin
+step.dll.offline_loaded = Bu adım tamamlanana kadar bu bilgisayarı çevrimdışı tutun: şu anda bir programda DLL dosyası yüklü.
+step.dll.offline_key = Bu adım tamamlanana kadar bu bilgisayarı çevrimdışı tutun: anahtar ayarlı kaldığı sürece tarayıcı her başladığında DLL dosyasını yükler.
+step.dll.order = Bunları bu sırayla yapın. Windows yeniden başlayana kadar DLL dosyasını kilitli tutar, bu yüzden önce kayıt defteri anahtarı silinir.
+step.dll.delete_key = Kayıt defteri anahtarını silin. Kayıt Defteri Düzenleyicisi'ni açın (Win+R tuşlarına basın, regedit yazın ve Enter tuşuna basın), aşağıdaki anahtar yolunu üstteki adres çubuğuna yapıştırın ve Enter tuşuna basın. Sol bölmede seçili anahtara sağ tıklayın ve Sil'i seçin.
+step.dll.leftover = Boş bir anahtar geride kalmış bir artıktır: kötü amaçlı yazılım DLL yolunu kaldırdı ama anahtarı bıraktı. Bu anahtarı da aynı şekilde silin.
+step.dll.restart = Windows'u yeniden başlatın. Sonra bu aracı yeniden açın ve tarama yapın: silinecek ne kaldığını gösterir.
+step.dll.wine_files = Bu dosyalar bir Wine prefix'inin içinde. Önce başlatıcıyı ve o prefix'teki diğer tüm programları kapatın.
+step.dll.wine_key = Anahtar bir Wine prefix'inin içinde. Önce başlatıcıyı ve o prefix'teki diğer tüm programları kapatın.
+step.dll.drive = Bu dosyalar, bu sistemden görülen bir Windows sürücüsünde. O Windows çalışmadığı için DLL dosyası kilitli değildir ve dosyayı buradan silebilirsiniz. Bu sistem o sürücüdeki dosyaları silemiyorsa (Windows'un Hızlı başlatma özelliği sürücüyü salt okunur bırakır), bu adımı o Windows'tan yapın: anahtarı silin, yeniden başlatın, sonra dosyaları silin.
+step.dll.delete_folder = Aşağıdaki DLL klasörünü, yani adı 64 onaltılık karakterden oluşan klasörü silin. PlatformExperienceHelper klasörünün geri kalanına dokunmayın: Chrome kendi platform_experience_helper.exe ve LoadFeatures öğelerini orada tutar.
+step.dll.delete_folder_after_restart = Yeniden başlattıktan sonra aşağıdaki DLL klasörünü, yani adı 64 onaltılık karakterden oluşan klasörü silin. PlatformExperienceHelper klasörünün geri kalanına dokunmayın: Chrome kendi platform_experience_helper.exe ve LoadFeatures öğelerini orada tutar.
+step.dll.delete_legacy = Aşağıdaki klasörde yalnızca platform_experience_helper.dll, platform_experience_helper.dll.old ve old-clsid.txt dosyalarından bulunanları silin. platform_experience_helper.exe dosyasını silmeyin: Chrome'a aittir.
+step.dll.delete_legacy_after_restart = Yeniden başlattıktan sonra aşağıdaki klasörde yalnızca platform_experience_helper.dll, platform_experience_helper.dll.old ve old-clsid.txt dosyalarından bulunanları silin. platform_experience_helper.exe dosyasını silmeyin: Chrome'a aittir.
+step.dll.delete_file = Aşağıdaki DLL dosyasını silin.
+step.dll.delete_file_after_restart = Yeniden başlattıktan sonra aşağıdaki DLL dosyasını silin.
+# Windows'ta yukarıdaki üç "silin" metninden birinin ardından gelir.
+step.dll.in_use = Windows dosyanın kullanımda olduğunu söylerse Windows'u yeniden başlatın ve dosyayı tekrar silin.
+step.dll.wine_regedit = Prefix'in user.reg dosyasındaki kayıt defteri anahtarını silin. Aşağıdaki komutla Wine'ın regedit programını o prefix'te açın, HKEY_CURRENT_USER\\Software\\Classes\\CLSID konumuna gidin ve {E77CC89B-7401-4C04-8CED-149DB35ADD04} anahtarını silin.
+step.dll.protontricks = Steam Deck'te olduğu gibi Wine kurulu değilse protontricks, regedit'i bu Proton prefix'inde açar:
+step.dll.drive_key = O Windows'u başlatın ve aşağıdaki kayıt defteri anahtarını, varsa WOW6432Node kopyasıyla birlikte silin: bu tarama o Windows'un kayıt defterini okuyamadı. Kayıt Defteri Düzenleyicisi'ni açın (Win+R tuşlarına basın, regedit yazın ve Enter tuşuna basın), anahtar yolunu üstteki adres çubuğuna yapıştırın ve Enter tuşuna basın. Sol bölmede seçili anahtara sağ tıklayın ve Sil'i seçin.
+step.dll.scan_again = Sonra yeniden tarayın: bu bulgular artık görünmemelidir.
+step.dll.defender = Microsoft Defender, enfekte bir bilgisayarda bu DLL dosyasını algılamadı. Bu nedenle temiz çıkan bir virüsten koruma taraması, DLL dosyasının gittiğini göstermez.
+step.cache.title = Başlatıcı önbelleğini temizleyin
+step.cache.intro = Önce başlatıcıyı kapatın. Sonra başlatıcının yerleşik tarayıcısının önbelleği olan tbs_cache klasörünü silin. Bu klasörde düzeltmeden önceki kötü amaçlı betik hâlâ bulunabilir ve başlatıcı bu betiği yeniden yükler.
+step.cache.none = Bu tarama bir başlatıcı verisi klasörü bulamadı. Bu klasör Windows'ta %APPDATA%\\nikke_launcher\\tbs_cache konumundadır (HMT başlatıcısı için nikke_launcher_hmt). Proton veya Wine prefix'inde ise drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache konumundadır.
+step.password.title = Parolalarınızı başka bir cihazdan değiştirin
+step.password.intro_infected = NIKKE başlatıcısını hiç çalıştırmamış bir telefon veya başka bir bilgisayar kullanın. Ajan çalışırken komutları bu bilgisayarın dosyalarını ve tarayıcı verilerini okuyabiliyordu. Şunları değiştirin veya yenileyin:
+step.password.intro_exposed = Ajan en geç 23 Ekim 2026'dan itibaren ve yalnızca bazı başlatmalarda gönderildi. Başlatıcı bu tarihte veya sonrasında açıldıysa ajan çalışmış gibi davranın: başlatıcıyı hiç çalıştırmamış bir telefondan veya başka bir bilgisayardan şunları değiştirin veya yenileyin:
+step.password.title_maybe = Başlatıcı 23 Ekim'de veya sonrasında açıldıysa NIKKE parolanızı değiştirin
+step.password.maybe = Başlatıcı 23 Ekim 2026'da veya sonrasında açıldıysa, başlatıcıyı hiç çalıştırmamış bir telefondan veya başka bir bilgisayardan NIKKE / Level Infinite parolanızı yine de değiştirin.
+step.password.not_opened = Bu tarama yalnızca bu dosyaların var olduğunu doğruladı. Dosyaları açmadı.
+# Değiştirilecek hesapların ve gizli bilgilerin listesi ("Bu listeyi kopyala" bu listeyi kopyalar).
+step.password.first = Önce NIKKE / Level Infinite hesabınız, sonra e-posta, Discord ve bankacılık hesaplarınız.
+step.password.browsers = Tarayıcılarınızda kayıtlı her parola.
+step.password.browser_one = {browser} tarayıcısında kayıtlı her parola (profil: {profiles}).
+step.password.browser_other = {browser} tarayıcısında kayıtlı her parola (profiller: {profiles}).
+step.password.sessions = Bu hizmetlerdeki tüm oturumlardan çıkış yapın. Ajan tarayıcı çerezlerini toplayabilir ve çalınan bir çerez parola olmadan da çalışır.
+step.password.crypto = Kripto paranız varsa onu, diğer cihazda oluşturulmuş yeni bir kurtarma ifadesine (seed phrase) sahip yeni bir cüzdana taşıyın.
+step.password.wallet = {browser} tarayıcısındaki {wallet} (profil: {profile}): fonları, diğer cihazda oluşturulmuş yeni bir kurtarma ifadesine (seed phrase) sahip yeni bir cüzdana taşıyın.
+step.password.tokens = Bu bilgisayarda kayıtlı API belirteçlerini ve SSH anahtarlarını iptal edin.
+step.password.secret = İptal edin ve yenisiyle değiştirin: {what}, {path}.
+step.password.other = Bu bilgisayarda kayıtlı diğer her parola, API belirteci, SSH anahtarı veya cüzdan.
+step.password.wine = Wine altında ajan yalnızca Wine prefix'ini değil, Z: sürücüsü üzerinden tüm ana klasörünüzü ve başlatıcı işleminin ortam değişkenlerini de okuyabiliyordu.
+step.block.title_domains = Alan adlarını engelleyin
+step.block.title_ips = Saldırganın IP adreslerini engelleyin
+step.block.all_blocked = Üç alan adı da hosts dosyanızda engellenmiş.
+step.block.notepad = Başlat menüsünü açın, Not Defteri yazın, Not Defteri'ne sağ tıklayın ve "Yönetici olarak çalıştır" seçeneğini belirleyin. Not Defteri'nde Dosya > Aç'ı seçin, aşağıdaki hosts dosyası yolunu Dosya adı kutusuna yapıştırın ve Enter tuşuna basın.
+step.block.paste = Bu satırları dosyanın sonuna yapıştırın ve kaydedin:
+step.block.tee = Terminalde şu komutu çalıştırın. Komut satırları /etc/hosts dosyasına ekler ve parolanızı sorar.
+# macOS dışında yukarıdaki metnin ardından gelir.
+step.block.deck = Steam Deck'te daha önce hiç parola belirlemediyseniz önce passwd ile bir parola belirleyin.
+step.block.scan_again = Sonra yeniden tarayın: Ayrıntılar sekmesindeki Koruma bölümü her alan adını engellenmiş olarak gösterir.
+step.block.ips = IP adresleri hosts dosyasıyla engellenemez. 89.127.233.127 ve 89.126.250.172 adreslerini güvenlik duvarınızda veya yönlendiricinizde engelleyin.
+step.block.firewall = Windows güvenlik duvarı kuralı eklemek için Başlat düğmesine sağ tıklayın, Terminal (Yönetici) veya Windows PowerShell (Yönetici) seçeneğini belirleyin ve şunu çalıştırın:
+step.block.macos = macOS'ta bunları yönlendiricinizin ayarlarından engelleyin.
+step.block.ufw = ufw kullanıyorsanız şu komutu çalıştırın. ufw kapalıyken kurallar hiçbir şeyi engellemez: sudo ufw status komutu "Status: active" (veya sistem dilindeki karşılığını) göstermelidir ve sudo ufw enable ufw'yi açar. ufw yoksa bunları yönlendiricinizin ayarlarından engelleyin.
+step.wait.title = Level Infinite bir düzeltmeyi onaylayana kadar başlatıcıyı açmayın
+step.wait.servers = Level Infinite'in bazı sunucuları 3 Kasım 2026'da hâlâ kötü amaçlı dosyayı gönderiyordu. Düzeltmeden önceki bir başlatma, betiği yeniden yükleyebilir.
+step.wait.reinstall = Ajan herhangi bir komutu çalıştırabiliyordu, bu nedenle bu bilgisayarın temiz olduğundan emin olmanın en güvenli yolu işletim sistemini yeniden kurmaktır.
+
+# Ayrıntılar: bulgu grupları.
+section.proof = Kötü amaçlı yazılımın çalıştığına dair kanıt
+section.cleanup = Temizlenecekler
+section.signs = Maruz kalma belirtileri
+section.info = Bilgi
+section.coverage = Bu taramada kontrol edilemeyenler
+
+# Ayrıntılar: her bulgu türü için "Bunun anlamı: ...".
+meaning.agent_ran = Ajan başlatıcının içinde çalıştı. Başlatıcı açıkken saldırgan bu bilgisayarı kontrol edebiliyordu.
+meaning.payload_downloaded = Başlatıcı ajanı saldırganın sunucusundan aldı.
+meaning.payload_file = Ajanın bir kopyası hâlâ başlatıcının günlük klasöründe.
+meaning.agent_state = Ajan kimliğini başlatıcının tarayıcı depolamasına kaydetti, yani en az bir kez çalıştı.
+meaning.agent_server = Başlatıcı ajanı gönderen sunucuya ulaştı, yani ajanı isteme aşamasına kadar geldi.
+meaning.loader_cached = Kötü amaçlı betik başlatıcıda çalıştı. Bu tek başına ajanın gönderildiğini göstermez.
+meaning.launcher_contacted = Başlatıcı saldırganın alan adıyla bağlantı kurdu.
+meaning.chrome_dll = Tarayıcı başlarken bu DLL dosyasını yükler, bu nedenle kötü amaçlı yazılım başlatıcı olmadan da yeniden çalışabilir. Kötü amaçlı yazılım, Chrome kurulu olmasa bile Chrome klasörünü oluşturur.
+meaning.registry_key = Bu anahtar, tarayıcının kötü amaçlı yazılımın DLL dosyasını yüklemesini sağlar.
+meaning.registry_leftover = DLL yolu bu anahtardan kaldırıldı, ancak anahtar hâlâ duruyor. Anahtarı silin.
+meaning.legacy_dll = Ajanın daha eski bir sürümü DLL dosyasını buraya koydu.
+meaning.dll_loaded = Bu programlar şu anda kötü amaçlı yazılımın DLL dosyasını çalıştırıyor. Windows, programlar kapanana veya Windows yeniden başlayana kadar DLL dosyasını yüklü tutar.
+meaning.temp_file = Ajan bu dosyaları tarayıcı kimlik bilgilerini veya ekran görüntülerini toplarken yazdı.
+meaning.launcher_running = Başlatıcı çalıştığı sürece saldırgan ona komut gönderebilir.
+meaning.coverage = Bu taramanın bir bölümü yapılamadı. Ne yapmanız gerektiği yukarıdaki metinde yazıyor.
+meaning.info = Yalnızca bağlam bilgisidir. Sonucu değiştirmez.
+
+# Ayrıntılar: "Kötü amaçlı yazılımın erişebileceği verileriniz".
+exposure.title = Kötü amaçlı yazılımın erişebileceği verileriniz
+exposure.note = Bu tarama yalnızca bu dosyaların var olduğunu doğruladı. Dosyaları açmadı. Ajan çalışırken komutları bu dosyaları okuyabiliyordu.
+exposure.home_note = Bir Wine prefix'i bulunduğu için bu bilgisayarın ana klasörü kontrol edildi. Taranan prefix başka bir bilgisayarda çalıştıysa bunun yerine o bilgisayarı kontrol edin.
+exposure.saved_passwords = Kayıtlı parolalar
+exposure.wallets = Cüzdan uzantıları
+exposure.secrets = Gizli bilgi içeren dosyalar
+# {files}, "Login Data, key4.db" gibi dosya adlarıdır.
+exposure.login = {browser}, profil: {profile} ({files})
+exposure.wallet = {browser} tarayıcısında {wallet} ({id}), profil: {profile}
+# Bulunan her gizli bilgi dosyasının içeriği.
+secret.aws = AWS kimlik bilgileri
+secret.github_cli = GitHub CLI belirteci
+secret.git = Git kimlik bilgileri
+secret.npm = npm yapılandırması, belirteç içerebilir
+secret.docker = Docker registry giriş bilgileri
+secret.kubernetes = Kubernetes yapılandırması
+secret.gcloud = Google Cloud kimlik bilgileri
+secret.azure = Azure CLI belirteçleri
+secret.claude = Claude Code kimlik bilgileri
+secret.codex = Codex CLI kimlik bilgileri
+secret.gemini = Gemini CLI kimlik bilgileri
+secret.copilot = GitHub Copilot CLI MCP yapılandırması
+secret.opencode = opencode kimlik bilgileri
+secret.filezilla = FileZilla'da kayıtlı sunucular
+secret.netrc = netrc giriş bilgileri
+secret.pypi = PyPI belirteci
+secret.crates = crates.io belirteci
+secret.vault = HashiCorp Vault belirteci
+secret.terraform = Terraform belirteci
+secret.pulumi = Pulumi kimlik bilgileri
+secret.kaggle = Kaggle API anahtarı
+secret.huggingface = Hugging Face belirteci
+secret.rclone = rclone yapılandırması
+secret.s3cmd = s3cmd yapılandırması
+secret.databricks = Databricks yapılandırması
+secret.oci = Oracle Cloud yapılandırması
+secret.gnupg = GnuPG özel anahtarları
+secret.env = .env dosyası
+secret.ssh = SSH özel anahtarı
+
+# Bulgular: her birinin bir başlığı ve bir ayrıntısı vardır. {file} bir günlük dosyası adıdır, {files} "2 dosya" gibi bir sayıdır.
+finding.no_install.title = NIKKE kurulum klasörü bulunamadı
+finding.no_install.detail = Başlatıcı verileri bulundu, ancak kurulum klasörü bulunamadı. Bu nedenle debug.log ve indirme günlükleri kontrol edilmedi. NIKKE'nin nereye kurulu olduğunu biliyorsanız o klasörü tarayın: pencerede "Klasör tara..." ile veya nikke-check --cli <klasör> ile.
+finding.quick_scan.title = Bu bir hızlı taramaydı
+finding.quick_scan.detail_windows = Tarama, başlatıcının kayıt defterine kaydettiği kurulum yollarını, başlatıcı verilerini ve her yerel sürücünün kökünden {depth} düzey aşağıya kadar her klasörü okudu. {depth} düzeyden daha derinde olan ve başlatıcının artık kaydını tutmadığı bir NIKKE klasörü yalnızca tam taramayla (pencerede "Tam tarama" veya nikke-check --cli --full) ya da "Klasör tara..." ile bulunur.
+finding.quick_scan.detail_macos = Tarama, olağan Wine prefix klasörlerini, bu prefix'lerin kaydettiği kurulum yollarını ve / altında {depth} düzeye kadar her klasörü okudu. {depth} düzeyden daha derinde olan ve başlatıcının artık kaydını tutmadığı bir NIKKE klasörü yalnızca tam taramayla (pencerede "Tam tarama" veya nikke-check --cli --full) ya da "Klasör tara..." ile bulunur.
+finding.quick_scan.detail_linux = Tarama, olağan Wine prefix klasörlerini, bu prefix'lerin kaydettiği kurulum yollarını ve / dizininin, ana klasörünüzün ve /mnt, /media ile /run/media altındaki her sürücünün {depth} düzey altına kadar her klasörü okudu. {depth} düzeyden daha derinde olan ve başlatıcının artık kaydını tutmadığı bir NIKKE klasörü yalnızca tam taramayla (pencerede "Tam tarama" veya nikke-check --cli --full) ya da "Klasör tara..." ile bulunur.
+finding.unreadable.title = Bazı klasörler okunamadı
+finding.unreadable.detail = Taramanın bu klasörleri açmasına izin verilmedi, bu nedenle içlerindeki hiçbir şey kontrol edilmedi. macOS'ta Terminal'e (veya bu aracı başlattığınız uygulamaya) Sistem Ayarları > Gizlilik ve Güvenlik bölümünden Tam Disk Erişimi verin, sonra yeniden tarayın. Diğer sistemlerde bu klasörleri okuyabilen bir kullanıcı olarak yeniden tarayın.
+finding.network.title = Ağ sürücüleri taranmadı
+finding.network.detail = Bilgisayar taraması ağ sürücülerini ve uzak bağlama noktalarını atlar, çünkü bunları okumak yavaştır ve bağlantısı kesilmiş bir sürücü taramayı durdurabilir. NIKKE bunlardan birine kuruluysa onu "Klasör tara..." veya nikke-check --cli <klasör> ile tarayın.
+finding.log_server.title = {file} dosyasında ajan sunucusunun adı geçiyor
+finding.log_server.detail = {file} dosyasında analytics.insightjs.com veya insight.bundle geçiyor. Bu sunucu ajanı gönderir, yani başlatıcı ajanı isteme aşamasına kadar geldi.
+finding.log_mention.title = {file} dosyasında insightjs geçiyor
+finding.log_mention.detail = {file} dosyasında, kötü amaçlı yükleyici betiğin alan adı olan insightjs geçiyor. Hiçbir satırda ajan sunucusu (analytics.insightjs.com veya insight.bundle) geçmiyor, bu nedenle bu tek başına ajanın indirildiğini göstermez.
+finding.debug_unreadable.title = debug.log okunamadı
+finding.debug_unreadable.detail = Launcher/intl_service/debug.log var, ancak bu taramanın dosyayı açmasına izin verilmedi. Bu nedenle ajanın çalışıp çalışmadığı kontrol edilemedi. Dosyayı okuyabilen bir kullanıcı olarak yeniden tarayın.
+finding.agent_ran.title = Kötü amaçlı yazılım ajanı çalıştı
+finding.agent_ran.detail = debug.log, uzaktan erişim ajanının başlatıcının içinde başladığını gösteriyor (k2f_chan registered). Başlatıcı açıkken saldırgan bu bilgisayarda komut çalıştırabiliyordu.
+finding.payload_file.title = Kötü amaçlı yazılım dosyası hâlâ diskte
+finding.payload_file.detail = Başlatıcının günlük klasöründeki bu dosya LuaJIT bayt kodudur. Başlatıcı, indirilen ajanı (insight.bundle) bir tinyget günlük dosyası adıyla kaydetti.
+finding.downloaded.title = Başlatıcı kötü amaçlı yazılımı indirdi
+finding.downloaded.detail = {file} dosyası, başlatıcının analytics.insightjs.com adresinden insight.bundle dosyasını indirdiğini kaydediyor. Bu dosya uzaktan erişim ajanıdır.
+finding.download_attempt.title = Başlatıcı kötü amaçlı yazılımı istedi, ancak hiçbir indirme tamamlanmadı
+finding.download_attempt.detail = {file} dosyası, analytics.insightjs.com adresinden insight.bundle için yapılan bir isteği kaydediyor, ancak hiçbir satır isteğin tamamlandığını göstermiyor. Başarısız bir istek curl_error ve total=0 kaydeder. Yükleyici ajanı istedi; bu tek başına ajanın geldiğini göstermez. Ajanın çalışıp çalışmadığını debug.log gösterir.
+finding.install_found.title = NIKKE kurulumu bulundu: {path}
+finding.install_found.debug_missing = Launcher/intl_service/debug.log bulunamadı. Silinmiş olabilir veya başlatıcı bu klasörden hiç başlatılmamış olabilir.
+finding.install_found.debug_unreadable = Launcher/intl_service/debug.log var, ancak okunamadı (izin yok).
+finding.install_found.debug_checked = Launcher/intl_service/debug.log kontrol edildi. Dosya, oluşturulduğundan bu yana yapılan başlatmaları içerir.
+# {note}, yukarıdaki üç metinden biridir.
+finding.install_found.written = {note} Son yazılma: {time}.
+finding.data_link.title = Başlatıcı verisi klasörü bir bağlantı olduğu için okunmadı
+finding.data_link.detail = Bu klasör bir bağlantıdır. Hedefi: {target}. Hedef eksik, bir sürücü kökü veya bağlantının üstündeki bir klasör olduğu için klasördeki dosyalar kontrol edilmedi. Gerçek başlatıcı verisi klasörünü "Klasör tara..." veya nikke-check --cli <klasör> ile tarayın.
+finding.data_link.unknown_target = bilinmiyor
+finding.agent_state.title = Kötü amaçlı yazılım ajanı başlatıcı verilerinde iz bıraktı
+finding.agent_state.detail = Başlatıcı verilerindeki {files} içinde k2f_chan (ajanın köprü kanalının adı) veya k2f.agent.state (ajanın kaydettiği kimlik) geçiyor. Bu, ajanın çalıştığını gösterir.
+finding.agent_server.title = Başlatıcı ajan sunucusuyla bağlantı kurdu
+finding.agent_server.detail = analytics.insightjs.com, ağ durumu bilgisi içeren {files} içinde kayıtlı. Bu sunucu ajanı (insight.bundle) gönderir ve ajandan gelen düzenli bildirimleri alır. Yükleyicinin ajan olmadan çalıştığı bir başlatmada yalnızca insightjs.com kaydedilmişti.
+finding.loader_cached.title = Başlatıcı kötü amaçlı betiği yükledi
+finding.loader_cached.detail = insightjs.com yükleyici adresi, başlatıcının yerleşik tarayıcısının önbelleğe aldığı {files} içinde geçiyor. Eklenen betik çalıştı; bu tek başına ajanın indirildiğini göstermez.
+finding.network_state.title = Başlatıcı insightjs.com ile bağlantı kurdu
+finding.network_state.detail = insightjs.com, ağ durumu bilgisi içeren {files} içinde kayıtlı, yani başlatıcının yerleşik tarayıcısı bu adrese bağlandı.
+finding.data_mention.title = Başlatıcı verilerinde insightjs.com geçiyor
+finding.data_mention.detail = insightjs.com, başlatıcı verilerindeki {files} içinde geçiyor.
+finding.data_clean.title = Başlatıcı verilerinde iz yok
+finding.data_clean.detail = Kontrol edilen: {files}.
+# {browser}, Chrome veya Edge gibi bir tarayıcı adıdır.
+finding.persistence.title = {browser} üzerinden kalıcılık kurulmuş
+finding.persistence.dll = Kötü amaçlı yazılımın klasörü {browser} kullanıcı verilerinde var ve içinde platform_experience_helper.dll bulunuyor. Ele geçirilmiş bir HKCU COM kaydı, {browser} tarayıcısının bu dosyayı yüklemesine neden oluyor.
+finding.persistence.hash_dir = Kötü amaçlı yazılımın klasörü {browser} kullanıcı verilerinde var: adı 64 onaltılık karakterden (bir SHA-256) oluşan bir alt klasör. Kötü amaçlı yazılım platform_experience_helper.dll dosyasını buraya koyar. DLL dosyasının kendisi bulunamadı, bu nedenle zaten kaldırılmış olabilir.
+# Chrome için {text}, yukarıdaki iki metinden biridir.
+finding.persistence.chrome = {text} Kötü amaçlı yazılım bu klasörü Chrome kurulu olmasa bile oluşturur.
+finding.helper_folder.title = {browser} Platform Experience Helper klasörü
+finding.helper_folder.chrome = Bu klasörde platform_experience_helper.dll ve adı 64 onaltılık karakterden oluşan bir alt klasör yok. Bu, kullanıcı başına Chrome kurulumlarının burada tuttuğu Chrome'un kendi Platform Experience Helper bileşeniyle (platform_experience_helper.exe, LoadFeatures) uyumludur. Bu bir enfeksiyon belirtisi değildir.
+finding.helper_folder.other = Bu klasörde platform_experience_helper.dll ve adı 64 onaltılık karakterden oluşan bir alt klasör yok, bu nedenle klasör kötü amaçlı yazılımın düzenine uymuyor. Bu bir enfeksiyon belirtisi değildir.
+finding.legacy.title = Eski bir Chrome kalıcılığının dosyaları kurulu
+finding.legacy.detail = Chrome'un Application\\PlatformExperienceHelper klasöründe, ajanın temizleme kodunun sildiği dosyalar var: platform_experience_helper.dll, platform_experience_helper.dll.old veya old-clsid.txt. Ajanın daha eski bir sürümü DLL dosyasını buraya koydu. Bu klasördeki Chrome'un kendi platform_experience_helper.exe dosyası normaldir.
+finding.temp.title = Kötü amaçlı yazılımın Temp klasöründe bıraktığı dosyalar
+finding.temp.detail = Ajan geçici dosyalarını k2f-bcreds-* (toplanan tarayıcı kimlik bilgileri), k2f-keyscan-* (erken bir derleme) ve k2f_screen_* (ekran görüntüleri, .jpg; erken derlemede .png) olarak adlandırır.
+finding.hex_id.title = Temp klasöründe onaltılık kimlik dosyası
+finding.hex_id.detail = Temp klasöründeki 22 baytlık bir .tmp dosyası, 22 karakterlik onaltılık bir kimlik içeriyor. İncelenen enfekte bilgisayarda bu tür bir dosya, ajan indirilmeden bir saniye önce yazılmıştı. Başka Tencent yazılımları da aynı adla bir dosya yazar (CDN dosyaları değiştirilmeden önce, 20 Eylül 2026 tarihli bir Delta Force prefix'inde görüldü), bu nedenle bu dosya tek başına bir enfeksiyon belirtisi değildir.
+finding.registry.title = Kayıt defterinde kalıcılık bulundu (HKCU CLSID ele geçirme)
+# {detail}, aşağıdaki iki "konum" metninden biridir.
+finding.registry.detail = {detail} Kötü amaçlı yazılım bu anahtarı, Google Chrome kötü amaçlı DLL dosyasını yüklesin diye kaydeder. wpc.dll dosyasını gösteren HKLM kopyası Windows'un bir parçasıdır ve normaldir.
+finding.registry_leftover.title = Kalıcılıktan kalan kayıt defteri artığı (HKCU CLSID)
+finding.registry_leftover.detail = {detail} Anahtarın varsayılan değeri boş veya yok: ajan DLL dosyasını kurdu ve daha sonra kaldırdı. Bu işlem değeri temizler, ancak anahtarı bırakır. DLL dosyası hâlâ diskte olabilir. wpc.dll dosyasını gösteren HKLM kopyası Windows'un bir parçasıdır ve normaldir.
+finding.registry.where_windows = {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32 anahtarı HKCU altında var (aşağıya bakın).
+finding.registry.where_wine = Bu Wine prefix'inin HKCU kovanı olan user.reg, {E77CC89B-7401-4C04-8CED-149DB35ADD04} anahtarını içeriyor.
+finding.launcher_running.title = NIKKE başlatıcısı şu anda çalışıyor
+finding.launcher_running.detail = Başlatıcıyı hemen kapatın (kapanmazsa işlemi sonlandırın) ve ağ bağlantısını kesin. Başlatıcı çalıştığı sürece saldırgan bu bilgisayara komut gönderebilir.
+finding.dll_loaded.title = Kalıcılık DLL dosyası şu anda yüklü
+finding.dll_loaded.detail = Bu programlarda kötü amaçlı yazılımın platform_experience_helper.dll dosyası yüklü. Windows, programlar kapanana kadar dosyayı kilitli tutar ve HKCU anahtarı durduğu sürece Chrome bir sonraki başlangıcında dosyayı yeniden yükler. Kayıt defteri anahtarını silin, Windows'u yeniden başlatın, sonra DLL dosyasının klasörünü silin.
+
+# "Teknik ayrıntıları göster": aracın, dosyalardan alıntılanan satırların arasına yazdığı satırlar.
+evidence.luajit = LuaJIT bayt kodu üst bilgisi (1B 4C 4A), {size} bayt. Bilinen derlemeler 205.135 bayttır. k2f.lua olarak kaydedilen 23 Ekim tarihli bir derleme ise 165.108 bayttı.
+# Bir TransportSecurity girdisi. {host} bir alan adı, {time} bir UTC zamanıdır.
+evidence.hsts = {host} için HSTS girdisi, son alınma: {time}
+evidence.hsts_no_time = {host} için HSTS girdisi
+evidence.in_file = {file}: {text}
+evidence.empty_folder = (boş klasör)
+evidence.registry_value = {key}\\InprocServer32 (Varsayılan) = {value}
+evidence.value_not_set = (değer ayarlanmadı)
+evidence.dll_loaded = PID {pid}: {program} ({exe}) içinde {dll} yüklü
+# Kısaltılmış bir listenin son satırı.
+evidence.total = ... toplam {total}
+
+# "Klasörü aç" ve bir pencere açan diğer düğmeler başarısız olduğunda.
+open.gone = {path} artık yok.
+open.windows_only = {program} yalnızca Windows'ta bulunur.
+open.failed = dosya yöneticisi açılamadı ({status})
+open.shell_execute = ShellExecute hatası {code}
+
+# Pencere.
+ui.tab.happened = Ne oldu
+ui.tab.todo = Ne yapmalı
+ui.tab.details = Ayrıntılar
+ui.copied = Kopyalandı
+ui.button.scan_computer = Bu bilgisayarı tara
+ui.button.full_scan = Tam tarama
+ui.button.scan_folder = Klasör tara...
+ui.button.scan_again = Yeniden tara
+ui.button.new_scan = Yeni tarama
+ui.button.stop = Taramayı durdur
+ui.button.copy_report = Raporu kopyala
+ui.button.save_report = Raporu kaydet...
+ui.button.see_todo = Yapılacakları göster
+ui.button.open_folder = Klasörü aç
+ui.button.task_manager = Görev Yöneticisi'ni aç
+ui.button.registry_editor = Kayıt Defteri Düzenleyicisi'ni aç
+ui.button.copy_path = Yolu kopyala
+ui.button.copy_link = Bağlantıyı kopyala
+ui.button.open_link = Bağlantıyı aç
+ui.button.show = Göster
+ui.button.hide = Gizle
+ui.button.show_details = Teknik ayrıntıları göster
+ui.button.hide_details = Teknik ayrıntıları gizle
+ui.hide_info = Bilgilerimi gizle
+ui.hide_info_note = "Bilgilerimi gizle" seçeneği "Raporu kopyala" ve "Raporu kaydet..." için geçerlidir. Pencere her şeyi göstermeye devam eder.
+ui.done = Yapıldı
+# Dosya iletişim kutuları.
+ui.dialog.pick_folder = Taranacak klasörü seçin
+ui.dialog.save = Raporu kaydet
+ui.dialog.text_files = Metin dosyaları
+# Ekranın üstünde gösterilen tek satır.
+ui.notice.only_folders = Yalnızca klasörler taranabilir. Dosyanın bulunduğu klasörü sürükleyip bırakın.
+ui.notice.stopped = Tarama durduruldu.
+ui.notice.saved = Rapor kaydedildi: {path}.
+ui.notice.save_failed = Rapor kaydedilemedi: {error}
+ui.notice.save_failed_plain = Rapor kaydedilemedi.
+ui.notice.open_failed = Açılamadı: {error}
+ui.notice.open_failed_plain = Açılamadı.
+# Başlangıç ekranı. Önce yardımcının konuşma balonu gelir.
+ui.home.hint = Merhaba, ben MotherSphere. "Bu bilgisayarı tara" ile başlayın. Bu araç yalnızca dosyaları okur: hiçbir şeyi silmez ve ağ üzerinden hiçbir şey göndermez.
+ui.home.title = Henüz tarama yapılmadı
+ui.home.computer = Bilgisayar taraması
+ui.home.quick_windows = Başlatıcının kayıt defterine kaydettiği kurulum yollarını, kullanıcı profilinizi, başlatıcı verilerini ve her yerel sürücüde 5 düzey derinliğe kadar her klasörü okur. Genellikle birkaç saniyede biter.
+ui.home.quick_macos = Wine, CrossOver, Whisky, Wineskin ve Heroic prefix'lerini, bunların kaydettiği kurulum yollarını ve yerel birimler dâhil / altında 5 düzeye kadar her klasörü okur. Ağ birimleri atlanır.
+ui.home.quick_linux = Steam, Lutris, Heroic, Bottles ve Faugus'un tüm Wine prefix'lerini, bunların kaydettiği kurulum yollarını ve / dizininde, ana klasörünüzde ve /mnt, /media ile /run/media altındaki her sürücüde 5 düzeye kadar her klasörü okur. Ağ bağlama noktaları atlanır.
+ui.home.full = Tam tarama, başlatıcının artık kaydını tutmadığı ve 5 düzeyden daha derinde olan bir NIKKE klasörünü bulmak için her yerel sürücüdeki her klasörü açar. Büyük sürücülerde uzun sürebilir.
+ui.home.folder = Klasör taraması
+ui.home.folder_text = Bir klasörü ve altındaki her şeyi, içindeki Wine prefix'leri de dâhil olmak üzere tarar.
+ui.home.drop = Bir klasörü bu pencereye sürükleyip bırakarak da tarayabilirsiniz.
+ui.home.no_dialog = Klasör seçme penceresi açılmazsa terminalde nikke-check --cli <klasör> komutunu çalıştırın.
+# Tarama ekranı.
+ui.scan.title = Taranıyor: {target}
+ui.scan.elapsed = geçen süre
+ui.scan.searching = NIKKE kurulumları ve Wine prefix'leri aranıyor
+ui.scan.programs = Çalışan programlar kontrol ediliyor
+ui.scan.locations = Bulunan konumlar kontrol ediliyor
+ui.scan.locations_one = 1 konum kontrol ediliyor
+ui.scan.locations_other = {n} konum kontrol ediliyor
+ui.scan.progress = {done} / {total}
+ui.scan.hosts = Hosts dosyası kontrol ediliyor
+ui.tile.items = Taranan öğeler
+ui.tile.folders = Klasörler
+ui.tile.locations = Bulunan konumlar
+ui.tile.findings = Şimdiye kadarki bulgular
+ui.failed.windows = Tarama bir iç hatayla durdu. Yeniden deneyin veya raporu görmek için bu programın bulunduğu klasörde PowerShell'de {command} komutunu çalıştırın.
+ui.failed.other = Tarama bir iç hatayla durdu. Yeniden deneyin veya raporu terminalde görmek için nikke-check --cli komutunu çalıştırın.
+# Sonuç ekranı.
+ui.happened.payload_build = Ajan dosyası derlemesi
+ui.happened.agent_runs = Günlüklerde ajanın çalışma kayıtları
+ui.todo.hint = Adımları sırayla, birer birer uygulayın. Düğmeler sizin için doğru klasörü veya aracı açar, ancak dosyaları siz silersiniz. Bu program hiçbir zaman hiçbir şey silmez.
+ui.todo.note = Bu adımlar bu taramanın bulduklarına göre hazırlandı ve uygulanacakları sırayla listelendi. "Yapıldı" işaretleri kaydedilmez.
+ui.tile.critical = Kritik
+ui.tile.warnings = Uyarılar
+ui.tile.info = Bilgi
+ui.tile.duration = Süre
+ui.details.checked = Kontrol edilen: {summary}. Taranan: {scope}.
+# Bir bölüm başlığı ve bulgu sayısı: "Bilgi (3)".
+ui.details.section_count = {title} ({n})
+ui.details.hosts = Hosts dosyası: {path}. Bu bir enfeksiyon kontrolü değildir: alan adlarının engellenip engellenmediğini gösterir.
+ui.details.protection = Koruma
+ui.details.limits = Bu kontrolün sınırları
+ui.details.locations = Kontrol edilen konumlar
+ui.details.none_found = Hiçbiri bulunamadı.
+ui.details.folders_checked = Kontrol edilen klasörler

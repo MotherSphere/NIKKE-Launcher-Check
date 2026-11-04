@@ -1,0 +1,527 @@
+# NIKKE Launcher Check: the Traditional Chinese (zh-Hant) texts, with the keys of en.txt.
+#
+# One entry per line: key = text. Lines that start with # are comments.
+# Translate only the text after "=". Do not change the keys.
+# In the text, \n starts a new line and \\ is one backslash.
+# {name} is a value the program fills in: a path, a number, a file name or another text.
+# Keep every {name} of the English text with the same name. You can move it in the sentence.
+# Other braces, such as the CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}, are plain text: keep them.
+# Keep file names, paths, registry keys, commands, domains, IP addresses and hashes as they are.
+# Text in quotes such as "Scan a folder..." names a button or a part of this window: use the
+# words of that button's own entry. Windows menus and buttons (Run as administrator, End task,
+# File > Open) are named as Windows shows them in your language.
+# An entry missing from a translation shows the English text.
+
+# Command line: nikke-check --help, and errors printed in the terminal.
+cli.usage = NIKKE Launcher Check：尋找 2026 年 11 月 NIKKE PC 版啟動器遭入侵事件留下的痕跡。\n唯讀，不存取網路。\n\n用法：\n  nikke-check                  開啟視窗\n  nikke-check PATH             開啟視窗並掃描這個資料夾\n  nikke-check --cli            快速掃描這台電腦，並輸出報告\n  nikke-check --cli --full     完整掃描：開啟每個本機磁碟機上的每個資料夾\n  nikke-check --cli PATH...    只掃描這些資料夾及其所有子資料夾，並輸出報告\n  nikke-check --cli --redact   在報告中替換電腦名稱、使用者名稱、\n                               遠端控制程式 ID 和家目錄\n                               （適用於任何 --cli 用法）\n  nikke-check --help           顯示這份說明\n\n語言：\n  --lang CODE    加在上述任一用法中，設定視窗和報告的語言。\n                 不加這個選項時，會自動使用系統的語言。\n                 CODE：{codes}\n\n結束代碼（--cli）：\n  0  未發現痕跡\n  1  已暴露（只有警告）\n  2  已感染（有嚴重痕跡）\n  3  找不到 NIKKE 安裝資料夾或啟動器資料\n  4  參數無效，或有資料夾無法讀取\n
+cli.unknown_argument = 未知的參數：{arg}
+cli.lang_missing = --lang 需要一個語言代碼：{codes}
+cli.lang_unknown = 未知的語言代碼：{code}。請使用下列其中之一：{codes}
+cli.cannot_read_folder = 無法讀取資料夾 {path}：{error}
+cli.not_a_folder = 不是資料夾：{path}
+cli.window_failed = 無法開啟視窗：{error}
+# Windows error box when the window cannot open. {command} is a PowerShell command.
+cli.error_box = 視窗無法開啟：\n{error}\n\n若要在不開啟視窗的情況下取得報告，請在存放本程式的資料夾中開啟 PowerShell，然後執行：\n\n{command}
+
+# Top bar, start screen and report header.
+report.read_only = 唯讀，不存取網路。
+report.about = 2026 年 9 月 27 日，Level Infinite 的 CDN 上有四個檔案遭到竄改，讓 NIKKE PC 版啟動器從 insightjs.com 載入一段指令碼。最晚自 2026 年 10 月 23 日起，這段指令碼會下載一個遠端控制程式（insight.bundle），它能執行命令、讀取檔案、擷取螢幕畫面，並收集瀏覽器資料。其中三個檔案已於 11 月 3 日替換。第四個檔案已於 10 月 28 日清理，但到了 11 月 3 日，仍有部分 CDN 伺服器提供舊的副本。本工具會尋找載入器和遠端控制程式在磁碟上留下的痕跡。
+# What was scanned ("Scan of: ...", "Scanning ...").
+report.scope.computer = 這台電腦
+report.scope.quick = 這台電腦（快速掃描）
+report.scope.full = 這台電腦（完整掃描）
+
+# The verdict: a title, then one sentence.
+verdict.infected.title = 已感染
+verdict.infected.summary = 發現嚴重痕跡：遠端控制程式曾被下載或執行、留下了常駐機制，或啟動器目前正在執行。請將這台電腦視為已遭入侵。
+verdict.exposed.title = 已暴露
+verdict.exposed.summary = 啟動器曾載入惡意指令碼或連線到 insightjs.com，但沒有發現遠端控制程式執行過的跡象。
+verdict.no_traces.title = 未發現痕跡
+verdict.no_traces.summary = 在這次掃描找到的 NIKKE 檔案中，沒有發現惡意指令碼或遠端控制程式的痕跡。
+verdict.not_found.title = 找不到 NIKKE
+verdict.not_found.summary = 在這次掃描檢查的位置中，沒有找到 NIKKE 安裝資料夾或啟動器資料。
+
+# Severity badges of the findings, and the tags of the report ("[CRITICAL]").
+severity.critical = 嚴重
+severity.warning = 警告
+severity.info = 資訊
+
+# The kinds of locations a scan checks ("[NIKKE install] /path" in the report).
+kind.install = NIKKE 安裝資料夾
+kind.launcher_data = 啟動器資料
+kind.wine_prefix = Wine 前綴
+kind.user_profile = 使用者設定檔
+# Groups of findings with no folder.
+group.running = 執行中的程式
+group.coverage = 掃描涵蓋範圍
+
+# "Limits of this check", in the window and the report.
+report.caveat.debug_log = 刪除或重新安裝 NIKKE 資料夾時，debug.log 會隨之消失。啟動器資料中的 k2f.agent.state 檢查不依賴這個檔案。
+report.caveat.not_proof = 沒有發現任何東西，並不能證明這台電腦是乾淨的。
+report.caveat.no_logs = 遠端控制程式執行的命令不會留下記錄，因此本工具無法得知攻擊者做了什麼。
+
+# Protection: the hosts file, in Details and in the report.
+hosts.blocked = 已封鎖
+hosts.not_blocked = 未封鎖
+hosts.unknown = 未知
+hosts.missing = hosts 檔案不存在，因此沒有封鎖任何網域。
+hosts.unreadable = 無法讀取 hosts 檔案，因此不知道它封鎖了哪些網域。
+hosts.block_lines_intro = 若要封鎖未顯示為已封鎖的網域，請將以下幾行加入 hosts 檔案：
+hosts.note = 編輯 hosts 檔案需要系統管理員權限。本工具絕不會編輯它。
+hosts.ip_note = 89.127.233.127 和 89.126.250.172 這兩個 IP 無法在 hosts 檔案中封鎖。請在防火牆或路由器中封鎖它們。
+
+# "Checked: ..." in Details and "Locations checked: ..." in the report, joined with commas.
+report.checked.install_one = {n} 個 NIKKE 安裝資料夾
+report.checked.install_other = {n} 個 NIKKE 安裝資料夾
+report.checked.launcher_data_one = {n} 個啟動器資料的資料夾
+report.checked.launcher_data_other = {n} 個啟動器資料的資料夾
+report.checked.wine_prefix_one = {n} 個 Wine 前綴
+report.checked.wine_prefix_other = {n} 個 Wine 前綴
+report.checked.user_profile_one = {n} 個使用者設定檔
+report.checked.user_profile_other = {n} 個使用者設定檔
+report.checked.nothing = 沒有可檢查的項目
+
+# "Scan stats: ...". {skipped} is one of the two "skipped" texts below, or nothing.
+report.stats = 已瀏覽 {entries} 個項目（{folders} 個資料夾），{errors} 個權限錯誤{skipped}，耗時 {seconds} 秒。
+report.stats.skipped_one = ，略過 1 個網路磁碟機
+report.stats.skipped_other = ，略過 {n} 個網路磁碟機
+report.stats.cap = 已達項目數上限，因此有些資料夾沒有瀏覽到。
+
+# The text report (CLI output, "Copy report" and "Save report...").
+report.scan_of = 掃描範圍：{scope}
+report.started = 開始時間：{time}
+report.verdict = 判定結果：{verdict}
+report.what_happened = 發生了什麼
+# One answer of "What happened": the question and its reply (Yes, No...).
+report.answer = {question}{reply}。
+report.agent_runs = 記錄檔中的遠端控制程式執行紀錄：
+report.payload_build = 酬載版本：{build}
+report.what_to_do = 該怎麼做
+report.open = 開啟：{path}
+report.details = 詳細資料
+report.locations_checked = 已檢查的位置：{summary}
+report.exposure_heading = {heading}：
+report.exposure_none = {heading}：沒有找到。
+report.exposure_item = {what}：{path}
+report.folders_checked = 已檢查的資料夾：
+report.no_findings = 沒有發現項目。
+report.protection = 防護（hosts 檔案：{path}）
+report.protection_note = 這不是感染檢查，只顯示這些網域是否已被封鎖。
+report.domain_state = {domain}：{state}
+report.limits = 這項檢查的限制
+report.write_up = 分析文章：{url}
+report.scan_stats = 掃描統計：{stats}
+# Where a finding was found: "NIKKE install: /path".
+report.location = {label}：{path}
+
+# The lines of a finding, in Details and in the report.
+details.meaning = 這代表：{text}
+details.found_in = 發現位置：{location}
+details.path = 路徑：{path}
+details.time = 時間：{time}
+# A registry key or a text to copy: "Registry key: HKCU\...".
+details.copy = {label}：{text}
+details.copy_label.registry = 登錄機碼
+details.copy_label.text = 文字
+
+# Times read from the logs. Log times use the clock of the computer that ran the launcher.
+time.local = {time}（本機時間）
+time.local_no_year = {time}（本機時間，記錄中沒有年份）
+
+# "What happened": four questions, each with a reply and the reasons.
+answer.yes = 是
+answer.no = 否
+answer.cannot_tell = 無法判斷
+answer.partly = 部分
+# A finding title used as one reason.
+answer.finding = {title}。
+answer.ran.question = 惡意軟體是否在這台電腦上執行過？
+answer.ran.nothing_checked = 沒有找到 NIKKE 安裝資料夾或啟動器資料，因此沒有可檢查的內容。
+answer.ran.no_agent_log = 沒有任何記錄檔顯示遠端控制程式本身曾經啟動，但記錄檔可能遭到刪除或截斷。
+answer.ran.loader = 啟動器曾載入惡意指令碼，但沒有發現遠端控制程式的痕跡。
+answer.ran.act_as_if = 遠端控制程式最晚自 2026 年 10 月 23 日起開始傳送，而且只在部分啟動時傳送。如果啟動器在當天或之後開啟過，請當作遠端控制程式已經執行過。
+answer.ran.nothing = 沒有發現惡意指令碼或遠端控制程式的痕跡。
+answer.ran.no_install = 沒有找到 NIKKE 安裝資料夾，因此未檢查 debug.log 和下載記錄檔。
+answer.ran.gaps = 這次掃描有一部分無法完成。請參閱「詳細資料」中的「這次掃描無法檢查的項目」。
+answer.ran.quick = 這是快速掃描，只會開啟最多 {depth} 層深的資料夾。完整掃描也會檢查更深層的資料夾。
+answer.active.question = 是否還有東西在運作？
+answer.active.launcher = NIKKE 啟動器目前正在執行。在它執行期間，攻擊者可以傳送命令給它。
+answer.active.dll_loaded = 惡意軟體的 DLL 目前已載入到 {programs} 中。
+answer.active.registry = 讓瀏覽器載入惡意軟體 DLL 的登錄機碼已設定。
+answer.active.none = 啟動器沒有在執行，也沒有任何 DLL 已安裝或設定為載入。
+answer.clean.question = 是否有需要清理的東西？
+answer.clean.dll_folder = {browser} 的 DLL 資料夾：{path}
+answer.clean.registry = HKCU 登錄機碼 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
+answer.clean.leftover = 空的 HKCU 登錄機碼 {E77CC89B-7401-4C04-8CED-149DB35ADD04}，是惡意軟體清除其中的 DLL 路徑後留下的。
+answer.clean.legacy = {path} 中較舊的 DLL 檔案
+answer.clean.temp = {path} 中的 k2f 檔案
+answer.clean.cache = 啟動器快取，其中含有惡意軟體的痕跡：{path}
+answer.clean.none_cache = 沒有發現惡意軟體留下的檔案。不過，再次開啟啟動器之前，仍請先刪除啟動器快取（tbs_cache）：其中可能還留有修復之前的惡意指令碼。
+answer.clean.none = 沒有發現惡意軟體留下的任何東西。
+answer.protected.question = 是否已為下次做好防護？
+answer.protected.not_checked = 未檢查 hosts 檔案。
+answer.protected.domain = {domain}：{state}（hosts 檔案）。
+answer.protected.ip = hosts 檔案無法封鎖 IP 位址，而這次掃描也無法檢查防火牆。請在防火牆或路由器中封鎖 89.127.233.127 和 89.126.250.172。
+
+# The agent runs found in the logs, one line each: "{time}: {what}".
+run.line = {time}：{what}
+run.line_from = {time}：{what}（來自 {file}）
+run.no_time = 時間未記錄
+run.downloaded = 啟動器下載了遠端控制程式
+run.downloaded_as = 啟動器下載了遠端控制程式，並存為 {file}
+run.adopted = 遠端控制程式首次在這台電腦上啟動，並建立了它的 ID
+run.resumed = 遠端控制程式以先前儲存的 ID 再次啟動
+run.started = 遠端控制程式將電腦名稱傳送給攻擊者
+run.started_as = 遠端控制程式將電腦名稱 {host} 傳送給攻擊者
+
+# "Payload build": one line per build of the agent file. The parts follow each other on one line.
+build.no_etag = 無 ETag
+build.uploaded = ，上傳時間 {time}
+build.last_modified = ，最後修改時間 {time}
+build.size = ，{size} 位元組
+build.known = ，是已知的 {n} 個版本之一。
+build.unknown = 。不屬於已知的 {n} 個版本。
+build.received = 啟動器於 {time} 收到這個檔案。
+
+# Buttons shared by several screens.
+common.copy = 複製
+common.copy_command = 複製命令
+common.copy_key_path = 複製機碼路徑
+common.copy_hosts_path = 複製 hosts 路徑
+common.copy_lines = 複製這幾行
+common.copy_list = 複製這份清單
+# Two names joined, as in "Remove the Chrome and Edge DLL".
+common.and = {a}、{b}
+common.files_one = {n} 個檔案
+common.files_other = {n} 個檔案
+
+# "What to do": the steps. Each title is followed by its texts.
+step.scan_folder.title = 掃描 NIKKE 的安裝資料夾
+step.scan_folder.windows = 如果 NIKKE 安裝在這次掃描沒有找過的地方，例如另一個磁碟機，請用「掃描資料夾...」掃描那個資料夾。在 PowerShell 中，從存放本程式的資料夾執行下面的命令，也能掃描它。請將 D:\\Games\\NIKKE 換成你的 NIKKE 資料夾。
+step.scan_folder.other = 如果 NIKKE 安裝在這次掃描沒有找過的地方，例如另一個磁碟機，請掃描那個資料夾：在視窗中使用「掃描資料夾...」，或在終端機中執行 nikke-check --cli <folder>。
+step.full_scan.title = 執行完整掃描
+step.full_scan.intro = 這是快速掃描，只會開啟最多 {depth} 層深的資料夾。如果你不知道 NIKKE 在哪裡，或較舊的副本可能在更深的位置，完整掃描會開啟每個本機磁碟機上的每個資料夾。磁碟機容量大時，可能需要很長時間。
+step.full_scan.powershell = 在 PowerShell 中，從存放本程式的資料夾執行：
+step.full_scan.terminal = 在終端機中執行：nikke-check --cli --full
+step.close.title_launcher = 關閉啟動器
+step.close.title_programs = 關閉正在執行惡意軟體的程式
+step.close.launcher = NIKKE 啟動器正在執行。在它執行期間，攻擊者可以傳送命令到這台電腦。請立即關閉它，並中斷這台電腦的網路連線。
+step.close.dll_loaded_one = {programs} 已載入惡意軟體的 DLL。可以的話請關閉它。後面步驟中的重新啟動會讓所有程式卸載這個 DLL。
+step.close.dll_loaded_other = {programs} 已載入惡意軟體的 DLL。可以的話請關閉這些程式。後面步驟中的重新啟動會讓所有程式卸載這個 DLL。
+step.close.explorer = 請不要結束 explorer.exe：它負責執行工作列和桌面。重新啟動會讓它卸載這個 DLL。
+step.close.programs = 要結束的程式：{programs}。
+step.close.task_manager = 如果有程式無法關閉，請開啟工作管理員（Ctrl+Shift+Esc），在「詳細資料」索引標籤中找到它，選取後按一下「結束工作」。
+step.close.pkill = 如果啟動器無法關閉，請在終端機中執行下面的命令：
+step.save.title = 刪除任何東西之前，先儲存報告
+# The first text of this step is these sentences, one after the other.
+step.save.record = 這份報告是這次掃描發現內容的紀錄。
+step.save.agent_state = 刪除 tbs_cache 也會刪除 k2f.agent.state 這個痕跡。
+step.save.cache_traces = 刪除 tbs_cache 也會刪除這次掃描在其中發現的痕跡。
+step.save.restart = 下一個步驟中的重新啟動會關閉這個視窗。
+step.save.hide = 分享報告之前，請開啟「隱藏我的資訊」（命令列中為 --redact）：它會在複製或儲存的報告中替換你的電腦名稱、使用者名稱、遠端控制程式 ID 和家目錄。視窗中仍會顯示這些資訊。
+step.dll.title_files = 移除 {browsers} 的 DLL
+step.dll.title_leftover = 刪除殘留的登錄機碼
+step.dll.title_key = 刪除登錄機碼
+step.dll.offline_loaded = 完成這個步驟之前，請讓這台電腦保持離線：目前有程式已載入這個 DLL。
+step.dll.offline_key = 完成這個步驟之前，請讓這台電腦保持離線：只要這個機碼還在，瀏覽器每次啟動都會載入這個 DLL。
+step.dll.order = 請依照以下順序進行。Windows 在重新啟動前會一直鎖定這個 DLL，所以要先刪除登錄機碼。
+step.dll.delete_key = 刪除登錄機碼。開啟登錄編輯程式（按 Win+R，輸入 regedit 後按 Enter），將下方的機碼路徑貼到頂端的網址列，然後按 Enter。在左側窗格中，以滑鼠右鍵按一下已選取的機碼，然後選擇「刪除」。
+step.dll.leftover = 空的機碼是殘留物：惡意軟體移除了 DLL 路徑，但保留了機碼。請用相同的方法刪除它。
+step.dll.restart = 重新啟動 Windows。接著再次開啟本工具並掃描：它會顯示還剩下哪些需要刪除。
+step.dll.wine_files = 這些檔案位於 Wine 前綴中。請先關閉啟動器，以及該前綴中的所有其他程式。
+step.dll.wine_key = 這個機碼位於 Wine 前綴中。請先關閉啟動器，以及該前綴中的所有其他程式。
+step.dll.drive = 這些檔案位於從目前系統存取的 Windows 磁碟機上。那個 Windows 目前沒有在執行，所以這個 DLL 沒有被鎖定，你可以直接從這裡刪除。如果目前系統無法刪除那個磁碟機上的檔案（Windows 的快速啟動會讓它變成唯讀），請改在那個 Windows 中進行這個步驟：刪除機碼、重新啟動，然後刪除檔案。
+step.dll.delete_folder = 刪除下方的 DLL 資料夾，也就是名稱由 64 個十六進位字元組成的那個資料夾。PlatformExperienceHelper 資料夾中的其他內容請不要動：Chrome 會在那裡存放它自己的 platform_experience_helper.exe 和 LoadFeatures。
+step.dll.delete_folder_after_restart = 重新啟動之後，刪除下方的 DLL 資料夾，也就是名稱由 64 個十六進位字元組成的那個資料夾。PlatformExperienceHelper 資料夾中的其他內容請不要動：Chrome 會在那裡存放它自己的 platform_experience_helper.exe 和 LoadFeatures。
+step.dll.delete_legacy = 在下方的資料夾中，只刪除 platform_experience_helper.dll、platform_experience_helper.dll.old 和 old-clsid.txt 中實際存在的檔案。請保留 platform_experience_helper.exe：它屬於 Chrome。
+step.dll.delete_legacy_after_restart = 重新啟動之後，在下方的資料夾中，只刪除 platform_experience_helper.dll、platform_experience_helper.dll.old 和 old-clsid.txt 中實際存在的檔案。請保留 platform_experience_helper.exe：它屬於 Chrome。
+step.dll.delete_file = 刪除下方的 DLL 檔案。
+step.dll.delete_file_after_restart = 重新啟動之後，刪除下方的 DLL 檔案。
+# Follows one of the three "delete" texts above, on Windows.
+step.dll.in_use = 如果 Windows 顯示檔案正在使用中，請重新啟動 Windows，然後再刪除一次。
+step.dll.wine_regedit = 在該前綴的 user.reg 檔案中刪除登錄機碼。用下面的命令在該前綴中開啟 Wine 的 regedit，前往 HKEY_CURRENT_USER\\Software\\Classes\\CLSID，然後刪除 {E77CC89B-7401-4C04-8CED-149DB35ADD04} 機碼。
+step.dll.protontricks = 如果沒有安裝 Wine（例如在 Steam Deck 上），可以用 protontricks 在這個 Proton 前綴中開啟 regedit：
+step.dll.drive_key = 請啟動那個 Windows，刪除下方的登錄機碼；如果有 WOW6432Node 下的副本，也一併刪除：這次掃描無法讀取那個 Windows 的登錄檔。開啟登錄編輯程式（按 Win+R，輸入 regedit 後按 Enter），將機碼路徑貼到頂端的網址列，然後按 Enter。在左側窗格中，以滑鼠右鍵按一下已選取的機碼，然後選擇「刪除」。
+step.dll.scan_again = 完成後再掃描一次：這些發現項目應該會消失。
+step.dll.defender = 在一台已感染的電腦上，Microsoft Defender 沒有偵測到這個 DLL，因此防毒掃描結果乾淨，並不代表它已經消失。
+step.cache.title = 清除啟動器快取
+step.cache.intro = 請先關閉啟動器。然後刪除 tbs_cache 資料夾，這是啟動器內建瀏覽器的快取。其中可能還留有修復之前的惡意指令碼，啟動器會再次載入它。
+step.cache.none = 這次掃描沒有找到存放啟動器資料的資料夾。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 版啟動器為 nikke_launcher_hmt），在 Proton 或 Wine 前綴中則是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
+step.password.title = 用另一台裝置變更密碼
+step.password.intro_infected = 請使用從未執行過 NIKKE 啟動器的手機或另一台電腦。遠端控制程式執行期間，它的命令可以讀取這台電腦的檔案和瀏覽器資料。請變更或更換以下項目：
+step.password.intro_exposed = 遠端控制程式最晚自 2026 年 10 月 23 日起開始傳送，而且只在部分啟動時傳送。如果啟動器在當天或之後開啟過，請當作遠端控制程式已經執行過：用從未執行過啟動器的手機或另一台電腦，變更或更換以下項目：
+step.password.title_maybe = 如果啟動器在 10 月 23 日當天或之後開啟過，請變更你的 NIKKE 密碼
+step.password.maybe = 如果啟動器在 2026 年 10 月 23 日當天或之後開啟過，無論如何都請變更你的 NIKKE / Level Infinite 密碼，並使用從未執行過啟動器的手機或另一台電腦進行。
+step.password.not_opened = 這次掃描只檢查了這些檔案是否存在，並沒有開啟它們。
+# The list of accounts and secrets to change ("Copy this list" copies it).
+step.password.first = 首先是你的 NIKKE / Level Infinite 帳號，接著是電子郵件、Discord 和網路銀行。
+step.password.browsers = 你的瀏覽器中儲存的所有密碼。
+step.password.browser_one = {browser} 中儲存的所有密碼（設定檔 {profiles}）。
+step.password.browser_other = {browser} 中儲存的所有密碼（設定檔 {profiles}）。
+step.password.sessions = 登出這些服務上的所有工作階段。遠端控制程式可以收集瀏覽器 Cookie，而被竊取的 Cookie 不需要密碼就能使用。
+step.password.crypto = 如果你持有加密貨幣，請將它轉到新的錢包，新錢包的助記詞要在另一台裝置上產生。
+step.password.wallet = {browser} 中的 {wallet}（設定檔 {profile}）：將資金轉到新的錢包，新錢包的助記詞要在另一台裝置上產生。
+step.password.tokens = 撤銷這台電腦上儲存的 API 權杖和 SSH 金鑰。
+step.password.secret = 撤銷並更換：{what}，{path}。
+step.password.other = 這台電腦上儲存的其他任何密碼、API 權杖、SSH 金鑰或錢包。
+step.password.wine = 在 Wine 下，遠端控制程式可以透過 Z: 磁碟機讀取你的整個家目錄，以及啟動器處理程序的環境變數，範圍不只限於 Wine 前綴。
+step.block.title_domains = 封鎖這些網域
+step.block.title_ips = 封鎖攻擊者的 IP 位址
+step.block.all_blocked = 你的 hosts 檔案已封鎖這三個網域。
+step.block.notepad = 開啟「開始」功能表，輸入「記事本」，以滑鼠右鍵按一下它，然後選擇「以系統管理員身分執行」。在記事本中選擇「檔案 > 開啟」，將下方的 hosts 檔案路徑貼到「檔案名稱」欄位，然後按 Enter。
+step.block.paste = 將以下幾行貼到檔案結尾，然後儲存：
+step.block.tee = 在終端機中執行下面的命令。它會將這幾行加入 /etc/hosts，並要求你輸入密碼。
+# Follows the text above, outside macOS.
+step.block.deck = 在 Steam Deck 上，如果你從未設定過密碼，請先用 passwd 設定。
+step.block.scan_again = 完成後再掃描一次：「詳細資料」中的「防護」會顯示每個網域都已封鎖。
+step.block.ips = hosts 檔案無法封鎖 IP 位址。請在防火牆或路由器中封鎖 89.127.233.127 和 89.126.250.172。
+step.block.firewall = 若要新增 Windows 防火牆規則，請以滑鼠右鍵按一下「開始」按鈕，選擇「終端機 (系統管理員)」或「Windows PowerShell (系統管理員)」，然後執行：
+step.block.macos = 在 macOS 上，請在路由器的設定中封鎖它們。
+step.block.ufw = 如果使用 ufw，請執行下面的命令。ufw 關閉時，這些規則不會封鎖任何東西：sudo ufw status 必須顯示「Status: active」，而 sudo ufw enable 會將它開啟。如果沒有 ufw，請在路由器的設定中封鎖它們。
+step.wait.title = 在 Level Infinite 確認修復之前，不要開啟啟動器
+step.wait.servers = 2026 年 11 月 3 日，Level Infinite 的部分伺服器仍在傳送惡意檔案。在修復之前開啟啟動器，可能會再次載入這段指令碼。
+step.wait.reinstall = 遠端控制程式可以執行任何命令，因此重新安裝作業系統是確保這台電腦乾淨最安全的方法。
+
+# Details: the groups of findings.
+section.proof = 惡意軟體已執行的證據
+section.cleanup = 需要清理的項目
+section.signs = 暴露跡象
+section.info = 資訊
+section.coverage = 這次掃描無法檢查的項目
+
+# Details: "What this means: ..." for each kind of finding.
+meaning.agent_ran = 遠端控制程式曾在啟動器內執行。啟動器開著的期間，攻擊者可以控制這台電腦。
+meaning.payload_downloaded = 啟動器從攻擊者的伺服器收到了遠端控制程式。
+meaning.payload_file = 啟動器的記錄檔資料夾中仍有一份遠端控制程式的副本。
+meaning.agent_state = 遠端控制程式將它的 ID 儲存在啟動器的瀏覽器儲存空間中，因此它至少執行過一次。
+meaning.agent_server = 啟動器連線到了傳送遠端控制程式的伺服器，表示它已經進行到向伺服器要求遠端控制程式的階段。
+meaning.loader_cached = 惡意指令碼曾在啟動器中執行。單憑這一點，無法證明遠端控制程式已被傳送。
+meaning.launcher_contacted = 啟動器曾連線到攻擊者的網域。
+meaning.chrome_dll = 瀏覽器啟動時會載入這個 DLL，因此即使不開啟啟動器，惡意軟體也能再次執行。即使沒有安裝 Chrome，惡意軟體也會建立 Chrome 的資料夾。
+meaning.registry_key = 這個機碼會讓瀏覽器載入惡意軟體的 DLL。
+meaning.registry_leftover = 這個機碼中的 DLL 路徑已被移除，但機碼本身還在。請刪除它。
+meaning.legacy_dll = 較早版本的遠端控制程式曾將它的 DLL 放在這裡。
+meaning.dll_loaded = 這些程式目前正在執行惡意軟體的 DLL。在這些程式結束或 Windows 重新啟動之前，Windows 會一直讓它保持載入。
+meaning.temp_file = 遠端控制程式在收集瀏覽器登入資料或擷取螢幕畫面時寫入了這些檔案。
+meaning.launcher_running = 啟動器執行期間，攻擊者可以傳送命令給它。
+meaning.coverage = 這次掃描有一部分無法完成。上方的文字說明了該怎麼做。
+meaning.info = 僅供參考，不會影響判定結果。
+
+# Details: "Your data the malware could reach".
+exposure.title = 惡意軟體可能存取的資料
+exposure.note = 這次掃描只檢查了這些檔案是否存在，並沒有開啟它們。遠端控制程式執行期間，它的命令可以讀取這些檔案。
+exposure.home_note = 因為發現了 Wine 前綴，所以檢查了這台電腦的家目錄。如果掃描的前綴是在另一台電腦上執行的，請改為檢查那台電腦。
+exposure.saved_passwords = 儲存的密碼
+exposure.wallets = 錢包擴充功能
+exposure.secrets = 機密檔案
+# {files} are file names such as "Login Data, key4.db".
+exposure.login = {browser}，設定檔 {profile}（{files}）
+exposure.wallet = {browser} 中的 {wallet}（{id}），設定檔 {profile}
+# What each secret file found holds.
+secret.aws = AWS 憑證
+secret.github_cli = GitHub CLI 權杖
+secret.git = Git 憑證
+secret.npm = npm 設定，可能含有權杖
+secret.docker = Docker Registry 登入資訊
+secret.kubernetes = Kubernetes 設定
+secret.gcloud = Google Cloud 憑證
+secret.azure = Azure CLI 權杖
+secret.claude = Claude Code 憑證
+secret.codex = Codex CLI 憑證
+secret.gemini = Gemini CLI 憑證
+secret.copilot = GitHub Copilot CLI 的 MCP 設定
+secret.opencode = opencode 憑證
+secret.filezilla = FileZilla 儲存的伺服器
+secret.netrc = netrc 登入資訊
+secret.pypi = PyPI 權杖
+secret.crates = crates.io 權杖
+secret.vault = HashiCorp Vault 權杖
+secret.terraform = Terraform 權杖
+secret.pulumi = Pulumi 憑證
+secret.kaggle = Kaggle API 金鑰
+secret.huggingface = Hugging Face 權杖
+secret.rclone = rclone 設定
+secret.s3cmd = s3cmd 設定
+secret.databricks = Databricks 設定
+secret.oci = Oracle Cloud 設定
+secret.gnupg = GnuPG 私密金鑰
+secret.env = .env 檔案
+secret.ssh = SSH 私密金鑰
+
+# Findings: a title and a detail each. {file} is a log file name, {files} is a count such as "2 files".
+finding.no_install.title = 找不到 NIKKE 安裝資料夾
+finding.no_install.detail = 找到了啟動器資料，但沒有找到安裝資料夾，因此未檢查 debug.log 和下載記錄檔。如果你知道 NIKKE 安裝在哪裡，請掃描那個資料夾：在視窗中使用「掃描資料夾...」，或執行 nikke-check --cli <folder>。
+finding.quick_scan.title = 這是快速掃描
+finding.quick_scan.detail_windows = 它讀取了啟動器記錄在登錄檔中的安裝路徑、啟動器資料，以及每個本機磁碟機根目錄以下最多 {depth} 層的所有資料夾。如果 NIKKE 資料夾位於超過 {depth} 層深的位置，且啟動器已不再記錄它，只有完整掃描（視窗中的「完整掃描」，或 nikke-check --cli --full）或「掃描資料夾...」才能找到。
+finding.quick_scan.detail_macos = 它讀取了常見的 Wine 前綴資料夾、這些前綴記錄的安裝路徑，以及 / 以下最多 {depth} 層的所有資料夾。如果 NIKKE 資料夾位於超過 {depth} 層深的位置，且啟動器已不再記錄它，只有完整掃描（視窗中的「完整掃描」，或 nikke-check --cli --full）或「掃描資料夾...」才能找到。
+finding.quick_scan.detail_linux = 它讀取了常見的 Wine 前綴資料夾、這些前綴記錄的安裝路徑，以及 /、你的家目錄和 /mnt、/media、/run/media 底下每個磁碟機以下最多 {depth} 層的所有資料夾。如果 NIKKE 資料夾位於超過 {depth} 層深的位置，且啟動器已不再記錄它，只有完整掃描（視窗中的「完整掃描」，或 nikke-check --cli --full）或「掃描資料夾...」才能找到。
+finding.unreadable.title = 有些資料夾無法讀取
+finding.unreadable.detail = 掃描沒有權限開啟這些資料夾，因此未檢查其中的任何內容。在 macOS 上，請到「系統設定 > 隱私權與安全性」，將「完整磁碟取用權限」授予「終端機」（或你用來啟動本工具的 App），然後再掃描一次。在其他系統上，請以能讀取這些資料夾的使用者身分再掃描一次。
+finding.network.title = 未掃描網路磁碟機
+finding.network.detail = 電腦掃描會略過網路磁碟機和遠端掛載點，因為讀取它們很慢，而已中斷連線的磁碟機可能會讓掃描停住。如果 NIKKE 安裝在這類磁碟機上，請用「掃描資料夾...」或 nikke-check --cli <folder> 掃描它。
+finding.log_server.title = {file} 提到了遠端控制程式的伺服器
+finding.log_server.detail = {file} 中出現 analytics.insightjs.com 或 insight.bundle。這個伺服器負責傳送遠端控制程式，所以啟動器已經進行到向它要求遠端控制程式的階段。
+finding.log_mention.title = {file} 提到了 insightjs
+finding.log_mention.detail = {file} 中出現 insightjs，這是惡意載入器指令碼的網域。沒有任何一行提到遠端控制程式的伺服器（analytics.insightjs.com 或 insight.bundle），因此單憑這一點，無法證明遠端控制程式已被下載。
+finding.debug_unreadable.title = 無法讀取 debug.log
+finding.debug_unreadable.detail = Launcher/intl_service/debug.log 存在，但這次掃描沒有權限開啟它，因此無法檢查遠端控制程式是否執行過。請以能讀取它的使用者身分再掃描一次。
+finding.agent_ran.title = 惡意遠端控制程式曾經執行
+finding.agent_ran.detail = debug.log 顯示遠端控制程式在啟動器內啟動（k2f_chan registered）。啟動器開著的期間，攻擊者可以在這台電腦上執行命令。
+finding.payload_file.title = 惡意檔案仍在磁碟上
+finding.payload_file.detail = 啟動器記錄檔資料夾中的這個檔案是 LuaJIT 位元組碼。啟動器把下載的遠端控制程式（insight.bundle）以 tinyget 記錄檔的檔名儲存。
+finding.downloaded.title = 啟動器下載了惡意軟體
+finding.downloaded.detail = {file} 記錄了啟動器從 analytics.insightjs.com 下載 insight.bundle。這個檔案就是遠端控制程式。
+finding.download_attempt.title = 啟動器曾要求下載惡意軟體，但沒有任何下載完成
+finding.download_attempt.detail = {file} 記錄了一次向 analytics.insightjs.com 要求 insight.bundle 的請求，但沒有任何一行顯示下載完成。失敗的請求會記錄 curl_error 和 total=0。載入器曾要求取得遠端控制程式，但單憑這一點，無法證明遠端控制程式已送達：遠端控制程式是否執行過，要看 debug.log。
+finding.install_found.title = 在 {path} 找到 NIKKE 安裝資料夾
+finding.install_found.debug_missing = 沒有找到 Launcher/intl_service/debug.log。它可能已被刪除，或啟動器從未從這個資料夾啟動過。
+finding.install_found.debug_unreadable = Launcher/intl_service/debug.log 存在，但無法讀取（沒有權限）。
+finding.install_found.debug_checked = 已檢查 Launcher/intl_service/debug.log。其中包含這個檔案建立以來的每次啟動。
+# {note} is one of the three texts above.
+finding.install_found.written = {note}最後寫入時間：{time}。
+finding.data_link.title = 啟動器資料的資料夾是連結，未讀取
+finding.data_link.detail = 這個資料夾連結到 {target}，而該目標不存在、是磁碟機根目錄，或是位於連結上層的資料夾，因此未檢查其中的檔案。請用「掃描資料夾...」或 nikke-check --cli <folder> 掃描實際存放啟動器資料的資料夾。
+finding.data_link.unknown_target = 未知的目標
+finding.agent_state.title = 惡意遠端控制程式在啟動器資料中留下了痕跡
+finding.agent_state.detail = 啟動器資料中有 {files} 出現 k2f_chan（遠端控制程式的橋接通道名稱）或 k2f.agent.state（遠端控制程式儲存的 ID）。這表示遠端控制程式曾經執行。
+finding.agent_server.title = 啟動器曾連線到遠端控制程式的伺服器
+finding.agent_server.detail = 網路狀態資料中有 {files} 記錄了 analytics.insightjs.com。這個伺服器負責傳送遠端控制程式（insight.bundle），並接收它的定期回報。若某次啟動只有載入器執行、沒有遠端控制程式，記錄中只會出現 insightjs.com。
+finding.loader_cached.title = 啟動器載入了惡意指令碼
+finding.loader_cached.detail = 在啟動器內建瀏覽器快取的資料中，有 {files} 出現了 insightjs.com 載入器的位址。被植入的指令碼已執行；單憑這一點，無法證明遠端控制程式已被下載。
+finding.network_state.title = 啟動器曾連線到 insightjs.com
+finding.network_state.detail = 網路狀態資料中有 {files} 記錄了 insightjs.com，表示啟動器內建的瀏覽器曾連線到它。
+finding.data_mention.title = 啟動器資料中提到 insightjs.com
+finding.data_mention.detail = 啟動器資料中有 {files} 出現了 insightjs.com。
+finding.data_clean.title = 啟動器資料中沒有痕跡
+finding.data_clean.detail = 已檢查 {files}。
+# {browser} is a browser name such as Chrome or Edge.
+finding.persistence.title = {browser} 的常駐機制已安裝
+finding.persistence.dll = {browser} 的使用者資料中有惡意軟體的資料夾，其中含有 platform_experience_helper.dll；遭劫持的 HKCU COM 註冊會讓 {browser} 載入這個檔案。
+finding.persistence.hash_dir = {browser} 的使用者資料中有惡意軟體的資料夾：一個名稱由 64 個十六進位字元組成（SHA-256）的子資料夾，惡意軟體會將 platform_experience_helper.dll 放在這裡。沒有找到 DLL 本身，因此它可能已被移除。
+# For Chrome, {text} is one of the two texts above.
+finding.persistence.chrome = {text}即使沒有安裝 Chrome，惡意軟體也會建立這個資料夾。
+finding.helper_folder.title = {browser} 的 Platform Experience Helper 資料夾
+finding.helper_folder.chrome = 這個資料夾中沒有 platform_experience_helper.dll，也沒有名稱由 64 個十六進位字元組成的子資料夾。這符合 Chrome 自己的 Platform Experience Helper（platform_experience_helper.exe、LoadFeatures），以使用者為單位安裝的 Chrome 會將它放在這裡。這不是感染的跡象。
+finding.helper_folder.other = 這個資料夾中沒有 platform_experience_helper.dll，也沒有名稱由 64 個十六進位字元組成的子資料夾，因此不符合惡意軟體的結構。這不是感染的跡象。
+finding.legacy.title = 已安裝舊版 Chrome 常駐機制的檔案
+finding.legacy.detail = Chrome 的 Application\\PlatformExperienceHelper 資料夾中，有遠端控制程式的清理程式碼會刪除的檔案：platform_experience_helper.dll、platform_experience_helper.dll.old 或 old-clsid.txt。較早版本的遠端控制程式曾將它的 DLL 放在這裡。這個資料夾中 Chrome 自己的 platform_experience_helper.exe 是正常的。
+finding.temp.title = 惡意軟體在 Temp 中留下的檔案
+finding.temp.detail = 遠端控制程式會將暫存檔命名為 k2f-bcreds-*（收集到的瀏覽器登入資料）、k2f-keyscan-*（早期版本）和 k2f_screen_*（螢幕截圖，.jpg，早期版本為 .png）。
+finding.hex_id.title = Temp 中的十六進位 ID 檔案
+finding.hex_id.detail = Temp 中有一個 22 位元組的 .tmp 檔案，內容是 22 個字元的十六進位 ID。在分析過的那台已感染電腦上，這類檔案是在遠端控制程式下載前一秒寫入的。其他 Tencent 軟體也會寫入同名檔案（曾在一個日期為 2026 年 9 月 20 日、早於 CDN 檔案遭竄改的 Delta Force 前綴中看到），因此單獨出現時，並不是感染的跡象。
+finding.registry.title = 發現登錄檔常駐機制（HKCU CLSID 劫持）
+# {detail} is one of the two "where" texts below.
+finding.registry.detail = {detail}惡意軟體註冊這個機碼，讓 Google Chrome 載入惡意軟體的 DLL。指向 wpc.dll 的 HKLM 副本是 Windows 的一部分，屬於正常情況。
+finding.registry_leftover.title = 常駐機制殘留的登錄機碼（HKCU CLSID）
+finding.registry_leftover.detail = {detail}它的預設值是空的或不存在：遠端控制程式曾安裝 DLL，之後又解除安裝，這會清除該值，但保留機碼。DLL 可能仍在磁碟上。指向 wpc.dll 的 HKLM 副本是 Windows 的一部分，屬於正常情況。
+finding.registry.where_windows = HKCU 下存在機碼 {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32（見下方）。
+finding.registry.where_wine = 這個 Wine 前綴的 HKCU 登錄區 user.reg 中有機碼 {E77CC89B-7401-4C04-8CED-149DB35ADD04}。
+finding.launcher_running.title = NIKKE 啟動器目前正在執行
+finding.launcher_running.detail = 請立即關閉啟動器（如果無法關閉，請結束它的處理程序），並中斷網路連線。在它執行期間，攻擊者可以傳送命令到這台電腦。
+finding.dll_loaded.title = 常駐機制的 DLL 目前已載入
+finding.dll_loaded.detail = 這些程式已載入惡意軟體的 platform_experience_helper.dll。在這些程式結束之前，Windows 會一直鎖定這個檔案；只要 HKCU 機碼還在，Chrome 下次啟動時就會再次載入它。請刪除登錄機碼、重新啟動 Windows，然後刪除這個 DLL 的資料夾。
+
+# "Show technical details": lines the tool writes among the lines quoted from files.
+evidence.luajit = LuaJIT 位元組碼標頭（1B 4C 4A），{size} 位元組。已知版本為 205,135 位元組，而 10 月 23 日存為 k2f.lua 的一個版本為 165,108 位元組。
+# One TransportSecurity entry. {host} is a domain, {time} a UTC time.
+evidence.hsts = {host} 的 HSTS 項目，最後接收時間 {time}
+evidence.hsts_no_time = {host} 的 HSTS 項目
+evidence.in_file = {file}：{text}
+evidence.empty_folder = （空資料夾）
+evidence.registry_value = {key}\\InprocServer32 (預設值) = {value}
+evidence.value_not_set = (數值未設定)
+evidence.dll_loaded = PID {pid}：{program}（{exe}）已載入 {dll}
+# The last line of a list that was cut.
+evidence.total = ……共 {total} 項
+
+# "Open folder" and the other buttons that open a window, when it fails.
+open.gone = {path} 已不存在。
+open.windows_only = {program} 只在 Windows 上提供。
+open.failed = 無法開啟檔案管理員（{status}）
+open.shell_execute = ShellExecute 錯誤 {code}
+
+# The window.
+ui.tab.happened = 發生了什麼
+ui.tab.todo = 該怎麼做
+ui.tab.details = 詳細資料
+ui.copied = 已複製
+ui.button.scan_computer = 掃描這台電腦
+ui.button.full_scan = 完整掃描
+ui.button.scan_folder = 掃描資料夾...
+ui.button.scan_again = 重新掃描
+ui.button.new_scan = 新掃描
+ui.button.stop = 停止掃描
+ui.button.copy_report = 複製報告
+ui.button.save_report = 儲存報告...
+ui.button.see_todo = 查看該怎麼做
+ui.button.open_folder = 開啟資料夾
+ui.button.task_manager = 開啟工作管理員
+ui.button.registry_editor = 開啟登錄編輯程式
+ui.button.copy_path = 複製路徑
+ui.button.copy_link = 複製連結
+ui.button.open_link = 開啟連結
+ui.button.show = 顯示
+ui.button.hide = 隱藏
+ui.button.show_details = 顯示技術細節
+ui.button.hide_details = 隱藏技術細節
+ui.hide_info = 隱藏我的資訊
+ui.hide_info_note = 「隱藏我的資訊」適用於「複製報告」和「儲存報告」。視窗中仍會顯示所有內容。
+ui.done = 完成
+# File dialogs.
+ui.dialog.pick_folder = 選擇要掃描的資料夾
+ui.dialog.save = 儲存報告
+ui.dialog.text_files = 文字檔
+# One line shown above the screen.
+ui.notice.only_folders = 只能掃描資料夾。請拖放存放該檔案的資料夾。
+ui.notice.stopped = 已停止掃描。
+ui.notice.saved = 報告已儲存至 {path}。
+ui.notice.save_failed = 無法儲存報告：{error}
+ui.notice.save_failed_plain = 無法儲存報告。
+ui.notice.open_failed = 無法開啟：{error}
+ui.notice.open_failed_plain = 無法開啟。
+# Start screen. The helper's speech bubble comes first.
+ui.home.hint = 嗨，我是 MotherSphere。請先按「掃描這台電腦」。本工具只會讀取檔案：不會刪除任何東西，也不會透過網路傳送任何資料。
+ui.home.title = 尚未掃描
+ui.home.computer = 電腦掃描
+ui.home.quick_windows = 讀取啟動器記錄在登錄檔中的安裝路徑、你的使用者設定檔和啟動器資料，以及每個本機磁碟機上最多 5 層深的所有資料夾。通常幾秒內就能完成。
+ui.home.quick_macos = 讀取 Wine、CrossOver、Whisky、Wineskin 和 Heroic 的前綴及其記錄的安裝路徑，以及 / 以下最多 5 層的所有資料夾，包括本機磁碟區。會略過網路磁碟區。
+ui.home.quick_linux = 讀取 Steam、Lutris、Heroic、Bottles 和 Faugus 的所有 Wine 前綴及其記錄的安裝路徑，以及 /、你的家目錄和 /mnt、/media、/run/media 底下每個磁碟機以下最多 5 層的所有資料夾。會略過網路掛載點。
+ui.home.full = 完整掃描會開啟每個本機磁碟機上的每個資料夾，用來尋找位於超過 5 層深、且啟動器已不再記錄的 NIKKE 資料夾。磁碟機容量大時，可能需要很長時間。
+ui.home.folder = 資料夾掃描
+ui.home.folder_text = 掃描單一資料夾及其底下的所有內容，包括其中的任何 Wine 前綴。
+ui.home.drop = 你也可以將資料夾拖放到這個視窗上。
+ui.home.no_dialog = 如果沒有出現選擇資料夾的對話方塊，請在終端機中執行 nikke-check --cli <folder>。
+# Scan screen.
+ui.scan.title = 正在掃描 {target}
+ui.scan.elapsed = 已經過時間
+ui.scan.searching = 正在尋找 NIKKE 安裝資料夾和 Wine 前綴
+ui.scan.programs = 正在檢查執行中的程式
+ui.scan.locations = 正在檢查找到的位置
+ui.scan.locations_one = 正在檢查 1 個位置
+ui.scan.locations_other = 正在檢查 {n} 個位置
+ui.scan.progress = {done} / {total}
+ui.scan.hosts = 正在檢查 hosts 檔案
+ui.tile.items = 已掃描項目
+ui.tile.folders = 資料夾
+ui.tile.locations = 找到的位置
+ui.tile.findings = 目前的發現項目
+ui.failed.windows = 掃描因內部錯誤而停止。請再試一次，或在 PowerShell 中，從存放本程式的資料夾執行 {command} 來查看報告。
+ui.failed.other = 掃描因內部錯誤而停止。請再試一次，或執行 nikke-check --cli，在終端機中查看報告。
+# Result screen.
+ui.happened.payload_build = 酬載版本
+ui.happened.agent_runs = 記錄檔中的遠端控制程式執行紀錄
+ui.todo.hint = 請依序一次完成一個步驟。按鈕會幫你開啟正確的資料夾或工具，但檔案要由你自己刪除。本程式絕不會刪除任何東西。
+ui.todo.note = 這些步驟依據這次掃描的發現產生，並依照應執行的順序排列。「完成」標記不會被儲存。
+ui.tile.critical = 嚴重
+ui.tile.warnings = 警告
+ui.tile.info = 資訊
+ui.tile.duration = 耗時
+ui.details.checked = 已檢查：{summary}。掃描範圍：{scope}。
+# A section title and its number of findings: "Information (3)".
+ui.details.section_count = {title}（{n}）
+ui.details.hosts = hosts 檔案：{path}。這不是感染檢查：只顯示這些網域是否已被封鎖。
+ui.details.protection = 防護
+ui.details.limits = 這項檢查的限制
+ui.details.locations = 已檢查的位置
+ui.details.none_found = 沒有找到。
+ui.details.folders_checked = 已檢查的資料夾

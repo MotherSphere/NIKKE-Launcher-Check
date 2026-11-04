@@ -1,0 +1,527 @@
+# NIKKE Launcher Check : les textes en français. Les clés sont les mêmes que dans en.txt.
+#
+# Une entrée par ligne : clé = texte. Les lignes qui commencent par # sont des commentaires.
+# Traduisez seulement le texte après « = ». Ne modifiez pas les clés.
+# Dans le texte, \n commence une nouvelle ligne et \\ donne une barre oblique inverse.
+# {name} est une valeur que le programme insère : un chemin, un nombre, un nom de fichier ou un autre texte.
+# Gardez chaque {name} du texte anglais avec le même nom. Vous pouvez le déplacer dans la phrase.
+# Les autres accolades, comme le CLSID {E77CC89B-7401-4C04-8CED-149DB35ADD04}, sont du texte simple : gardez-les.
+# Gardez tels quels les noms de fichiers, chemins, clés de Registre, commandes, domaines, adresses IP et hachages.
+# Un texte entre guillemets comme « Analyser un dossier... » désigne un bouton ou une partie de cette fenêtre :
+# reprenez les mots de l'entrée de ce bouton. Les menus et boutons de Windows (Exécuter en tant
+# qu'administrateur, Fin de tâche, Fichier > Ouvrir) sont nommés comme Windows les affiche en français.
+# Une entrée absente d'une traduction affiche le texte anglais.
+
+# Ligne de commande : nikke-check --help, et erreurs affichées dans le terminal.
+cli.usage = NIKKE Launcher Check : recherche les traces de la compromission de novembre 2026 du lanceur PC de NIKKE.\nLecture seule. Aucun accès réseau.\n\nUtilisation :\n  nikke-check                  Ouvrir la fenêtre\n  nikke-check PATH             Ouvrir la fenêtre et analyser ce dossier\n  nikke-check --cli            Analyse rapide de cet ordinateur, affichée\n                               sous forme de rapport\n  nikke-check --cli --full     Analyse complète : ouvre tous les dossiers\n                               de tous les lecteurs locaux\n  nikke-check --cli PATH...    Analyser seulement ces dossiers, en entier,\n                               et afficher un rapport\n  nikke-check --cli --redact   Remplacer le nom de l'ordinateur, les noms\n                               d'utilisateur, les ID d'agent et le dossier\n                               personnel dans le rapport (toute forme de --cli)\n  nikke-check --help           Afficher cette aide\n\nLangue :\n  --lang CODE    À ajouter à n'importe quelle forme ci-dessus pour choisir la\n                 langue de la fenêtre et du rapport. Sans --lang, le programme\n                 prend la première langue préférée du système qui a une\n                 traduction, et sinon l'anglais.\n                 CODE : {codes}\n\nCodes de sortie (--cli) :\n  0  aucune trace trouvée\n  1  exposé (avertissements uniquement)\n  2  infecté (traces critiques)\n  3  aucune installation de NIKKE ni donnée du lanceur trouvée\n  4  arguments non valides, ou dossier illisible\n
+cli.unknown_argument = Argument inconnu : {arg}
+cli.lang_missing = --lang nécessite un code de langue : {codes}
+cli.lang_unknown = Code de langue inconnu : {code}. Utilisez l'un de ceux-ci : {codes}
+cli.cannot_read_folder = Impossible de lire le dossier {path} : {error}
+cli.not_a_folder = Ce n'est pas un dossier : {path}
+cli.window_failed = Impossible d'ouvrir la fenêtre : {error}
+# Boîte d'erreur de Windows quand la fenêtre ne peut pas s'ouvrir. {command} est une commande PowerShell.
+cli.error_box = La fenêtre n'a pas pu s'ouvrir :\n{error}\n\nPour obtenir le rapport sans la fenêtre, ouvrez PowerShell dans le dossier qui contient ce programme et exécutez :\n\n{command}
+
+# Barre du haut, écran d'accueil et en-tête du rapport.
+report.read_only = Lecture seule. Aucun accès réseau.
+report.about = Le 27 septembre 2026, quatre fichiers du CDN de Level Infinite ont été modifiés pour charger un script hébergé sur insightjs.com dans le lanceur PC de NIKKE. À partir du 23 octobre 2026 au plus tard, ce script a téléchargé un agent d'accès à distance (insight.bundle) capable d'exécuter des commandes, de lire des fichiers, de faire des captures d'écran et de collecter les données des navigateurs. Trois de ces fichiers ont été remplacés le 3 novembre. Le quatrième a été nettoyé le 28 octobre, mais certains serveurs du CDN distribuaient encore l'ancienne copie le 3 novembre. Cet outil recherche les traces que le script malveillant et l'agent laissent sur le disque.
+# Ce qui a été analysé (« Cible de l'analyse : ... », « Analyse de ... »).
+report.scope.computer = cet ordinateur
+report.scope.quick = cet ordinateur (analyse rapide)
+report.scope.full = cet ordinateur (analyse complète)
+
+# Le verdict : un titre, puis une phrase.
+verdict.infected.title = Infecté
+verdict.infected.summary = Des traces critiques ont été trouvées : l'agent a été téléchargé ou s'est exécuté, il a laissé un mécanisme de persistance, ou le lanceur est en cours d'exécution. Considérez cet ordinateur comme compromis.
+verdict.exposed.title = Exposé
+verdict.exposed.summary = Le lanceur a chargé le script malveillant ou contacté insightjs.com, mais aucun signe d'exécution de l'agent n'a été trouvé.
+verdict.no_traces.title = Aucune trace trouvée
+verdict.no_traces.summary = Aucune trace du script malveillant ni de l'agent n'a été trouvée dans les fichiers NIKKE repérés par cette analyse.
+verdict.not_found.title = NIKKE introuvable
+verdict.not_found.summary = Aucune installation de NIKKE ni donnée du lanceur n'a été trouvée aux emplacements vérifiés par cette analyse.
+
+# Badges de gravité des constats, et étiquettes du rapport (« [CRITIQUE] »).
+severity.critical = CRITIQUE
+severity.warning = AVERTISSEMENT
+severity.info = INFO
+
+# Les types d'emplacements qu'une analyse vérifie (« [Installation de NIKKE] /chemin » dans le rapport).
+kind.install = Installation de NIKKE
+kind.launcher_data = Données du lanceur
+kind.wine_prefix = Préfixe Wine
+kind.user_profile = Profil utilisateur
+# Groupes de constats sans dossier.
+group.running = Programmes en cours d'exécution
+group.coverage = Couverture de l'analyse
+
+# « Limites de cette vérification », dans la fenêtre et dans le rapport.
+report.caveat.debug_log = debug.log disparaît quand le dossier NIKKE est supprimé ou réinstallé. La vérification de k2f.agent.state dans les données du lanceur n'en dépend pas.
+report.caveat.not_proof = Ne rien trouver ne prouve pas que l'ordinateur est sain.
+report.caveat.no_logs = Les commandes exécutées par l'agent ne laissent aucun journal : cet outil ne peut donc pas déterminer ce que l'attaquant a fait.
+
+# Protection : le fichier hosts, dans Détails et dans le rapport.
+hosts.blocked = bloqué
+hosts.not_blocked = non bloqué
+hosts.unknown = état inconnu
+hosts.missing = Le fichier hosts n'existe pas : il ne bloque donc rien.
+hosts.unreadable = Impossible de lire le fichier hosts : les domaines qu'il bloque sont inconnus.
+hosts.block_lines_intro = Pour bloquer les domaines qui ne sont pas indiqués comme bloqués, ajoutez ces lignes au fichier hosts :
+hosts.note = Modifier le fichier hosts nécessite des droits d'administrateur. Cet outil ne le modifie jamais.
+hosts.ip_note = Les adresses IP 89.127.233.127 et 89.126.250.172 ne peuvent pas être bloquées dans le fichier hosts. Bloquez-les dans votre pare-feu ou votre routeur.
+
+# « Emplacements vérifiés : ... » dans Détails et dans le rapport, séparés par des virgules.
+report.checked.install_one = {n} installation de NIKKE
+report.checked.install_other = {n} installations de NIKKE
+report.checked.launcher_data_one = {n} dossier de données du lanceur
+report.checked.launcher_data_other = {n} dossiers de données du lanceur
+report.checked.wine_prefix_one = {n} préfixe Wine
+report.checked.wine_prefix_other = {n} préfixes Wine
+report.checked.user_profile_one = {n} profil utilisateur
+report.checked.user_profile_other = {n} profils utilisateur
+report.checked.nothing = aucun
+
+# « Statistiques de l'analyse : ... ». {skipped} est l'un des deux textes « ignoré » ci-dessous, ou rien.
+report.stats = {entries} entrées parcourues ({folders} dossiers), {errors} erreurs d'autorisation{skipped}, {seconds} s.
+report.stats.skipped_one = , 1 lecteur réseau ignoré
+report.stats.skipped_other = , {n} lecteurs réseau ignorés
+report.stats.cap = La limite d'entrées a été atteinte : certains dossiers n'ont pas été parcourus.
+
+# Le rapport texte (sortie de --cli, « Copier le rapport » et « Enregistrer le rapport... »).
+report.scan_of = Cible de l'analyse : {scope}
+report.started = Début : {time}
+report.verdict = VERDICT : {verdict}
+report.what_happened = CE QUI S'EST PASSÉ
+# Une réponse de « Ce qui s'est passé » : la question et sa réponse (Oui, Non...).
+report.answer = {question} {reply}.
+report.agent_runs = Exécutions de l'agent dans les journaux :
+report.payload_build = Version de l'agent : {build}
+report.what_to_do = QUE FAIRE
+report.open = Ouvrir : {path}
+report.details = DÉTAILS
+report.locations_checked = Emplacements vérifiés : {summary}
+report.exposure_heading = {heading} :
+report.exposure_none = {heading} : aucun élément trouvé.
+report.exposure_item = {what} : {path}
+report.folders_checked = Dossiers vérifiés :
+report.no_findings = Aucun constat.
+report.protection = PROTECTION (fichier hosts : {path})
+report.protection_note = Il ne s'agit pas d'une recherche d'infection. Cette partie indique si les domaines sont bloqués.
+report.domain_state = {domain} : {state}
+report.limits = LIMITES DE CETTE VÉRIFICATION
+report.write_up = Compte rendu de l'incident : {url}
+report.scan_stats = Statistiques de l'analyse : {stats}
+# L'endroit où un constat a été trouvé : « Installation de NIKKE : /chemin ».
+report.location = {label} : {path}
+
+# Les lignes d'un constat, dans Détails et dans le rapport.
+details.meaning = Ce que cela signifie : {text}
+details.found_in = Trouvé dans : {location}
+details.path = Chemin : {path}
+details.time = Date et heure : {time}
+# Une clé de Registre ou un texte à copier : « Clé de Registre : HKCU\... ».
+details.copy = {label} : {text}
+details.copy_label.registry = Clé de Registre
+details.copy_label.text = Texte
+
+# Heures lues dans les journaux. Elles suivent l'horloge de l'ordinateur qui a exécuté le lanceur.
+time.local = {time} (heure locale)
+time.local_no_year = {time} (heure locale, année absente du journal)
+
+# « Ce qui s'est passé » : quatre questions, chacune avec une réponse et ses raisons.
+answer.yes = Oui
+answer.no = Non
+answer.cannot_tell = Impossible à dire
+answer.partly = En partie
+# Un titre de constat utilisé comme raison.
+answer.finding = {title}.
+answer.ran.question = Le logiciel malveillant s'est-il exécuté sur cet ordinateur ?
+answer.ran.nothing_checked = Aucune installation de NIKKE ni donnée du lanceur n'a été trouvée : il n'y avait donc rien à vérifier.
+answer.ran.no_agent_log = Aucun journal ne montre le démarrage de l'agent lui-même, mais les journaux peuvent être supprimés ou tronqués.
+answer.ran.loader = Le lanceur a chargé le script malveillant, mais aucune trace de l'agent n'a été trouvée.
+answer.ran.act_as_if = L'agent n'était envoyé que lors de certains lancements, à partir du 23 octobre 2026 au plus tard. Si le lanceur a été ouvert à cette date ou après, considérez que l'agent s'est exécuté.
+answer.ran.nothing = Aucune trace du script malveillant ni de l'agent n'a été trouvée.
+answer.ran.no_install = Le dossier d'installation de NIKKE n'a pas été trouvé : debug.log et les journaux de téléchargement n'ont donc pas été vérifiés.
+answer.ran.gaps = Une partie de cette analyse n'a pas pu être effectuée. Consultez « Ce que cette analyse n'a pas pu vérifier » dans Détails.
+answer.ran.quick = Il s'agissait d'une analyse rapide, qui n'ouvre les dossiers que jusqu'à {depth} niveaux de profondeur. L'analyse complète vérifie aussi les dossiers plus profonds.
+answer.active.question = Quelque chose est-il encore actif ?
+answer.active.launcher = Le lanceur NIKKE est en cours d'exécution. Tant qu'il s'exécute, l'attaquant peut lui envoyer des commandes.
+answer.active.dll_loaded = La DLL du logiciel malveillant est actuellement chargée dans {programs}.
+answer.active.registry = La clé de Registre qui fait charger la DLL du logiciel malveillant par le navigateur est en place.
+answer.active.none = Le lanceur n'est pas en cours d'exécution, et aucune DLL n'est installée ni configurée pour être chargée.
+answer.clean.question = Y a-t-il quelque chose à nettoyer ?
+answer.clean.dll_folder = Le dossier de la DLL pour {browser} : {path}
+answer.clean.registry = La clé de Registre HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+answer.clean.leftover = La clé de Registre HKCU {E77CC89B-7401-4C04-8CED-149DB35ADD04} vide, restée après que le logiciel malveillant en a effacé le chemin de la DLL.
+answer.clean.legacy = D'anciens fichiers DLL dans {path}
+answer.clean.temp = Des fichiers k2f dans {path}
+answer.clean.cache = Le cache du lanceur, qui contient des traces du logiciel malveillant : {path}
+answer.clean.none_cache = Aucun fichier laissé par le logiciel malveillant n'a été trouvé. Supprimez quand même le cache du lanceur (tbs_cache) avant de rouvrir le lanceur : il peut encore contenir le script malveillant d'avant le correctif.
+answer.clean.none = Aucun élément laissé par le logiciel malveillant n'a été trouvé.
+answer.protected.question = Cet ordinateur est-il protégé pour la prochaine fois ?
+answer.protected.not_checked = Le fichier hosts n'a pas été vérifié.
+answer.protected.domain = {domain} : {state} dans le fichier hosts.
+answer.protected.ip = Le fichier hosts ne peut pas bloquer d'adresses IP, et cette analyse ne peut pas vérifier un pare-feu. Bloquez 89.127.233.127 et 89.126.250.172 dans votre pare-feu ou votre routeur.
+
+# Les exécutions de l'agent trouvées dans les journaux, une ligne chacune : « {time} : {what} ».
+run.line = {time} : {what}
+run.line_from = {time} : {what} (source : {file})
+run.no_time = heure non enregistrée
+run.downloaded = le lanceur a téléchargé l'agent
+run.downloaded_as = le lanceur a téléchargé l'agent et l'a enregistré sous le nom {file}
+run.adopted = l'agent a démarré pour la première fois sur cet ordinateur et a créé son ID
+run.resumed = l'agent a redémarré avec l'ID qu'il avait enregistré
+run.started = l'agent a envoyé le nom de l'ordinateur à l'attaquant
+run.started_as = l'agent a envoyé le nom d'ordinateur {host} à l'attaquant
+
+# « Version de l'agent » : une ligne par version du fichier de l'agent. Les parties se suivent sur une ligne.
+build.no_etag = Pas d'ETag
+build.uploaded = , mise en ligne le {time}
+build.last_modified = , dernière modification le {time}
+build.size = , {size} octets
+build.known = , l'une des {n} versions connues.
+build.unknown = . Elle ne fait pas partie des {n} versions connues.
+build.received = Le lanceur l'a reçue le {time}.
+
+# Boutons communs à plusieurs écrans.
+common.copy = Copier
+common.copy_command = Copier la commande
+common.copy_key_path = Copier le chemin de la clé
+common.copy_hosts_path = Copier le chemin du fichier hosts
+common.copy_lines = Copier ces lignes
+common.copy_list = Copier cette liste
+# Deux noms reliés, comme dans « Supprimer la DLL installée pour Chrome et Edge ».
+common.and = {a} et {b}
+common.files_one = {n} fichier
+common.files_other = {n} fichiers
+
+# « Que faire » : les étapes. Chaque titre est suivi de ses textes.
+step.scan_folder.title = Analyser le dossier d'installation de NIKKE
+step.scan_folder.windows = Si NIKKE est installé à un endroit que cette analyse n'a pas examiné, par exemple sur un autre lecteur, analysez ce dossier avec « Analyser un dossier... ». Dans PowerShell, depuis le dossier qui contient ce programme, la commande ci-dessous l'analyse aussi. Remplacez D:\\Games\\NIKKE par votre dossier NIKKE.
+step.scan_folder.other = Si NIKKE est installé à un endroit que cette analyse n'a pas examiné, par exemple sur un autre lecteur, analysez ce dossier : « Analyser un dossier... » dans la fenêtre, ou nikke-check --cli <folder> dans un terminal.
+step.full_scan.title = Lancer l'analyse complète
+step.full_scan.intro = Il s'agissait d'une analyse rapide, qui n'ouvre les dossiers que jusqu'à {depth} niveaux de profondeur. Si vous ne savez pas où se trouve NIKKE, ou si une ancienne copie se trouve peut-être plus profondément, l'analyse complète ouvre tous les dossiers de tous les lecteurs locaux. Elle peut prendre longtemps sur les gros disques.
+step.full_scan.powershell = Dans PowerShell, depuis le dossier qui contient ce programme :
+step.full_scan.terminal = Dans un terminal : nikke-check --cli --full
+step.close.title_launcher = Fermer le lanceur
+step.close.title_programs = Fermer les programmes qui exécutent le logiciel malveillant
+step.close.launcher = Le lanceur NIKKE est en cours d'exécution. Tant qu'il s'exécute, l'attaquant peut envoyer des commandes à cet ordinateur. Fermez-le maintenant et déconnectez cet ordinateur du réseau.
+step.close.dll_loaded_one = La DLL du logiciel malveillant est chargée dans {programs}. Fermez ce programme si vous le pouvez. Le redémarrage demandé plus loin décharge la DLL de tous les programmes.
+step.close.dll_loaded_other = La DLL du logiciel malveillant est chargée dans {programs}. Fermez ces programmes si vous le pouvez. Le redémarrage demandé plus loin décharge la DLL de tous les programmes.
+step.close.explorer = N'arrêtez pas explorer.exe : il gère la barre des tâches et le bureau. Le redémarrage décharge aussi la DLL de ce programme.
+step.close.programs = Programmes à arrêter : {programs}.
+step.close.task_manager = Si un programme ne se ferme pas, ouvrez le Gestionnaire des tâches (Ctrl+Maj+Échap), trouvez-le dans l'onglet Détails, sélectionnez-le et cliquez sur Fin de tâche.
+step.close.pkill = Si le lanceur ne se ferme pas, exécutez cette commande dans un terminal :
+step.save.title = Enregistrer le rapport avant de supprimer quoi que ce soit
+# Le premier texte de cette étape est formé de ces phrases, l'une après l'autre.
+step.save.record = Le rapport conserve ce que cette analyse a trouvé.
+step.save.agent_state = Supprimer tbs_cache supprime aussi la trace k2f.agent.state.
+step.save.cache_traces = Supprimer tbs_cache supprime aussi les traces que cette analyse y a trouvées.
+step.save.restart = Le redémarrage de l'étape suivante ferme cette fenêtre.
+step.save.hide = Activez « Masquer mes informations » (--redact en ligne de commande) avant de le partager : cette option remplace le nom de votre ordinateur, vos noms d'utilisateur, l'ID de l'agent et votre dossier personnel dans le rapport copié ou enregistré. La fenêtre, elle, les affiche toujours.
+step.dll.title_files = Supprimer la DLL installée pour {browsers}
+step.dll.title_leftover = Supprimer la clé de Registre restante
+step.dll.title_key = Supprimer la clé de Registre
+step.dll.offline_loaded = Gardez cet ordinateur hors ligne jusqu'à la fin de cette étape : la DLL est actuellement chargée dans un programme.
+step.dll.offline_key = Gardez cet ordinateur hors ligne jusqu'à la fin de cette étape : tant que la clé est en place, le navigateur charge la DLL à chaque démarrage.
+step.dll.order = Suivez cet ordre. Windows garde la DLL verrouillée jusqu'à son redémarrage : la clé de Registre passe donc en premier.
+step.dll.delete_key = Supprimez la clé de Registre. Ouvrez l'Éditeur du Registre (appuyez sur Win+R, tapez regedit et appuyez sur Entrée), collez le chemin de la clé ci-dessous dans la barre d'adresse en haut et appuyez sur Entrée. Dans le volet gauche, cliquez avec le bouton droit sur la clé sélectionnée et choisissez Supprimer.
+step.dll.leftover = Une clé vide est un reste : le logiciel malveillant a retiré le chemin de la DLL mais a laissé la clé. Supprimez-la de la même façon.
+step.dll.restart = Redémarrez Windows. Rouvrez ensuite cet outil et relancez une analyse : elle indique ce qu'il reste à supprimer.
+step.dll.wine_files = Ces fichiers se trouvent dans un préfixe Wine. Fermez d'abord le lanceur et tous les autres programmes de ce préfixe.
+step.dll.wine_key = La clé se trouve dans un préfixe Wine. Fermez d'abord le lanceur et tous les autres programmes de ce préfixe.
+step.dll.drive = Ces fichiers se trouvent sur un lecteur Windows vu depuis ce système. Cette installation de Windows n'est pas en cours d'exécution : la DLL n'est donc pas verrouillée et vous pouvez la supprimer d'ici. Si ce système ne peut pas supprimer de fichiers sur ce lecteur (le Démarrage rapide de Windows le laisse en lecture seule), faites plutôt cette étape depuis cette installation de Windows : supprimez la clé, redémarrez, puis supprimez les fichiers.
+step.dll.delete_folder = Supprimez le dossier de la DLL ci-dessous, celui dont le nom compte 64 caractères hexadécimaux. Ne touchez pas au reste du dossier PlatformExperienceHelper : Chrome y garde ses propres platform_experience_helper.exe et LoadFeatures.
+step.dll.delete_folder_after_restart = Après le redémarrage, supprimez le dossier de la DLL ci-dessous, celui dont le nom compte 64 caractères hexadécimaux. Ne touchez pas au reste du dossier PlatformExperienceHelper : Chrome y garde ses propres platform_experience_helper.exe et LoadFeatures.
+step.dll.delete_legacy = Dans le dossier ci-dessous, supprimez uniquement platform_experience_helper.dll, platform_experience_helper.dll.old et old-clsid.txt, ceux qui sont présents. Gardez platform_experience_helper.exe : il appartient à Chrome.
+step.dll.delete_legacy_after_restart = Après le redémarrage, dans le dossier ci-dessous, supprimez uniquement platform_experience_helper.dll, platform_experience_helper.dll.old et old-clsid.txt, ceux qui sont présents. Gardez platform_experience_helper.exe : il appartient à Chrome.
+step.dll.delete_file = Supprimez le fichier DLL ci-dessous.
+step.dll.delete_file_after_restart = Après le redémarrage, supprimez le fichier DLL ci-dessous.
+# Suit l'un des trois textes « Supprimez » ci-dessus, sous Windows.
+step.dll.in_use = Si Windows indique que le fichier est en cours d'utilisation, redémarrez Windows et supprimez-le de nouveau.
+step.dll.wine_regedit = Supprimez la clé de Registre dans le fichier user.reg du préfixe. Ouvrez le regedit de Wine dans ce préfixe avec la commande ci-dessous, allez à HKEY_CURRENT_USER\\Software\\Classes\\CLSID et supprimez la clé {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+step.dll.protontricks = Si Wine n'est pas installé, comme sur un Steam Deck, protontricks ouvre regedit dans ce préfixe Proton :
+step.dll.drive_key = Démarrez cette installation de Windows et supprimez la clé de Registre ci-dessous, ainsi que sa copie WOW6432Node si elle existe : cette analyse n'a pas pu lire le Registre de cette installation de Windows. Ouvrez l'Éditeur du Registre (appuyez sur Win+R, tapez regedit et appuyez sur Entrée), collez le chemin de la clé dans la barre d'adresse en haut et appuyez sur Entrée. Dans le volet gauche, cliquez avec le bouton droit sur la clé sélectionnée et choisissez Supprimer.
+step.dll.scan_again = Relancez ensuite une analyse : ces constats devraient avoir disparu.
+step.dll.defender = Sur un ordinateur infecté, Microsoft Defender n'a pas détecté cette DLL : une analyse antivirus sans détection ne montre donc pas qu'elle a disparu.
+step.cache.title = Vider le cache du lanceur
+step.cache.intro = Fermez d'abord le lanceur. Supprimez ensuite le dossier tbs_cache, le cache du navigateur intégré au lanceur. Il peut encore contenir le script malveillant d'avant le correctif, et le lanceur le chargerait de nouveau.
+step.cache.none = Cette analyse n'a trouvé aucun dossier de données du lanceur. Il s'agit de %APPDATA%\\nikke_launcher\\tbs_cache sous Windows (nikke_launcher_hmt pour le lanceur HMT), ou de drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache dans le préfixe Proton ou Wine.
+step.password.title = Changer vos mots de passe depuis un autre appareil
+step.password.intro_infected = Utilisez un téléphone ou un autre ordinateur qui n'a jamais exécuté le lanceur NIKKE. Pendant que l'agent s'exécutait, ses commandes pouvaient lire les fichiers et les données des navigateurs de cet ordinateur. Changez ou remplacez les éléments suivants :
+step.password.intro_exposed = L'agent a été envoyé à partir du 23 octobre 2026 au plus tard, et seulement lors de certains lancements. Si le lanceur a été ouvert à cette date ou après, considérez que l'agent s'est exécuté. Depuis un téléphone ou un autre ordinateur qui n'a jamais exécuté le lanceur, changez ou remplacez les éléments suivants :
+step.password.title_maybe = Changer votre mot de passe NIKKE si le lanceur a été ouvert le 23 octobre ou après
+step.password.maybe = Si le lanceur a été ouvert le 23 octobre 2026 ou après, changez quand même votre mot de passe NIKKE / Level Infinite, depuis un téléphone ou un autre ordinateur qui n'a jamais exécuté le lanceur.
+step.password.not_opened = Cette analyse a seulement vérifié que ces fichiers existent. Elle ne les a pas ouverts.
+# La liste des comptes et des secrets à changer (« Copier cette liste » la copie).
+step.password.first = D'abord votre compte NIKKE / Level Infinite, puis votre messagerie, Discord et vos comptes bancaires.
+step.password.browsers = Tous les mots de passe enregistrés dans vos navigateurs.
+step.password.browser_one = Tous les mots de passe enregistrés dans {browser} (profil {profiles}).
+step.password.browser_other = Tous les mots de passe enregistrés dans {browser} (profils {profiles}).
+step.password.sessions = Déconnectez toutes les sessions ouvertes sur ces services. L'agent peut collecter les cookies des navigateurs, et un cookie volé fonctionne sans le mot de passe.
+step.password.crypto = Si vous détenez des cryptomonnaies, transférez-les vers un nouveau portefeuille, avec une nouvelle phrase de récupération créée sur l'autre appareil.
+step.password.wallet = {wallet} dans {browser} (profil {profile}) : transférez les fonds vers un nouveau portefeuille, avec une nouvelle phrase de récupération créée sur l'autre appareil.
+step.password.tokens = Révoquez les jetons d'API et les clés SSH stockés sur cet ordinateur.
+step.password.secret = Révoquez et remplacez : {what}, {path}.
+step.password.other = Tout autre mot de passe, jeton d'API, clé SSH ou portefeuille stocké sur cet ordinateur.
+step.password.wine = Sous Wine, l'agent pouvait lire tout votre dossier personnel par le lecteur Z:, ainsi que les variables d'environnement du processus du lanceur, et pas seulement le préfixe Wine.
+step.block.title_domains = Bloquer les domaines
+step.block.title_ips = Bloquer les adresses IP de l'attaquant
+step.block.all_blocked = Votre fichier hosts bloque les trois domaines.
+step.block.notepad = Ouvrez le menu Démarrer, tapez Bloc-notes, cliquez dessus avec le bouton droit et choisissez « Exécuter en tant qu'administrateur ». Dans le Bloc-notes, choisissez Fichier > Ouvrir, collez le chemin du fichier hosts ci-dessous dans la zone Nom du fichier et appuyez sur Entrée.
+step.block.paste = Collez ces lignes à la fin du fichier et enregistrez :
+step.block.tee = Exécutez cette commande dans un terminal. Elle ajoute les lignes à /etc/hosts et demande votre mot de passe.
+# Suit le texte ci-dessus, hors macOS.
+step.block.deck = Sur un Steam Deck, définissez d'abord un mot de passe avec passwd si vous ne l'avez jamais fait.
+step.block.scan_again = Relancez ensuite une analyse : la partie Protection, dans Détails, indique alors chaque domaine comme bloqué.
+step.block.ips = Le fichier hosts ne peut pas bloquer d'adresses IP. Bloquez 89.127.233.127 et 89.126.250.172 dans votre pare-feu ou votre routeur.
+step.block.firewall = Pour ajouter une règle au pare-feu Windows, cliquez avec le bouton droit sur le bouton Démarrer, choisissez Terminal (administrateur) ou Windows PowerShell (admin), puis exécutez :
+step.block.macos = Sur macOS, bloquez-les dans les réglages de votre routeur.
+step.block.ufw = Avec ufw, exécutez cette commande. Les règles ne bloquent rien tant que ufw est désactivé : sudo ufw status doit afficher « Status: active » (ou sa traduction, par exemple « État : actif »), et sudo ufw enable l'active. Sans ufw, bloquez-les dans les réglages de votre routeur.
+step.wait.title = Ne pas ouvrir le lanceur tant que Level Infinite n'a pas confirmé de correctif
+step.wait.servers = Certains serveurs de Level Infinite envoyaient encore le fichier malveillant le 3 novembre 2026. Un lancement avant le correctif peut charger de nouveau le script.
+step.wait.reinstall = L'agent pouvait exécuter n'importe quelle commande : réinstaller le système d'exploitation est donc le moyen le plus sûr d'avoir la certitude que cet ordinateur est sain.
+
+# Détails : les groupes de constats.
+section.proof = Preuves de l'exécution du logiciel malveillant
+section.cleanup = Éléments à nettoyer
+section.signs = Signes d'exposition
+section.info = Informations
+section.coverage = Ce que cette analyse n'a pas pu vérifier
+
+# Détails : « Ce que cela signifie : ... » pour chaque type de constat.
+meaning.agent_ran = L'agent s'est exécuté dans le lanceur. Tant que le lanceur était ouvert, l'attaquant pouvait contrôler cet ordinateur.
+meaning.payload_downloaded = Le lanceur a reçu l'agent depuis le serveur de l'attaquant.
+meaning.payload_file = Une copie de l'agent se trouve encore dans le dossier des journaux du lanceur.
+meaning.agent_state = L'agent a enregistré son ID dans le stockage du navigateur du lanceur : il s'est donc exécuté au moins une fois.
+meaning.agent_server = Le lanceur a joint le serveur qui envoie l'agent : il est donc allé jusqu'à demander l'agent.
+meaning.loader_cached = Le script malveillant s'est exécuté dans le lanceur. Cela ne suffit pas à montrer que l'agent a été envoyé.
+meaning.launcher_contacted = Le lanceur a contacté le domaine de l'attaquant.
+meaning.chrome_dll = Le navigateur charge cette DLL à son démarrage : le logiciel malveillant peut donc se relancer sans le lanceur. Le logiciel malveillant crée le dossier de Chrome même si Chrome n'est pas installé.
+meaning.registry_key = Cette clé fait charger la DLL du logiciel malveillant par le navigateur.
+meaning.registry_leftover = Le chemin de la DLL a été retiré de cette clé, mais la clé est toujours là. Supprimez-la.
+meaning.legacy_dll = Une version antérieure de l'agent plaçait sa DLL ici.
+meaning.dll_loaded = Ces programmes exécutent actuellement la DLL du logiciel malveillant. Windows la garde chargée jusqu'à ce qu'ils se ferment ou que Windows redémarre.
+meaning.temp_file = L'agent a écrit ces fichiers pendant qu'il collectait des identifiants de connexion enregistrés dans les navigateurs ou des captures d'écran.
+meaning.launcher_running = Tant que le lanceur s'exécute, l'attaquant peut lui envoyer des commandes.
+meaning.coverage = Une partie de cette analyse n'a pas pu être effectuée. Le texte ci-dessus indique quoi faire.
+meaning.info = Contexte uniquement. Cela ne change pas le verdict.
+
+# Détails : « Vos données accessibles au logiciel malveillant ».
+exposure.title = Vos données accessibles au logiciel malveillant
+exposure.note = Cette analyse a seulement vérifié que ces fichiers existent. Elle ne les a pas ouverts. Pendant que l'agent s'exécutait, ses commandes pouvaient les lire.
+exposure.home_note = Le dossier personnel de cet ordinateur a été vérifié parce qu'un préfixe Wine a été trouvé. Si le préfixe analysé a servi sur un autre ordinateur, vérifiez plutôt cet autre ordinateur.
+exposure.saved_passwords = Mots de passe enregistrés
+exposure.wallets = Extensions de portefeuille crypto
+exposure.secrets = Fichiers sensibles
+# {files} sont des noms de fichiers comme « Login Data, key4.db ».
+exposure.login = {browser}, profil {profile} ({files})
+exposure.wallet = {wallet} ({id}) dans {browser}, profil {profile}
+# Ce que contient chaque fichier sensible trouvé.
+secret.aws = Identifiants AWS
+secret.github_cli = Jeton GitHub CLI
+secret.git = Identifiants Git
+secret.npm = Configuration npm, peut contenir un jeton
+secret.docker = Identifiants des registres Docker
+secret.kubernetes = Configuration Kubernetes
+secret.gcloud = Identifiants Google Cloud
+secret.azure = Jetons Azure CLI
+secret.claude = Identifiants Claude Code
+secret.codex = Identifiants Codex CLI
+secret.gemini = Identifiants Gemini CLI
+secret.copilot = Configuration MCP de GitHub Copilot CLI
+secret.opencode = Identifiants opencode
+secret.filezilla = Serveurs enregistrés dans FileZilla
+secret.netrc = Identifiants netrc
+secret.pypi = Jeton PyPI
+secret.crates = Jeton crates.io
+secret.vault = Jeton HashiCorp Vault
+secret.terraform = Jeton Terraform
+secret.pulumi = Identifiants Pulumi
+secret.kaggle = Clé d'API Kaggle
+secret.huggingface = Jeton Hugging Face
+secret.rclone = Configuration rclone
+secret.s3cmd = Configuration s3cmd
+secret.databricks = Configuration Databricks
+secret.oci = Configuration Oracle Cloud
+secret.gnupg = Clés privées GnuPG
+secret.env = Fichier .env
+secret.ssh = Clé privée SSH
+
+# Constats : un titre et un détail chacun. {file} est un nom de fichier journal, {files} un nombre comme « 2 fichiers ».
+finding.no_install.title = Le dossier d'installation de NIKKE n'a pas été trouvé
+finding.no_install.detail = Des données du lanceur ont été trouvées, mais pas le dossier d'installation : debug.log et les journaux de téléchargement n'ont donc pas été vérifiés. Si vous savez où NIKKE est installé, analysez ce dossier : « Analyser un dossier... » dans la fenêtre, ou nikke-check --cli <folder>.
+finding.quick_scan.title = Il s'agissait d'une analyse rapide
+finding.quick_scan.detail_windows = Elle a lu les chemins d'installation que le lanceur enregistre dans le Registre, les données du lanceur et tous les dossiers jusqu'à {depth} niveaux sous la racine de chaque lecteur local. Un dossier NIKKE situé à plus de {depth} niveaux de profondeur, et que le lanceur n'enregistre plus, n'est trouvé que par l'analyse complète (« Analyse complète » dans la fenêtre, ou nikke-check --cli --full) ou par « Analyser un dossier... ».
+finding.quick_scan.detail_macos = Elle a lu les dossiers habituels des préfixes Wine, les chemins d'installation que ces préfixes enregistrent, et tous les dossiers jusqu'à {depth} niveaux sous /. Un dossier NIKKE situé à plus de {depth} niveaux de profondeur, et que le lanceur n'enregistre plus, n'est trouvé que par l'analyse complète (« Analyse complète » dans la fenêtre, ou nikke-check --cli --full) ou par « Analyser un dossier... ».
+finding.quick_scan.detail_linux = Elle a lu les dossiers habituels des préfixes Wine, les chemins d'installation que ces préfixes enregistrent, et tous les dossiers jusqu'à {depth} niveaux sous /, sous votre dossier personnel et sous chaque lecteur monté dans /mnt, /media et /run/media. Un dossier NIKKE situé à plus de {depth} niveaux de profondeur, et que le lanceur n'enregistre plus, n'est trouvé que par l'analyse complète (« Analyse complète » dans la fenêtre, ou nikke-check --cli --full) ou par « Analyser un dossier... ».
+finding.unreadable.title = Certains dossiers n'ont pas pu être lus
+finding.unreadable.detail = L'analyse n'a pas été autorisée à ouvrir ces dossiers : leur contenu n'a donc pas été vérifié. Sur macOS, accordez l'Accès complet au disque à Terminal (ou à l'app depuis laquelle vous avez lancé cet outil) dans Réglages Système > Confidentialité et sécurité, puis relancez l'analyse. Ailleurs, relancez l'analyse avec un utilisateur qui peut les lire.
+finding.network.title = Les lecteurs réseau n'ont pas été analysés
+finding.network.detail = L'analyse de l'ordinateur ignore les lecteurs réseau et les montages distants : leur lecture est lente, et un lecteur déconnecté peut bloquer l'analyse. Si NIKKE est installé sur l'un d'eux, analysez-le avec « Analyser un dossier... » ou nikke-check --cli <folder>.
+finding.log_server.title = {file} cite le serveur de l'agent
+finding.log_server.detail = {file} cite analytics.insightjs.com ou insight.bundle. Ce serveur envoie l'agent : le lanceur est donc allé jusqu'à le demander.
+finding.log_mention.title = {file} mentionne insightjs
+finding.log_mention.detail = {file} cite insightjs, le domaine du script malveillant. Aucune ligne ne cite le serveur de l'agent (analytics.insightjs.com ou insight.bundle) : cela ne suffit donc pas à montrer que l'agent a été téléchargé.
+finding.debug_unreadable.title = debug.log n'a pas pu être lu
+finding.debug_unreadable.detail = Launcher/intl_service/debug.log existe, mais cette analyse n'a pas été autorisée à l'ouvrir : elle n'a donc pas pu vérifier si l'agent s'est exécuté. Relancez l'analyse avec un utilisateur qui peut le lire.
+finding.agent_ran.title = L'agent du logiciel malveillant s'est exécuté
+finding.agent_ran.detail = debug.log montre le démarrage de l'agent d'accès à distance dans le lanceur (k2f_chan registered). Tant que le lanceur était ouvert, l'attaquant pouvait exécuter des commandes sur cet ordinateur.
+finding.payload_file.title = Le fichier malveillant est toujours sur le disque
+finding.payload_file.detail = Ce fichier du dossier des journaux du lanceur est du bytecode LuaJIT. Le lanceur a enregistré l'agent téléchargé (insight.bundle) sous un nom de journal tinyget.
+finding.downloaded.title = Le lanceur a téléchargé le logiciel malveillant
+finding.downloaded.detail = {file} enregistre le téléchargement du fichier insight.bundle depuis analytics.insightjs.com par le lanceur. Ce fichier est l'agent d'accès à distance.
+finding.download_attempt.title = Le lanceur a demandé le logiciel malveillant, mais aucun téléchargement n'a abouti
+finding.download_attempt.detail = {file} enregistre une requête pour insight.bundle auprès d'analytics.insightjs.com, mais aucune ligne ne montre qu'elle a abouti. Une requête qui échoue enregistre curl_error et total=0. Le script malveillant a demandé l'agent, ce qui ne suffit pas à montrer que l'agent est arrivé : debug.log indique s'il s'est exécuté.
+finding.install_found.title = Installation de NIKKE trouvée dans {path}
+finding.install_found.debug_missing = Aucun fichier Launcher/intl_service/debug.log n'a été trouvé. Il a peut-être été supprimé, ou le lanceur n'a jamais été démarré depuis ce dossier.
+finding.install_found.debug_unreadable = Launcher/intl_service/debug.log existe mais n'a pas pu être lu (autorisation refusée).
+finding.install_found.debug_checked = Launcher/intl_service/debug.log a été vérifié. Il contient les lancements depuis la création du fichier.
+# {note} est l'un des trois textes ci-dessus.
+finding.install_found.written = {note} Dernière écriture : {time}.
+finding.data_link.title = Le dossier de données du lanceur est un lien et n'a pas été lu
+finding.data_link.detail = Ce dossier pointe vers {target} : cette cible est absente, ou c'est une racine de lecteur ou un dossier situé au-dessus du lien. Ses fichiers n'ont donc pas été vérifiés. Analysez le vrai dossier de données du lanceur avec « Analyser un dossier... » ou nikke-check --cli <folder>.
+finding.data_link.unknown_target = une cible inconnue
+finding.agent_state.title = L'agent du logiciel malveillant a laissé des traces dans les données du lanceur
+finding.agent_state.detail = k2f_chan (le nom du canal de liaison de l'agent) ou k2f.agent.state (l'ID que l'agent enregistre) apparaît dans {files} des données du lanceur. Cela montre que l'agent s'est exécuté.
+finding.agent_server.title = Le lanceur a contacté le serveur de l'agent
+finding.agent_server.detail = analytics.insightjs.com est enregistré dans {files} d'état réseau. Ce serveur envoie l'agent (insight.bundle) et reçoit ses signalements réguliers. Un lancement où le script malveillant s'est exécuté sans l'agent n'a enregistré qu'insightjs.com.
+finding.loader_cached.title = Le lanceur a chargé le script malveillant
+finding.loader_cached.detail = L'adresse du script malveillant sur insightjs.com apparaît dans {files} mis en cache par le navigateur intégré au lanceur. Le script injecté s'est exécuté ; cela ne suffit pas à montrer que l'agent a été téléchargé.
+finding.network_state.title = Le lanceur s'est connecté à insightjs.com
+finding.network_state.detail = insightjs.com est enregistré dans {files} d'état réseau : le navigateur intégré au lanceur l'a donc contacté.
+finding.data_mention.title = Les données du lanceur mentionnent insightjs.com
+finding.data_mention.detail = insightjs.com apparaît dans {files} des données du lanceur.
+finding.data_clean.title = Aucune trace dans les données du lanceur
+finding.data_clean.detail = Vérification effectuée sur {files}.
+# {browser} est un nom de navigateur comme Chrome ou Edge.
+finding.persistence.title = Persistance du logiciel malveillant installée dans {browser}
+finding.persistence.dll = Le dossier du logiciel malveillant existe dans les données utilisateur du navigateur {browser} et contient platform_experience_helper.dll. Une inscription COM détournée dans HKCU fait charger cette DLL par {browser}.
+finding.persistence.hash_dir = Le dossier du logiciel malveillant existe dans les données utilisateur du navigateur {browser} : un sous-dossier dont le nom compte 64 caractères hexadécimaux (un SHA-256), où le logiciel malveillant place platform_experience_helper.dll. La DLL elle-même n'a pas été trouvée : elle a peut-être déjà été supprimée.
+# Pour Chrome, {text} est l'un des deux textes ci-dessus.
+finding.persistence.chrome = {text} Le logiciel malveillant crée ce dossier même si Chrome n'est pas installé.
+finding.helper_folder.title = Dossier Platform Experience Helper du navigateur {browser}
+finding.helper_folder.chrome = Ce dossier ne contient ni platform_experience_helper.dll, ni sous-dossier dont le nom compte 64 caractères hexadécimaux. Cela correspond au Platform Experience Helper propre à Chrome (platform_experience_helper.exe, LoadFeatures), que les installations de Chrome par utilisateur placent ici. Ce n'est pas un signe d'infection.
+finding.helper_folder.other = Ce dossier ne contient ni platform_experience_helper.dll, ni sous-dossier dont le nom compte 64 caractères hexadécimaux : il ne correspond donc pas à l'organisation du logiciel malveillant. Ce n'est pas un signe d'infection.
+finding.legacy.title = Des fichiers d'une ancienne persistance dans Chrome sont installés
+finding.legacy.detail = Le dossier Application\\PlatformExperienceHelper de Chrome contient des fichiers que le code de nettoyage de l'agent supprime : platform_experience_helper.dll, platform_experience_helper.dll.old ou old-clsid.txt. Une version antérieure de l'agent plaçait sa DLL ici. La présence du platform_experience_helper.exe de Chrome dans ce dossier est normale.
+finding.temp.title = Fichiers laissés par le logiciel malveillant dans Temp
+finding.temp.detail = L'agent nomme ses fichiers temporaires k2f-bcreds-* (identifiants de navigateur collectés), k2f-keyscan-* (une première version de l'agent) et k2f_screen_* (captures d'écran, en .jpg, ou en .png dans cette première version).
+finding.hex_id.title = Fichier d'ID hexadécimal dans Temp
+finding.hex_id.detail = Un fichier .tmp de 22 octets dans Temp contient un ID hexadécimal de 22 caractères. Sur l'ordinateur infecté étudié, un fichier de ce type a été écrit une seconde avant le téléchargement de l'agent. D'autres logiciels Tencent écrivent un fichier du même nom (vu dans un préfixe Delta Force daté du 20 septembre 2026, avant la modification des fichiers du CDN) : à lui seul, ce fichier n'est donc pas un signe d'infection.
+finding.registry.title = Persistance trouvée dans le Registre (détournement de CLSID dans HKCU)
+# {detail} est l'un des deux textes « où » ci-dessous.
+finding.registry.detail = {detail} Le logiciel malveillant crée cette clé pour que Google Chrome charge sa DLL. La copie dans HKLM qui pointe vers wpc.dll fait partie de Windows et est normale.
+finding.registry_leftover.title = Reste de la persistance dans le Registre (CLSID dans HKCU)
+finding.registry_leftover.detail = {detail} Sa valeur par défaut est vide ou absente : l'agent a installé la DLL puis l'a désinstallée, ce qui efface la valeur mais laisse la clé. La DLL est peut-être encore sur le disque. La copie dans HKLM qui pointe vers wpc.dll fait partie de Windows et est normale.
+finding.registry.where_windows = La clé {E77CC89B-7401-4C04-8CED-149DB35ADD04}\\InprocServer32 existe sous HKCU (voir ci-dessous).
+finding.registry.where_wine = Le fichier user.reg, la ruche HKCU de ce préfixe Wine, contient la clé {E77CC89B-7401-4C04-8CED-149DB35ADD04}.
+finding.launcher_running.title = Le lanceur NIKKE est en cours d'exécution
+finding.launcher_running.detail = Fermez le lanceur immédiatement (mettez fin au processus s'il ne se ferme pas) et déconnectez l'ordinateur du réseau. Tant que le lanceur s'exécute, l'attaquant peut envoyer des commandes à cet ordinateur.
+finding.dll_loaded.title = La DLL de persistance est actuellement chargée
+finding.dll_loaded.detail = Ces programmes ont chargé le fichier platform_experience_helper.dll du logiciel malveillant. Windows garde le fichier verrouillé jusqu'à ce qu'ils se ferment, et Chrome le recharge à son prochain démarrage tant que la clé HKCU est présente. Supprimez la clé de Registre, redémarrez Windows, puis supprimez le dossier de la DLL.
+
+# « Afficher les détails techniques » : lignes que l'outil écrit parmi les lignes citées des fichiers.
+evidence.luajit = En-tête de bytecode LuaJIT (1B 4C 4A), {size} octets. Les versions connues font 205 135 octets, et une version du 23 octobre enregistrée sous k2f.lua faisait 165 108 octets.
+# Une entrée TransportSecurity. {host} est un domaine, {time} une heure UTC.
+evidence.hsts = Entrée HSTS pour {host}, dernière réception le {time}
+evidence.hsts_no_time = Entrée HSTS pour {host}
+evidence.in_file = {file} : {text}
+evidence.empty_folder = (dossier vide)
+evidence.registry_value = {key}\\InprocServer32 (par défaut) = {value}
+evidence.value_not_set = (valeur non définie)
+evidence.dll_loaded = PID {pid} : {program} ({exe}) a chargé {dll}
+# La dernière ligne d'une liste coupée.
+evidence.total = ... {total} au total
+
+# « Ouvrir le dossier » et les autres boutons qui ouvrent une fenêtre, en cas d'échec.
+open.gone = {path} n'existe plus.
+open.windows_only = {program} n'existe que sous Windows.
+open.failed = le gestionnaire de fichiers n'a pas pu être ouvert ({status})
+open.shell_execute = erreur ShellExecute {code}
+
+# La fenêtre.
+ui.tab.happened = Ce qui s'est passé
+ui.tab.todo = Que faire
+ui.tab.details = Détails
+ui.copied = Copié
+ui.button.scan_computer = Analyser cet ordinateur
+ui.button.full_scan = Analyse complète
+ui.button.scan_folder = Analyser un dossier...
+ui.button.scan_again = Relancer l'analyse
+ui.button.new_scan = Nouvelle analyse
+ui.button.stop = Arrêter l'analyse
+ui.button.copy_report = Copier le rapport
+ui.button.save_report = Enregistrer le rapport...
+ui.button.see_todo = Voir les étapes à suivre
+ui.button.open_folder = Ouvrir le dossier
+ui.button.task_manager = Ouvrir le Gestionnaire des tâches
+ui.button.registry_editor = Ouvrir l'Éditeur du Registre
+ui.button.copy_path = Copier le chemin
+ui.button.copy_link = Copier le lien
+ui.button.open_link = Ouvrir le lien
+ui.button.show = Afficher
+ui.button.hide = Masquer
+ui.button.show_details = Afficher les détails techniques
+ui.button.hide_details = Masquer les détails techniques
+ui.hide_info = Masquer mes informations
+ui.hide_info_note = « Masquer mes informations » s'applique à « Copier le rapport » et à « Enregistrer le rapport... ». La fenêtre affiche toujours tout.
+ui.done = Fait
+# Boîtes de dialogue de fichier.
+ui.dialog.pick_folder = Choisir un dossier à analyser
+ui.dialog.save = Enregistrer le rapport
+ui.dialog.text_files = Texte
+# Une ligne affichée au-dessus de l'écran.
+ui.notice.only_folders = Seuls les dossiers peuvent être analysés. Déposez le dossier qui contient le fichier.
+ui.notice.stopped = Analyse arrêtée.
+ui.notice.saved = Rapport enregistré : {path}.
+ui.notice.save_failed = Impossible d'enregistrer le rapport : {error}
+ui.notice.save_failed_plain = Impossible d'enregistrer le rapport.
+ui.notice.open_failed = Impossible de l'ouvrir : {error}
+ui.notice.open_failed_plain = Impossible de l'ouvrir.
+# Écran d'accueil. La bulle de l'assistante vient en premier.
+ui.home.hint = Bonjour, je suis MotherSphere. Commencez par « Analyser cet ordinateur ». L'analyse ne fait que lire des fichiers : elle ne supprime rien et n'envoie rien sur le réseau.
+ui.home.title = Aucune analyse effectuée
+ui.home.computer = Analyse de l'ordinateur
+ui.home.quick_windows = Lit les chemins d'installation que le lanceur enregistre dans le Registre, votre profil utilisateur et les données du lanceur, ainsi que tous les dossiers jusqu'à 5 niveaux de profondeur sur chaque lecteur local. Prend généralement quelques secondes.
+ui.home.quick_macos = Lit les préfixes Wine, CrossOver, Whisky, Wineskin et Heroic et les chemins d'installation qu'ils enregistrent, ainsi que tous les dossiers jusqu'à 5 niveaux sous /, volumes locaux compris. Les volumes réseau sont ignorés.
+ui.home.quick_linux = Lit tous les préfixes Wine de Steam, Lutris, Heroic, Bottles et Faugus et les chemins d'installation qu'ils enregistrent, ainsi que tous les dossiers jusqu'à 5 niveaux sous /, sous votre dossier personnel et sous chaque lecteur monté dans /mnt, /media et /run/media. Les montages réseau sont ignorés.
+ui.home.full = L'analyse complète ouvre tous les dossiers de tous les lecteurs locaux, pour trouver un dossier NIKKE que le lanceur n'enregistre plus et qui se trouve à plus de 5 niveaux de profondeur. Elle peut prendre longtemps sur les gros disques.
+ui.home.folder = Analyse d'un dossier
+ui.home.folder_text = Analyse un dossier et tout son contenu, y compris les préfixes Wine qu'il contient.
+ui.home.drop = Vous pouvez aussi déposer un dossier sur cette fenêtre.
+ui.home.no_dialog = Si la fenêtre de choix de dossier ne s'ouvre pas, exécutez nikke-check --cli <folder> dans un terminal.
+# Écran d'analyse.
+ui.scan.title = Analyse de {target}
+ui.scan.elapsed = écoulé
+ui.scan.searching = Recherche des installations de NIKKE et des préfixes Wine
+ui.scan.programs = Vérification des programmes en cours d'exécution
+ui.scan.locations = Vérification des emplacements trouvés
+ui.scan.locations_one = Vérification d'un emplacement
+ui.scan.locations_other = Vérification de {n} emplacements
+ui.scan.progress = {done} sur {total}
+ui.scan.hosts = Vérification du fichier hosts
+ui.tile.items = Éléments analysés
+ui.tile.folders = Dossiers
+ui.tile.locations = Emplacements trouvés
+ui.tile.findings = Constats jusqu'ici
+ui.failed.windows = L'analyse s'est arrêtée sur une erreur interne. Réessayez, ou exécutez {command} dans PowerShell, depuis le dossier qui contient ce programme, pour obtenir le rapport.
+ui.failed.other = L'analyse s'est arrêtée sur une erreur interne. Réessayez, ou exécutez nikke-check --cli pour obtenir le rapport dans un terminal.
+# Écran du résultat.
+ui.happened.payload_build = Version de l'agent
+ui.happened.agent_runs = Exécutions de l'agent dans les journaux
+ui.todo.hint = Faites les étapes une par une, dans l'ordre. Les boutons ouvrent pour vous le bon dossier ou le bon outil, mais c'est vous qui supprimez les fichiers. Ce programme ne supprime jamais rien.
+ui.todo.note = Ces étapes découlent de ce que cette analyse a trouvé, dans l'ordre où les faire. Les cases « Fait » ne sont pas enregistrées.
+ui.tile.critical = Critiques
+ui.tile.warnings = Avertissements
+ui.tile.info = Infos
+ui.tile.duration = Durée
+ui.details.checked = Emplacements vérifiés : {summary}. Cible de l'analyse : {scope}.
+# Un titre de section et son nombre de constats : « Informations (3) ».
+ui.details.section_count = {title} ({n})
+ui.details.hosts = Fichier hosts : {path}. Il ne s'agit pas d'une recherche d'infection : cette partie indique si les domaines sont bloqués.
+ui.details.protection = Protection
+ui.details.limits = Limites de cette vérification
+ui.details.locations = Emplacements vérifiés
+ui.details.none_found = Aucun élément trouvé.
+ui.details.folders_checked = Dossiers vérifiés

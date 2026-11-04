@@ -56,6 +56,12 @@ The result has three tabs. "What happened" answers four questions: did the malwa
 
 "Save report..." writes the text report to a file you choose, and "Copy report" puts it on the clipboard. Turn on "Hide my info" before you share it: it replaces your computer name, user names, agent ID and home folder in the saved or copied report (`--redact` on the command line). [Using the tool](docs/usage.md) covers the window, the report and the `--cli` mode.
 
+### Language
+
+The window and the report use the language of your system, so most people have nothing to set. The tool has 16 languages: English, Japanese, Korean, Simplified Chinese, Traditional Chinese, Thai, Vietnamese, Indonesian, French, German, Spanish, Portuguese (Brazil), Russian, Polish, Turkish and Italian. If the system language is not one of them, the tool tries the next language in the system's list of preferred languages, and uses English when none matches. The country does not matter, except for Chinese: French from Canada gives French and Portuguese from Portugal gives Portuguese (Brazil), while Chinese from Taiwan, Hong Kong or Macau gives Traditional Chinese and other Chinese gives Simplified Chinese.
+
+To switch, open the menu at the bottom left of the window. It shows the current language under its own name, such as 日本語 or Français. The change applies at once, also to a result already on screen and to the saved or copied report, without a new scan. The choice is not saved: the next start uses the system language again. To start in one language, add `--lang` and its code, such as `--lang fr` or `--cli --lang ja`. [Language](docs/usage.md#language) lists the codes, how the system language is read on each system, and how to make a Windows shortcut that always opens in one language.
+
 ## Verdicts
 
 | Verdict | Meaning |
@@ -81,7 +87,7 @@ Whatever the result, do not open the NIKKE launcher until Level Infinite confirm
 
 ## Documentation
 
-- [Using the tool](docs/usage.md): checking the download, the window and its tabs, saving and redacting the report, the command line and its exit codes.
+- [Using the tool](docs/usage.md): checking the download, the window and its tabs, the language and how it is detected, saving and redacting the report, the command line and its exit codes.
 - [What to do](docs/what-to-do.md): the steps for each verdict, with the paths to clean on each system.
 - [What happened](docs/incident.md): the incident, a timeline and the indicators of compromise.
 - [What it checks](docs/checks.md): every check and its severity, how the verdict is chosen, and the limits.
