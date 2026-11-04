@@ -407,7 +407,8 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
 
 // ---------------------------------------------------------------- A: install
 
-/// Needles of the agent's debug.log lines quoted in "The malware agent ran".
+/// Needles of the agent's debug.log lines quoted in "The malware agent ran". The last one,
+/// "startup failed", is quoted only when it ends a run.
 const AGENT_LINES: [&[u8]; 6] =
     [b"k2f_chan", b"adopted ", b"resuming ", b"agent started as", b"lua downloaded to", b"startup failed"];
 /// Lines that show the attacker's server took over a run: it gave the agent its ID.
@@ -455,7 +456,8 @@ fn check_install(dir: &Path, all_runs: &mut Vec<AgentRun>, all_builds: &mut Vec<
                     open = false;
                 }
                 server |= AGENT_SERVER.iter().any(|n| contains(line, n));
-                for (lines, needles) in [(&mut agent, &AGENT_LINES[..]), (&mut mentions, &MENTIONS[..])] {
+                let agent_needles = if failed { &AGENT_LINES[..] } else { &AGENT_LINES[..5] };
+                for (lines, needles) in [(&mut agent, agent_needles), (&mut mentions, &MENTIONS[..])] {
                     if lines.len() < MAX_EVIDENCE {
                         for s in snippets(line, needles, 1) {
                             if !lines.contains(&s) {
@@ -1531,6 +1533,8 @@ mod tests {
         let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::AgentRan).expect("A1");
         assert_eq!((f.severity, f.title.en().as_str()), (Severity::Critical, "The malware agent loaded, but its startup failed"));
         assert!(f.evidence_lines(Lang::En).iter().any(|l| l.contains("startup failed: EIO: invalid UTF-8 in string")));
+        assert!(!f.evidence_lines(Lang::En).iter().any(|l| l.contains("widget")), "{:?}", f.evidence);
+        assert_eq!(f.time.as_ref().map(Text::en).as_deref(), Some("11-04 09:30:12 (local time, year not logged)"));
         let kinds: Vec<RunKind> = r.runs.iter().map(|run| run.kind).collect();
         assert_eq!(kinds, [RunKind::Downloaded, RunKind::Failed, RunKind::Downloaded, RunKind::Failed]);
 
