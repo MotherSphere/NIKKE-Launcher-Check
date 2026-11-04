@@ -178,6 +178,7 @@ run.adopted = เอเจนต์เริ่มทำงานครั้ง
 run.resumed = เอเจนต์เริ่มทำงานอีกครั้งด้วย ID ที่บันทึกไว้
 run.started = เอเจนต์ส่งชื่อคอมพิวเตอร์ไปให้ผู้โจมตี
 run.started_as = เอเจนต์ส่งชื่อคอมพิวเตอร์ {host} ไปให้ผู้โจมตี
+run.failed = การเริ่มทำงานของเอเจนต์ล้มเหลว
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = ไม่มี ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = สแกนอีกครั้งหลังจาก�
 step.dll.defender = Microsoft Defender ตรวจไม่พบ DLL นี้บนคอมพิวเตอร์ที่ติดมัลแวร์เครื่องหนึ่ง ดังนั้นผลสแกนแอนติไวรัสที่ไม่พบอะไรไม่ได้แสดงว่า DLL ถูกลบไปแล้ว
 step.cache.title = ล้างแคชของ launcher
 step.cache.intro = ปิด launcher ก่อน จากนั้นก่อนเปิด launcher อีกครั้ง ให้ลบโฟลเดอร์ tbs_cache ซึ่งเป็นแคชของเบราว์เซอร์ในตัวของ launcher แคชนี้อาจยังมีไฟล์ที่ถูกดัดแปลงจากช่วงก่อนการแก้ไข และ launcher จะโหลดไฟล์เหล่านั้นอีกครั้ง หากต้องการเก็บหลักฐาน ให้คัดลอกโฟลเดอร์ไปไว้ที่อื่นก่อน
-step.cache.none = การสแกนนี้ไม่พบโฟลเดอร์ข้อมูล launcher บน Windows โฟลเดอร์นี้คือ %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt สำหรับ launcher HMT) หรือ drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache ภายใน Proton หรือ Wine prefix
+step.cache.none = การสแกนนี้ไม่พบโฟลเดอร์ข้อมูล launcher บน Windows โฟลเดอร์นี้คือ %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt สำหรับ launcher HMT, nikke_launcher_google สำหรับ launcher ของ Google Play Games) หรือ drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache ภายใน Proton หรือ Wine prefix
 step.cache.login = โปรไฟล์เบราว์เซอร์สำหรับล็อกอินของ launcher ด้านล่างก็มีร่องรอยของมัลแวร์เช่นกัน ให้ลบโปรไฟล์นี้ด้วย launcher จะสร้างโปรไฟล์นี้ขึ้นใหม่ และคุณต้องล็อกอินเข้า launcher อีกครั้ง
 step.password.title = เปลี่ยนรหัสผ่านจากอุปกรณ์อื่น
 step.password.intro_infected = ใช้โทรศัพท์หรือคอมพิวเตอร์เครื่องอื่นที่ไม่เคยรัน NIKKE launcher ระหว่างที่เอเจนต์ทำงาน คำสั่งของเอเจนต์สามารถอ่านไฟล์และข้อมูลเบราว์เซอร์ของคอมพิวเตอร์เครื่องนี้ได้ ให้เปลี่ยนหรือแทนที่สิ่งเหล่านี้:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = อ่าน debug.log ไม่ได้
 finding.debug_unreadable.detail = มีไฟล์ Launcher/intl_service/debug.log อยู่ แต่การสแกนนี้ไม่ได้รับอนุญาตให้เปิดไฟล์ จึงตรวจไม่ได้ว่าเอเจนต์ได้ทำงานหรือไม่ ให้สแกนอีกครั้งด้วยผู้ใช้ที่อ่านไฟล์นี้ได้
 finding.agent_ran.title = เอเจนต์ของมัลแวร์ได้ทำงานแล้ว
 finding.agent_ran.detail = debug.log แสดงว่าเอเจนต์ควบคุมระยะไกลเริ่มทำงานภายใน launcher (k2f_chan registered) ระหว่างที่ launcher เปิดอยู่ ผู้โจมตีสามารถรันคำสั่งบนคอมพิวเตอร์เครื่องนี้ได้
+finding.agent_failed.title = เอเจนต์ของมัลแวร์ถูกโหลดแล้ว แต่เริ่มทำงานไม่สำเร็จ
+finding.agent_failed.detail = debug.log แสดงว่าเอเจนต์ควบคุมระยะไกลถูกโหลดภายใน launcher (k2f_chan registered) แล้วเกิดข้อผิดพลาดตอนเริ่มทำงาน (startup failed) ทุกครั้งที่เปิด launcher ไม่มีบรรทัดใดแสดงว่าเซิร์ฟเวอร์ของผู้โจมตีเข้าควบคุม (adopted, resuming หรือ agent started as) ดังนั้นผู้โจมตีน่าจะไม่เคยได้เซสชัน แต่ยืนยันไม่ได้ เพราะโค้ดของเอเจนต์ได้ทำงานบนคอมพิวเตอร์เครื่องนี้แล้ว จึงยังต้องทำตามขั้นตอนสำหรับคอมพิวเตอร์ที่ติดมัลแวร์
 finding.payload_file.title = ไฟล์มัลแวร์ยังอยู่บนดิสก์
 finding.payload_file.detail = ไฟล์นี้ในโฟลเดอร์ log ของ launcher เป็น LuaJIT bytecode launcher บันทึกเอเจนต์ที่ดาวน์โหลดมา (insight.bundle) ไว้ภายใต้ชื่อไฟล์ log ของ tinyget
 finding.downloaded.title = launcher ดาวน์โหลดมัลแวร์แล้ว

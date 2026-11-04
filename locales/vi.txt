@@ -178,6 +178,7 @@ run.adopted = agent khởi động lần đầu trên máy tính này và tạo 
 run.resumed = agent khởi động lại với ID đã lưu
 run.started = agent đã gửi tên máy tính cho kẻ tấn công
 run.started_as = agent đã gửi tên máy tính {host} cho kẻ tấn công
+run.failed = agent khởi động không thành công
 
 # "Bản dựng payload": mỗi bản dựng của tệp agent một dòng. Các phần nối tiếp nhau trên cùng một dòng.
 build.no_etag = Không có ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = Sau đó hãy quét lại: các phát hiện này sẽ kh�
 step.dll.defender = Microsoft Defender đã không phát hiện DLL này trên một máy tính bị nhiễm, nên kết quả quét virus sạch không chứng tỏ DLL đã bị xóa.
 step.cache.title = Xóa bộ nhớ đệm của launcher
 step.cache.intro = Trước tiên, hãy đóng launcher. Sau đó, trước khi mở lại launcher, hãy xóa thư mục tbs_cache, bộ nhớ đệm của trình duyệt tích hợp trong launcher. Thư mục này vẫn có thể chứa các tệp đã bị sửa từ trước khi có bản sửa lỗi, và launcher sẽ nạp lại chúng. Để giữ lại bằng chứng, hãy sao chép thư mục sang nơi khác trước.
-step.cache.none = Lượt quét này không tìm thấy thư mục dữ liệu launcher. Trên Windows, thư mục này là %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt với launcher HMT), còn trong prefix Proton hoặc Wine là drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache.
+step.cache.none = Lượt quét này không tìm thấy thư mục dữ liệu launcher. Trên Windows, thư mục này là %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt với launcher HMT, nikke_launcher_google với launcher Google Play Games), còn trong prefix Proton hoặc Wine là drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache.
 step.cache.login = Hồ sơ trình duyệt đăng nhập của launcher bên dưới cũng chứa dấu vết của phần mềm độc hại. Hãy xóa cả hồ sơ này. Launcher sẽ tạo một hồ sơ mới, và bạn sẽ phải đăng nhập lại vào launcher.
 step.password.title = Đổi mật khẩu từ một thiết bị khác
 step.password.intro_infected = Hãy dùng điện thoại hoặc một máy tính khác chưa từng chạy launcher NIKKE. Trong lúc agent chạy, các lệnh của nó có thể đọc tệp và dữ liệu trình duyệt trên máy tính này. Hãy đổi hoặc thay thế những thứ sau:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = Không đọc được debug.log
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log có tồn tại, nhưng lượt quét này không được phép mở tệp, nên không kiểm tra được agent đã chạy hay chưa. Hãy quét lại bằng một tài khoản người dùng có quyền đọc tệp này.
 finding.agent_ran.title = Agent của phần mềm độc hại đã chạy
 finding.agent_ran.detail = debug.log cho thấy agent truy cập từ xa đã khởi động bên trong launcher (k2f_chan registered). Trong lúc launcher mở, kẻ tấn công có thể chạy lệnh trên máy tính này.
+finding.agent_failed.title = Agent của phần mềm độc hại đã được tải, nhưng không khởi động được
+finding.agent_failed.detail = debug.log cho thấy agent truy cập từ xa được tải bên trong launcher (k2f_chan registered), rồi gặp lỗi khởi động (startup failed) ở mỗi lần mở launcher. Không có dòng nào cho thấy máy chủ của kẻ tấn công nắm quyền điều khiển (adopted, resuming hoặc agent started as), nên nhiều khả năng kẻ tấn công chưa từng có phiên kết nối. Không thể khẳng định chắc chắn, vì mã của agent đã thực sự chạy trên máy tính này, nên các bước dành cho máy tính bị nhiễm vẫn áp dụng.
 finding.payload_file.title = Tệp phần mềm độc hại vẫn còn trên ổ đĩa
 finding.payload_file.detail = Tệp này trong thư mục nhật ký của launcher là bytecode LuaJIT. Launcher đã lưu agent tải về (insight.bundle) dưới tên của một tệp nhật ký tinyget.
 finding.downloaded.title = Launcher đã tải phần mềm độc hại về

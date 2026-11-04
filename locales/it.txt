@@ -178,6 +178,7 @@ run.adopted = l'agente si è avviato per la prima volta su questo computer e ha 
 run.resumed = l'agente si è avviato di nuovo con l'ID che aveva salvato
 run.started = l'agente ha inviato il nome del computer all'attaccante
 run.started_as = l'agente ha inviato all'attaccante il nome del computer {host}
+run.failed = l'avvio dell'agente non è riuscito
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = Nessun ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = Poi ripeti l'analisi: questi rilevamenti non dovrebbero pi
 step.dll.defender = Su un computer infetto Microsoft Defender non ha rilevato questa DLL, quindi un'analisi antivirus senza minacce non dimostra che la DLL sia stata rimossa.
 step.cache.title = Svuota la cache del launcher
 step.cache.intro = Per prima cosa chiudi il launcher. Poi, prima di riaprirlo, elimina la cartella tbs_cache, la cache del browser integrato del launcher. Può contenere ancora i file modificati di prima della correzione, e il launcher li caricherebbe di nuovo. Per conservare le prove, copia la cartella altrove prima di eliminarla.
-step.cache.none = Questa analisi non ha trovato alcuna cartella di dati del launcher. Su Windows è %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt per il launcher HMT), oppure drive_c/users/<utente>/AppData/Roaming/nikke_launcher/tbs_cache all'interno del prefisso Proton o Wine.
+step.cache.none = Questa analisi non ha trovato alcuna cartella di dati del launcher. Su Windows è %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt per il launcher HMT, nikke_launcher_google per il launcher di Google Play Games), oppure drive_c/users/<utente>/AppData/Roaming/nikke_launcher/tbs_cache all'interno del prefisso Proton o Wine.
 step.cache.login = Anche il profilo del browser di accesso del launcher riportato sotto contiene tracce del malware. Elimina anche quello. Il launcher ne crea uno nuovo e dovrai accedere di nuovo al launcher.
 step.password.title = Cambia le password da un altro dispositivo
 step.password.intro_infected = Usa un telefono o un altro computer che non abbia mai eseguito il launcher di NIKKE. Mentre l'agente era in esecuzione, i suoi comandi potevano leggere i file e i dati del browser di questo computer. Cambia o sostituisci questi elementi:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = Impossibile leggere debug.log
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log esiste, ma questa analisi non aveva l'autorizzazione per aprirlo, quindi non ha potuto verificare se l'agente è stato eseguito. Ripeti l'analisi con un utente che possa leggerlo.
 finding.agent_ran.title = L'agente del malware è stato eseguito
 finding.agent_ran.detail = debug.log mostra l'avvio dell'agente di accesso remoto all'interno del launcher (k2f_chan registered). Mentre il launcher era aperto, l'attaccante poteva eseguire comandi su questo computer.
+finding.agent_failed.title = L'agente del malware è stato caricato, ma il suo avvio non è riuscito
+finding.agent_failed.detail = debug.log mostra il caricamento dell'agente di accesso remoto all'interno del launcher (k2f_chan registered), poi un errore di avvio (startup failed) a ogni avvio. Nessuna riga mostra che il server dell'attaccante abbia preso il controllo (adopted, resuming o agent started as), quindi molto probabilmente l'operatore non ha mai avuto una sessione. Non è possibile confermarlo, perché il codice dell'agente è stato eseguito su questo computer, quindi i passaggi per un computer infetto restano validi.
 finding.payload_file.title = Il file del malware è ancora sul disco
 finding.payload_file.detail = Questo file nella cartella dei log del launcher è bytecode LuaJIT. Il launcher ha salvato l'agente scaricato (insight.bundle) con il nome di un log di tinyget.
 finding.downloaded.title = Il launcher ha scaricato il malware

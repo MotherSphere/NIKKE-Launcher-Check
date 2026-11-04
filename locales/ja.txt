@@ -178,6 +178,7 @@ run.adopted = エージェントがこのコンピューターで初めて起動
 run.resumed = エージェントが保存済みの ID で再び起動しました
 run.started = エージェントがコンピューター名を攻撃者に送信しました
 run.started_as = エージェントがコンピューター名 {host} を攻撃者に送信しました
+run.failed = エージェントの起動に失敗しました
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = ETag なし
@@ -251,7 +252,7 @@ step.dll.scan_again = その後、もう一度スキャンしてください。�
 step.dll.defender = 感染したコンピューターの 1 台で、Microsoft Defender はこの DLL を検出しませんでした。そのため、ウイルス対策ソフトのスキャンで何も見つからなくても、DLL がなくなったとは言えません。
 step.cache.title = ランチャーのキャッシュを削除する
 step.cache.intro = 先にランチャーを閉じてください。次に、ランチャーをもう一度開く前に、ランチャーの内蔵ブラウザーのキャッシュである tbs_cache フォルダーを削除します。このフォルダーには修正前に書き換えられたファイルがまだ残っている可能性があり、その場合はランチャーがそれらを再び読み込みます。証拠を残す場合は、先にフォルダーを別の場所にコピーしてください。
-step.cache.none = このスキャンでは、ランチャー データ フォルダーが見つかりませんでした。Windows では %APPDATA%\\nikke_launcher\\tbs_cache (HMT 版ランチャーの場合は nikke_launcher_hmt)、Proton または Wine のプレフィックス内では drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache にあります。
+step.cache.none = このスキャンでは、ランチャー データ フォルダーが見つかりませんでした。Windows では %APPDATA%\\nikke_launcher\\tbs_cache (HMT 版ランチャーの場合は nikke_launcher_hmt、Google Play Games 版ランチャーの場合は nikke_launcher_google)、Proton または Wine のプレフィックス内では drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache にあります。
 step.cache.login = 下にあるランチャーのログイン用ブラウザー プロファイルにも、マルウェアの痕跡が残っています。これも削除してください。ランチャーが新しいプロファイルを作成しますが、ランチャーにもう一度ログインする必要があります。
 step.password.title = 別のデバイスからパスワードを変更する
 step.password.intro_infected = NIKKE ランチャーを一度も実行したことのないスマートフォンまたは別のコンピューターを使ってください。エージェントの実行中は、そのコマンドでこのコンピューターのファイルやブラウザー データを読み取ることができました。次のものを変更または交換してください:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = debug.log を読み取れませんでした
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log は存在しますが、このスキャンには開く権限がなかったため、エージェントが実行されたかどうかを確認できませんでした。このファイルを読み取れるユーザーとしてもう一度スキャンしてください。
 finding.agent_ran.title = マルウェアのエージェントが実行されました
 finding.agent_ran.detail = debug.log に、リモート アクセス エージェントがランチャー内で起動したことが記録されています (k2f_chan registered)。ランチャーが開いている間、攻撃者はこのコンピューターでコマンドを実行できました。
+finding.agent_failed.title = マルウェアのエージェントは読み込まれましたが、起動に失敗しました
+finding.agent_failed.detail = debug.log に、リモート アクセス エージェントがランチャー内で読み込まれたこと (k2f_chan registered) と、その後の起動エラー (startup failed) が起動のたびに記録されています。攻撃者のサーバーが制御を引き継いだことを示す行 (adopted、resuming、agent started as) はないため、攻撃者がセッションを得ることはおそらくありませんでした。ただし、エージェントのコードはこのコンピューターで実際に実行されたため、これを確認することはできません。感染したコンピューター向けの手順は引き続き必要です。
 finding.payload_file.title = マルウェアのファイルがまだディスクに残っています
 finding.payload_file.detail = ランチャーのログ フォルダーにあるこのファイルは、LuaJIT バイトコードです。ランチャーは、ダウンロードしたエージェント (insight.bundle) を tinyget のログの名前で保存していました。
 finding.downloaded.title = ランチャーがマルウェアをダウンロードしました

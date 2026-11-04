@@ -178,6 +178,7 @@ run.adopted = agen berjalan untuk pertama kali di komputer ini dan membuat ID-ny
 run.resumed = agen berjalan lagi dengan ID yang disimpannya
 run.started = agen mengirim nama komputer kepada penyerang
 run.started_as = agen mengirim nama komputer {host} kepada penyerang
+run.failed = agen gagal memulai
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = Tanpa ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = Setelah itu, pindai lagi: temuan ini seharusnya sudah hila
 step.dll.defender = Microsoft Defender tidak mendeteksi DLL ini di satu komputer yang terinfeksi, jadi hasil pemindaian antivirus yang bersih tidak menunjukkan bahwa DLL ini sudah hilang.
 step.cache.title = Bersihkan cache launcher
 step.cache.intro = Tutup launcher terlebih dahulu. Lalu, sebelum Anda membukanya lagi, hapus folder tbs_cache, yaitu cache browser bawaan launcher. Folder ini masih dapat menyimpan file yang diubah dari sebelum perbaikan, dan launcher akan memuatnya lagi. Untuk menyimpan bukti, salin dulu folder itu ke tempat lain.
-step.cache.none = Pemindaian ini tidak menemukan folder data launcher. Di Windows, lokasinya adalah %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt untuk launcher HMT), atau drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache di dalam prefiks Proton atau Wine.
+step.cache.none = Pemindaian ini tidak menemukan folder data launcher. Di Windows, lokasinya adalah %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt untuk launcher HMT, nikke_launcher_google untuk launcher Google Play Games), atau drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache di dalam prefiks Proton atau Wine.
 step.cache.login = Profil browser login launcher di bawah ini juga menyimpan jejak malware. Hapus juga profil itu. Launcher akan membuat profil baru, dan Anda harus masuk lagi ke launcher.
 step.password.title = Ubah kata sandi Anda dari perangkat lain
 step.password.intro_infected = Gunakan ponsel atau komputer lain yang tidak pernah menjalankan launcher NIKKE. Selama agen berjalan, perintahnya dapat membaca file dan data browser di komputer ini. Ubah atau ganti hal-hal berikut:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = debug.log tidak dapat dibaca
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log ada, tetapi pemindaian ini tidak diizinkan membukanya, jadi tidak dapat diperiksa apakah agen sudah berjalan. Pindai lagi sebagai pengguna yang dapat membacanya.
 finding.agent_ran.title = Agen malware sudah berjalan
 finding.agent_ran.detail = debug.log menunjukkan agen akses jarak jauh mulai berjalan di dalam launcher (k2f_chan registered). Selama launcher terbuka, penyerang dapat menjalankan perintah di komputer ini.
+finding.agent_failed.title = Agen malware sudah dimuat, tetapi gagal memulai
+finding.agent_failed.detail = debug.log menunjukkan agen akses jarak jauh dimuat di dalam launcher (k2f_chan registered), lalu kesalahan saat memulai (startup failed) setiap kali launcher dibuka. Tidak ada baris yang menunjukkan server penyerang mengambil alih (adopted, resuming atau agent started as), jadi kemungkinan besar operator tidak pernah mendapat sesi. Hal ini tidak dapat dipastikan, karena kode agen memang sudah berjalan di komputer ini, sehingga langkah-langkah untuk komputer yang terinfeksi tetap berlaku.
 finding.payload_file.title = File malware masih ada di disk
 finding.payload_file.detail = File di folder log launcher ini berisi bytecode LuaJIT. Launcher menyimpan agen yang diunduh (insight.bundle) dengan nama file log tinyget.
 finding.downloaded.title = Launcher mengunduh malware

@@ -178,6 +178,7 @@ run.adopted = der Agent ist zum ersten Mal auf diesem Computer gestartet und hat
 run.resumed = der Agent ist erneut mit seiner gespeicherten ID gestartet
 run.started = der Agent hat den Computernamen an den Angreifer gesendet
 run.started_as = der Agent hat den Computernamen {host} an den Angreifer gesendet
+run.failed = der Start des Agenten ist fehlgeschlagen
 
 # „Build der Agent-Datei“: eine Zeile pro Build der Agent-Datei. Die Teile folgen in einer Zeile aufeinander.
 build.no_etag = Kein ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = Prüfen Sie danach erneut: Diese Befunde sollten dann vers
 step.dll.defender = Microsoft Defender hat diese DLL auf einem infizierten Computer nicht erkannt. Ein Virenscan ohne Befund zeigt also nicht, dass sie entfernt ist.
 step.cache.title = Leeren Sie den Launcher-Cache
 step.cache.intro = Schließen Sie zuerst den Launcher. Löschen Sie dann, bevor Sie ihn wieder öffnen, den Ordner tbs_cache, den Cache des im Launcher integrierten Browsers. Dieser Cache kann noch die veränderten Dateien aus der Zeit vor der Behebung enthalten, und der Launcher würde sie erneut laden. Um die Beweise zu sichern, kopieren Sie den Ordner zuerst an einen anderen Ort.
-step.cache.none = Diese Prüfung hat keinen Launcher-Datenordner gefunden. Unter Windows liegt der Cache in %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt beim HMT-Launcher), im Proton- oder Wine-Präfix in drive_c/users/<Benutzer>/AppData/Roaming/nikke_launcher/tbs_cache.
+step.cache.none = Diese Prüfung hat keinen Launcher-Datenordner gefunden. Unter Windows liegt der Cache in %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt beim HMT-Launcher, nikke_launcher_google beim Google-Play-Games-Launcher), im Proton- oder Wine-Präfix in drive_c/users/<Benutzer>/AppData/Roaming/nikke_launcher/tbs_cache.
 step.cache.login = Auch das unten angezeigte Anmelde-Browserprofil des Launchers enthält Spuren der Schadsoftware. Löschen Sie es ebenfalls. Der Launcher legt ein neues an, und Sie müssen sich erneut beim Launcher anmelden.
 step.password.title = Ändern Sie Ihre Passwörter von einem anderen Gerät aus
 step.password.intro_infected = Verwenden Sie ein Smartphone oder einen anderen Computer, auf dem der NIKKE-Launcher nie ausgeführt wurde. Während der Agent lief, konnten seine Befehle die Dateien und Browserdaten dieses Computers lesen. Ändern oder ersetzen Sie Folgendes:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = debug.log konnte nicht gelesen werden
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log ist vorhanden, aber diese Prüfung durfte die Datei nicht öffnen. Daher konnte nicht geprüft werden, ob der Agent ausgeführt wurde. Prüfen Sie erneut als Benutzer, der die Datei lesen darf.
 finding.agent_ran.title = Der Agent der Schadsoftware wurde ausgeführt
 finding.agent_ran.detail = debug.log zeigt, dass der Fernzugriffsagent im Launcher gestartet wurde (k2f_chan registered). Solange der Launcher geöffnet war, konnte der Angreifer Befehle auf diesem Computer ausführen.
+finding.agent_failed.title = Der Agent der Schadsoftware wurde geladen, aber sein Start ist fehlgeschlagen
+finding.agent_failed.detail = debug.log zeigt, dass der Fernzugriffsagent im Launcher geladen wurde (k2f_chan registered) und danach bei jedem Start einen Startfehler meldete (startup failed). Keine Zeile zeigt, dass der Server des Angreifers die Kontrolle übernommen hat (adopted, resuming oder agent started as). Der Angreifer hatte also sehr wahrscheinlich nie eine Sitzung. Sicher ist das nicht, denn der Code des Agenten wurde auf diesem Computer ausgeführt. Die Schritte für einen infizierten Computer gelten daher weiterhin.
 finding.payload_file.title = Die Datei der Schadsoftware liegt noch auf dem Datenträger
 finding.payload_file.detail = Diese Datei im Protokollordner des Launchers ist LuaJIT-Bytecode. Der Launcher hat den heruntergeladenen Agenten (insight.bundle) unter dem Namen eines tinyget-Protokolls gespeichert.
 finding.downloaded.title = Der Launcher hat die Schadsoftware heruntergeladen

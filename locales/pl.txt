@@ -178,6 +178,7 @@ run.adopted = agent uruchomił się po raz pierwszy na tym komputerze i utworzy�
 run.resumed = agent uruchomił się ponownie z zapisanym wcześniej identyfikatorem
 run.started = agent wysłał atakującemu nazwę komputera
 run.started_as = agent wysłał atakującemu nazwę komputera {host}
+run.failed = uruchomienie agenta nie powiodło się
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = Brak ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = Potem przeskanuj ponownie: te wykrycia powinny zniknąć.
 step.dll.defender = Na jednym zainfekowanym komputerze Microsoft Defender nie wykrył tego pliku DLL, więc czysty wynik skanowania antywirusowego nie dowodzi, że pliku już nie ma.
 step.cache.title = Wyczyść pamięć podręczną launchera
 step.cache.intro = Najpierw zamknij launcher. Potem, zanim otworzysz go ponownie, usuń folder tbs_cache, czyli pamięć podręczną wbudowanej przeglądarki launchera. Może nadal zawierać zmienione pliki sprzed poprawki, a launcher wczytałby je ponownie. Aby zachować dowody, najpierw skopiuj ten folder w inne miejsce.
-step.cache.none = To skanowanie nie znalazło folderu danych launchera. W systemie Windows jest to %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt dla launchera HMT), a w prefiksie Proton lub Wine: drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache.
+step.cache.none = To skanowanie nie znalazło folderu danych launchera. W systemie Windows jest to %APPDATA%\\nikke_launcher\\tbs_cache (nikke_launcher_hmt dla launchera HMT, nikke_launcher_google dla launchera Google Play Games), a w prefiksie Proton lub Wine: drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache.
 step.cache.login = Poniższy profil przeglądarki logowania launchera także zawiera ślady złośliwego oprogramowania. Usuń go również. Launcher utworzy nowy, a w launcherze trzeba będzie zalogować się ponownie.
 step.password.title = Zmień hasła z innego urządzenia
 step.password.intro_infected = Użyj telefonu lub innego komputera, na którym nigdy nie uruchomiono launchera NIKKE. Gdy agent działał, jego polecenia mogły odczytać pliki i dane przeglądarek z tego komputera. Zmień lub wymień:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = Nie udało się odczytać pliku debug.log
 finding.debug_unreadable.detail = Plik Launcher/intl_service/debug.log istnieje, ale to skanowanie nie miało uprawnień do jego otwarcia, więc nie mogło sprawdzić, czy agent się uruchomił. Przeskanuj ponownie jako użytkownik, który może go odczytać.
 finding.agent_ran.title = Agent złośliwego oprogramowania uruchomił się
 finding.agent_ran.detail = Plik debug.log pokazuje uruchomienie agenta zdalnego dostępu wewnątrz launchera (k2f_chan registered). Gdy launcher był otwarty, atakujący mógł wykonywać polecenia na tym komputerze.
+finding.agent_failed.title = Agent złośliwego oprogramowania załadował się, ale jego uruchomienie nie powiodło się
+finding.agent_failed.detail = Plik debug.log pokazuje załadowanie agenta zdalnego dostępu wewnątrz launchera (k2f_chan registered), a potem błąd uruchomienia (startup failed) przy każdym uruchomieniu. Żaden wiersz nie pokazuje przejęcia kontroli przez serwer atakującego (adopted, resuming lub agent started as), więc operator najprawdopodobniej nigdy nie miał sesji. Nie da się tego potwierdzić, bo kod agenta został wykonany na tym komputerze, dlatego kroki dla zainfekowanego komputera nadal obowiązują.
 finding.payload_file.title = Plik złośliwego oprogramowania nadal jest na dysku
 finding.payload_file.detail = Ten plik w folderze logów launchera to kod bajtowy LuaJIT. Launcher zapisał pobranego agenta (insight.bundle) pod nazwą logu tinyget.
 finding.downloaded.title = Launcher pobrał złośliwe oprogramowanie

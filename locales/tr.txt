@@ -178,6 +178,7 @@ run.adopted = ajan bu bilgisayarda ilk kez başladı ve kimliğini oluşturdu
 run.resumed = ajan kaydettiği kimlikle yeniden başladı
 run.started = ajan bilgisayar adını saldırgana gönderdi
 run.started_as = ajan {host} bilgisayar adını saldırgana gönderdi
+run.failed = ajanın başlatılması başarısız oldu
 
 # "Ajan dosyası derlemesi": ajan dosyasının her derlemesi için bir satır. Parçalar aynı satırda art arda gelir.
 build.no_etag = ETag yok
@@ -251,7 +252,7 @@ step.dll.scan_again = Sonra yeniden tarayın: bu bulgular artık görünmemelidi
 step.dll.defender = Microsoft Defender, enfekte bir bilgisayarda bu DLL dosyasını algılamadı. Bu nedenle temiz çıkan bir virüsten koruma taraması, DLL dosyasının gittiğini göstermez.
 step.cache.title = Başlatıcı önbelleğini temizleyin
 step.cache.intro = Önce başlatıcıyı kapatın. Sonra, başlatıcıyı yeniden açmadan önce, başlatıcının yerleşik tarayıcısının önbelleği olan tbs_cache klasörünü silin. Bu klasörde düzeltmeden önceki değiştirilmiş dosyalar hâlâ bulunabilir ve başlatıcı bunları yeniden yükler. Kanıtları saklamak için önce klasörü başka bir yere kopyalayın.
-step.cache.none = Bu tarama bir başlatıcı verisi klasörü bulamadı. Bu klasör Windows'ta %APPDATA%\\nikke_launcher\\tbs_cache konumundadır (HMT başlatıcısı için nikke_launcher_hmt). Proton veya Wine prefix'inde ise drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache konumundadır.
+step.cache.none = Bu tarama bir başlatıcı verisi klasörü bulamadı. Bu klasör Windows'ta %APPDATA%\\nikke_launcher\\tbs_cache konumundadır (HMT başlatıcısı için nikke_launcher_hmt, Google Play Games başlatıcısı için nikke_launcher_google). Proton veya Wine prefix'inde ise drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache konumundadır.
 step.cache.login = Başlatıcının aşağıdaki oturum açma tarayıcısı profili de kötü amaçlı yazılımın izlerini barındırıyor. Onu da silin. Başlatıcı yeni bir profil oluşturur ve başlatıcıda yeniden oturum açmanız gerekir.
 step.password.title = Parolalarınızı başka bir cihazdan değiştirin
 step.password.intro_infected = NIKKE başlatıcısını hiç çalıştırmamış bir telefon veya başka bir bilgisayar kullanın. Ajan çalışırken komutları bu bilgisayarın dosyalarını ve tarayıcı verilerini okuyabiliyordu. Şunları değiştirin veya yenileyin:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = debug.log okunamadı
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log var, ancak bu taramanın dosyayı açmasına izin verilmedi. Bu nedenle ajanın çalışıp çalışmadığı kontrol edilemedi. Dosyayı okuyabilen bir kullanıcı olarak yeniden tarayın.
 finding.agent_ran.title = Kötü amaçlı yazılım ajanı çalıştı
 finding.agent_ran.detail = debug.log, uzaktan erişim ajanının başlatıcının içinde başladığını gösteriyor (k2f_chan registered). Başlatıcı açıkken saldırgan bu bilgisayarda komut çalıştırabiliyordu.
+finding.agent_failed.title = Kötü amaçlı yazılım ajanı yüklendi, ancak başlatılması başarısız oldu
+finding.agent_failed.detail = debug.log, uzaktan erişim ajanının başlatıcının içinde yüklendiğini (k2f_chan registered), ardından her açılışta bir başlatma hatası (startup failed) verdiğini gösteriyor. Saldırganın sunucusunun denetimi ele aldığını gösteren bir satır yok (adopted, resuming veya agent started as). Bu yüzden saldırgan büyük olasılıkla hiç oturum açamadı. Bu kesin olarak doğrulanamaz, çünkü ajan kodu bu bilgisayarda çalıştı. Bu nedenle enfekte bir bilgisayar için verilen adımlar yine geçerlidir.
 finding.payload_file.title = Kötü amaçlı yazılım dosyası hâlâ diskte
 finding.payload_file.detail = Başlatıcının günlük klasöründeki bu dosya LuaJIT bayt kodudur. Başlatıcı, indirilen ajanı (insight.bundle) bir tinyget günlük dosyası adıyla kaydetti.
 finding.downloaded.title = Başlatıcı kötü amaçlı yazılımı indirdi

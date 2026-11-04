@@ -178,6 +178,7 @@ run.adopted = 에이전트가 이 PC에서 처음 실행되어 ID를 만듦
 run.resumed = 에이전트가 저장해 둔 ID로 다시 실행됨
 run.started = 에이전트가 컴퓨터 이름을 공격자에게 보냄
 run.started_as = 에이전트가 컴퓨터 이름({host})을 공격자에게 보냄
+run.failed = 에이전트 시작에 실패함
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = ETag 없음
@@ -251,7 +252,7 @@ step.dll.scan_again = 끝나면 다시 검사하세요. 여기 나온 항목이 
 step.dll.defender = Microsoft Defender가 이 DLL을 잡아내지 못한 감염 사례가 있습니다. 백신 검사에서 아무것도 나오지 않아도 DLL이 지워졌다고 볼 수 없습니다.
 step.cache.title = 런처 캐시를 지우세요
 step.cache.intro = 먼저 런처를 종료하세요. 그다음 런처를 다시 켜기 전에, 런처 내장 브라우저의 캐시 폴더인 tbs_cache를 지우세요. 문제가 해결되기 전에 받은 변조 파일이 남아 있으면 런처가 그 파일을 다시 불러옵니다. 증거로 남겨 두려면 지우기 전에 폴더를 다른 곳에 복사해 두세요.
-step.cache.none = 런처 데이터 폴더를 찾지 못했습니다. 위치는 Windows에서는 %APPDATA%\\nikke_launcher\\tbs_cache(HMT 런처는 nikke_launcher_hmt), Proton이나 Wine 프리픽스에서는 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache입니다.
+step.cache.none = 런처 데이터 폴더를 찾지 못했습니다. 위치는 Windows에서는 %APPDATA%\\nikke_launcher\\tbs_cache(HMT 런처는 nikke_launcher_hmt, Google Play 게임즈 런처는 nikke_launcher_google), Proton이나 Wine 프리픽스에서는 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache입니다.
 step.cache.login = 아래 런처 로그인용 브라우저 프로필에도 악성코드 흔적이 남아 있으니 함께 지우세요. 프로필은 런처가 새로 만들며, 런처에 다시 로그인하면 됩니다.
 step.password.title = 다른 기기에서 비밀번호를 바꾸세요
 step.password.intro_infected = 니케 런처를 한 번도 실행하지 않은 휴대폰이나 다른 PC를 쓰세요. 에이전트가 실행되던 동안 공격자는 이 PC의 파일과 브라우저 데이터를 읽을 수 있었습니다. 아래 항목을 바꾸거나 새로 발급받으세요:
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = debug.log를 읽지 못했습니다
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log는 있지만 열 권한이 없어 에이전트 실행 여부를 확인하지 못했습니다. 이 파일을 읽을 수 있는 계정으로 다시 검사하세요.
 finding.agent_ran.title = 악성코드 에이전트가 실행되었습니다
 finding.agent_ran.detail = debug.log에 런처 안에서 원격 제어 에이전트가 시작된 기록(k2f_chan registered)이 있습니다. 런처가 켜져 있는 동안 공격자가 이 PC에서 명령을 실행할 수 있었습니다.
+finding.agent_failed.title = 악성코드 에이전트가 로드되었지만 시작에 실패했습니다
+finding.agent_failed.detail = debug.log에 런처 안에서 원격 제어 에이전트가 로드된 기록(k2f_chan registered)과 그 뒤의 시작 오류(startup failed)가 런처를 켤 때마다 남아 있습니다. 공격자 서버가 제어를 넘겨받았다는 기록(adopted, resuming, agent started as)은 없으므로 공격자가 세션을 얻지 못했을 가능성이 높습니다. 다만 에이전트 코드가 이 PC에서 실행된 것은 맞기 때문에 이를 확실히 단정할 수는 없으며, 감염된 PC에 대한 조치를 그대로 따라야 합니다.
 finding.payload_file.title = 악성코드 파일이 아직 PC에 남아 있습니다
 finding.payload_file.detail = 런처 로그 폴더에 있는 이 파일은 LuaJIT 바이트코드입니다. 런처가 내려받은 에이전트(insight.bundle)를 tinyget 로그 파일인 것처럼 이름을 붙여 저장한 것입니다.
 finding.downloaded.title = 런처가 악성코드를 내려받았습니다

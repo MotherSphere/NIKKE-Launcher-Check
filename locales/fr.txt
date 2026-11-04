@@ -178,6 +178,7 @@ run.adopted = l'agent a démarré pour la première fois sur cet ordinateur et a
 run.resumed = l'agent a redémarré avec l'ID qu'il avait enregistré
 run.started = l'agent a envoyé le nom de l'ordinateur à l'attaquant
 run.started_as = l'agent a envoyé le nom d'ordinateur {host} à l'attaquant
+run.failed = le démarrage de l'agent a échoué
 
 # « Version de l'agent » : une ligne par version du fichier de l'agent. Les parties se suivent sur une ligne.
 build.no_etag = Pas d'ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = Relancez ensuite une analyse : ces constats devraient avo
 step.dll.defender = Sur un ordinateur infecté, Microsoft Defender n'a pas détecté cette DLL : une analyse antivirus sans détection ne montre donc pas qu'elle a disparu.
 step.cache.title = Vider le cache du lanceur
 step.cache.intro = Fermez d'abord le lanceur. Ensuite, avant de le rouvrir, supprimez le dossier tbs_cache, le cache du navigateur intégré au lanceur. Il peut encore contenir les fichiers modifiés d'avant le correctif, et le lanceur les chargerait de nouveau. Pour conserver les preuves, copiez d'abord le dossier ailleurs.
-step.cache.none = Cette analyse n'a trouvé aucun dossier de données du lanceur. Il s'agit de %APPDATA%\\nikke_launcher\\tbs_cache sous Windows (nikke_launcher_hmt pour le lanceur HMT), ou de drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache dans le préfixe Proton ou Wine.
+step.cache.none = Cette analyse n'a trouvé aucun dossier de données du lanceur. Il s'agit de %APPDATA%\\nikke_launcher\\tbs_cache sous Windows (nikke_launcher_hmt pour le lanceur HMT, nikke_launcher_google pour le lanceur Google Play Jeux), ou de drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache dans le préfixe Proton ou Wine.
 step.cache.login = Le profil de navigateur de connexion du lanceur ci-dessous contient lui aussi des traces du logiciel malveillant. Supprimez-le également. Le lanceur le recrée, et vous devrez vous reconnecter au lanceur.
 step.password.title = Changer vos mots de passe depuis un autre appareil
 step.password.intro_infected = Utilisez un téléphone ou un autre ordinateur qui n'a jamais exécuté le lanceur NIKKE. Pendant que l'agent s'exécutait, ses commandes pouvaient lire les fichiers et les données des navigateurs de cet ordinateur. Changez ou remplacez les éléments suivants :
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = debug.log n'a pas pu être lu
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log existe, mais cette analyse n'a pas été autorisée à l'ouvrir : elle n'a donc pas pu vérifier si l'agent s'est exécuté. Relancez l'analyse avec un utilisateur qui peut le lire.
 finding.agent_ran.title = L'agent du logiciel malveillant s'est exécuté
 finding.agent_ran.detail = debug.log montre le démarrage de l'agent d'accès à distance dans le lanceur (k2f_chan registered). Tant que le lanceur était ouvert, l'attaquant pouvait exécuter des commandes sur cet ordinateur.
+finding.agent_failed.title = L'agent du logiciel malveillant s'est chargé, mais son démarrage a échoué
+finding.agent_failed.detail = debug.log montre le chargement de l'agent d'accès à distance dans le lanceur (k2f_chan registered), puis une erreur de démarrage (startup failed) à chaque lancement. Aucune ligne ne montre que le serveur de l'attaquant a pris la main (adopted, resuming ou agent started as) : l'opérateur n'a donc très probablement jamais ouvert de session. Ce n'est pas certain, car le code de l'agent s'est bien exécuté sur cet ordinateur. Les étapes prévues pour un ordinateur infecté s'appliquent donc toujours.
 finding.payload_file.title = Le fichier malveillant est toujours sur le disque
 finding.payload_file.detail = Ce fichier du dossier des journaux du lanceur est du bytecode LuaJIT. Le lanceur a enregistré l'agent téléchargé (insight.bundle) sous un nom de journal tinyget.
 finding.downloaded.title = Le lanceur a téléchargé le logiciel malveillant

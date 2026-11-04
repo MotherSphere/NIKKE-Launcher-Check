@@ -178,6 +178,7 @@ run.adopted = 遠端控制程式首次在這台電腦上啟動，並建立了它
 run.resumed = 遠端控制程式以先前儲存的 ID 再次啟動
 run.started = 遠端控制程式將電腦名稱傳送給攻擊者
 run.started_as = 遠端控制程式將電腦名稱 {host} 傳送給攻擊者
+run.failed = 遠端控制程式啟動失敗
 
 # "Payload build": one line per build of the agent file. The parts follow each other on one line.
 build.no_etag = 無 ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = 完成後再掃描一次：這些發現項目應該會消�
 step.dll.defender = 在一台已感染的電腦上，Microsoft Defender 沒有偵測到這個 DLL，因此防毒掃描結果乾淨，並不代表它已經消失。
 step.cache.title = 清除啟動器快取
 step.cache.intro = 請先關閉啟動器。然後，在再次開啟它之前，刪除 tbs_cache 資料夾，這是啟動器內建瀏覽器的快取。其中可能還留有修復之前遭竄改的檔案，啟動器會再次載入它們。若要保留證據，請先將這個資料夾複製到其他地方。
-step.cache.none = 這次掃描沒有找到存放啟動器資料的資料夾。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 版啟動器為 nikke_launcher_hmt），在 Proton 或 Wine 前綴中則是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
+step.cache.none = 這次掃描沒有找到存放啟動器資料的資料夾。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 版啟動器為 nikke_launcher_hmt，Google Play 遊戲版啟動器為 nikke_launcher_google），在 Proton 或 Wine 前綴中則是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
 step.cache.login = 下方的啟動器登入瀏覽器設定檔中也有惡意軟體的痕跡。請一併刪除。啟動器會重新建立它，你需要再次登入啟動器。
 step.password.title = 用另一台裝置變更密碼
 step.password.intro_infected = 請使用從未執行過 NIKKE 啟動器的手機或另一台電腦。遠端控制程式執行期間，它的命令可以讀取這台電腦的檔案和瀏覽器資料。請變更或更換以下項目：
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = 無法讀取 debug.log
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log 存在，但這次掃描沒有權限開啟它，因此無法檢查遠端控制程式是否執行過。請以能讀取它的使用者身分再掃描一次。
 finding.agent_ran.title = 惡意遠端控制程式曾經執行
 finding.agent_ran.detail = debug.log 顯示遠端控制程式在啟動器內啟動（k2f_chan registered）。啟動器開著的期間，攻擊者可以在這台電腦上執行命令。
+finding.agent_failed.title = 惡意遠端控制程式曾經載入，但啟動失敗
+finding.agent_failed.detail = debug.log 顯示遠端控制程式在啟動器內載入（k2f_chan registered），之後每次啟動都出現啟動錯誤（startup failed）。沒有任何一行顯示攻擊者的伺服器接手控制（adopted、resuming 或 agent started as），因此攻擊者很可能從未取得連線。這點無法確認，因為遠端控制程式的程式碼確實在這台電腦上執行過，所以受感染電腦的處理步驟仍然適用。
 finding.payload_file.title = 惡意檔案仍在磁碟上
 finding.payload_file.detail = 啟動器記錄檔資料夾中的這個檔案是 LuaJIT 位元組碼。啟動器把下載的遠端控制程式（insight.bundle）以 tinyget 記錄檔的檔名儲存。
 finding.downloaded.title = 啟動器下載了惡意軟體

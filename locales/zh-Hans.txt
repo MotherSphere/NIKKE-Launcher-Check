@@ -178,6 +178,7 @@ run.adopted = 远程控制程序首次在这台电脑上启动，并创建了它
 run.resumed = 远程控制程序使用之前保存的 ID 再次启动
 run.started = 远程控制程序把计算机名发送给了攻击者
 run.started_as = 远程控制程序把计算机名 {host} 发送给了攻击者
+run.failed = 远程控制程序启动失败
 
 # “载荷构建版本”：远程控制程序文件的每个构建版本一行。各部分在同一行中依次连接。
 build.no_etag = 无 ETag
@@ -251,7 +252,7 @@ step.dll.scan_again = 之后再扫描一次：这些发现项应该会消失。
 step.dll.defender = 在一台已感染的电脑上，Microsoft Defender 没有检测到这个 DLL，所以杀毒软件扫描结果干净，并不代表它已被清除。
 step.cache.title = 清除启动器缓存
 step.cache.intro = 先关闭启动器。然后，在再次打开它之前，删除 tbs_cache 文件夹，它是启动器内置浏览器的缓存。其中可能还存有修复之前被篡改的文件，启动器会再次加载它们。如果要保留证据，请先把这个文件夹复制到别处。
-step.cache.none = 本次扫描没有找到启动器数据文件夹。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 启动器为 nikke_launcher_hmt）；在 Proton 或 Wine 前缀中，它是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
+step.cache.none = 本次扫描没有找到启动器数据文件夹。在 Windows 上，它是 %APPDATA%\\nikke_launcher\\tbs_cache（HMT 启动器为 nikke_launcher_hmt，Google Play Games 启动器为 nikke_launcher_google）；在 Proton 或 Wine 前缀中，它是 drive_c/users/<user>/AppData/Roaming/nikke_launcher/tbs_cache。
 step.cache.login = 下面的启动器登录浏览器配置文件中也有恶意软件的痕迹。请把它也删除。启动器会创建一个新的配置文件，你需要重新登录启动器。
 step.password.title = 用另一台设备修改密码
 step.password.intro_infected = 请使用从未运行过 NIKKE 启动器的手机或另一台电脑。远程控制程序运行期间，它的命令可以读取这台电脑上的文件和浏览器数据。请修改或更换以下内容：
@@ -379,6 +380,8 @@ finding.debug_unreadable.title = 无法读取 debug.log
 finding.debug_unreadable.detail = Launcher/intl_service/debug.log 存在，但本次扫描没有权限打开它，因此无法检查远程控制程序是否运行过。请以能读取它的用户身份重新扫描。
 finding.agent_ran.title = 恶意远程控制程序运行过
 finding.agent_ran.detail = debug.log 显示远程控制程序在启动器中启动（k2f_chan registered）。启动器打开期间，攻击者可以在这台电脑上执行命令。
+finding.agent_failed.title = 恶意远程控制程序已加载，但启动失败
+finding.agent_failed.detail = debug.log 显示远程控制程序在启动器中加载（k2f_chan registered），之后每次启动都出现启动错误（startup failed）。没有任何一行显示攻击者的服务器接管了它（adopted、resuming 或 agent started as），因此攻击者很可能从未获得会话。这一点无法确认，因为远程控制程序的代码确实在这台电脑上运行过，所以电脑受感染时的处理步骤仍然适用。
 finding.payload_file.title = 恶意文件仍在磁盘上
 finding.payload_file.detail = 启动器日志文件夹中的这个文件是 LuaJIT 字节码。启动器把下载的远程控制程序（insight.bundle）以 tinyget 日志的文件名保存了下来。
 finding.downloaded.title = 启动器下载了恶意软件
