@@ -11,8 +11,13 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering::Relaxed};
 use std::time::{Duration, Instant};
 
-/// Safety stop for one scan. Walks have no depth limit; a full disk stays far below this.
+/// Safety stop for one scan. Full-scan walks have no depth limit; a full disk stays far below this.
 pub const ENTRY_CAP: u64 = 50_000_000;
+
+/// How many folder levels below each drive root (or `/`) the quick computer scan
+/// opens. `D:\Games\Level Infinite\NIKKE\Launcher` is level 4. Wine prefixes, launcher
+/// data and the install paths the launcher records are read whatever their depth.
+pub const QUICK_DEPTH: usize = 5;
 
 /// What a running scan does now, in the order the stages run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -131,6 +136,8 @@ pub struct WalkStats {
     pub unreadable: Vec<PathBuf>,
     /// Network drives and remote mounts left out of a computer scan.
     pub skipped_mounts: Vec<PathBuf>,
+    /// Quick computer scan: the deepest folder level it opened below each search root.
+    pub depth_limit: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -139,9 +146,11 @@ pub struct Discovery {
     pub stats: WalkStats,
 }
 
-/// Searches the usual places on this computer.
-pub fn discover_computer(progress: &Progress) -> Discovery {
+/// Searches the usual places on this computer. The quick scan opens the search
+/// roots only [`QUICK_DEPTH`] levels deep; the full scan opens every folder.
+pub fn discover_computer(full: bool, progress: &Progress) -> Discovery {
     let mut finder = Finder::new(ENTRY_CAP, progress);
+    finder.stats.depth_limit = (!full).then_some(QUICK_DEPTH);
     plan_computer(&mut finder);
     finder.finish()
 }
@@ -184,6 +193,8 @@ struct Finder<'p> {
     seen: HashSet<(TargetKind, PathBuf)>,
     targets: Vec<Target>,
     pending_prefixes: Vec<PathBuf>,
+    /// Quick scan: roots that get their own walk, so the other walks do not enter them.
+    separate_roots: HashSet<PathBuf>,
     progress: &'p Progress,
     /// When the folder shown in the window last changed.
     shown_at: Instant,
@@ -198,6 +209,7 @@ impl<'p> Finder<'p> {
             seen: HashSet::new(),
             targets: Vec::new(),
             pending_prefixes: Vec::new(),
+            separate_roots: HashSet::new(),
             progress,
             shown_at: Instant::now(),
         }
@@ -219,7 +231,7 @@ impl<'p> Finder<'p> {
     fn root(&mut self, path: &Path) {
         if path.is_dir() {
             self.stats.roots.push(path.to_path_buf());
-            self.walk(path, Mode::Generic);
+            self.walk(path, Mode::Generic, self.stats.depth_limit);
         }
     }
 
@@ -236,6 +248,27 @@ impl<'p> Finder<'p> {
             Ok(_) => {}
             Err(err) => self.note_denied(path, &err),
         }
+    }
+
+    /// Subfolders of `dir` that are not network mounts, without opening or stating
+    /// them (the directory entry type is enough), and without following links.
+    #[cfg(all(unix, not(target_os = "macos")))]
+    fn local_subdirs(&mut self, dir: &Path) -> Vec<PathBuf> {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if self.skip_mounts.contains(&path) {
+                if !self.stats.skipped_mounts.contains(&path) {
+                    self.stats.skipped_mounts.push(path);
+                }
+            } else if entry.file_type().is_ok_and(|t| t.is_dir()) && !skip_dir(&path, &entry.file_name()) {
+                out.push(path);
+            }
+        }
+        out
     }
 
     /// Subfolders of `dir` (symlinks to folders included).
@@ -283,7 +316,9 @@ impl<'p> Finder<'p> {
 
     /// A plain stack walk rather than walkdir: walkdir opens a folder before the
     /// caller can skip it, and opening a dead network mount can block forever.
-    fn walk(&mut self, root: &Path, mode: Mode) {
+    /// `limit` is the deepest folder level opened below `root`; deeper folders are
+    /// still checked by name (a prefix's drive_c, launcher data) but not entered.
+    fn walk(&mut self, root: &Path, mode: Mode, limit: Option<usize>) {
         if !self.count(true) {
             return;
         }
@@ -315,6 +350,9 @@ impl<'p> Finder<'p> {
                     }
                     continue;
                 }
+                if self.separate_roots.contains(&path) {
+                    continue;
+                }
                 let Ok(file_type) = entry.file_type() else {
                     continue;
                 };
@@ -322,7 +360,7 @@ impl<'p> Finder<'p> {
                     return;
                 }
                 if file_type.is_dir() {
-                    if self.visit_dir(&path, depth + 1, mode, drive_root) {
+                    if self.visit_dir(&path, depth + 1, mode, drive_root) && limit.is_none_or(|l| depth < l) {
                         stack.push((path, depth + 1));
                     }
                 } else if file_type.is_file()
@@ -393,7 +431,7 @@ impl<'p> Finder<'p> {
                 }
             }
         }
-        self.walk(&drive_c, Mode::DriveC);
+        self.walk(&drive_c, Mode::DriveC, None);
         // Installs often hold their own prefix (NIKKE/prefix next to NIKKE/Launcher).
         if let Some(parent) = prefix.parent()
             && is_install_dir(parent)
@@ -862,6 +900,17 @@ fn real_user() -> (Option<PathBuf>, Option<std::ffi::OsString>) {
     }
 }
 
+/// True when `dir` is on the same filesystem as `base`, so it is a plain folder and not
+/// a mounted drive. Only called on folders that are not network mounts.
+#[cfg(all(unix, not(target_os = "macos")))]
+fn same_device(base: &Path, dir: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    match (fs::symlink_metadata(base), fs::symlink_metadata(dir)) {
+        (Ok(a), Ok(b)) => a.dev() == b.dev(),
+        _ => false,
+    }
+}
+
 #[cfg(all(unix, not(target_os = "macos")))]
 fn plan_computer(f: &mut Finder<'_>) {
     let (home, _) = real_user();
@@ -873,8 +922,47 @@ fn plan_computer(f: &mut Finder<'_>) {
             .filter(|m| !home.as_ref().is_some_and(|h| h.starts_with(m)))
             .collect();
     }
+    // A quick scan also counts its levels from the home folder and from each drive
+    // under /mnt, /media and /run/media. The walk from / leaves those folders to them.
+    let mut roots = Vec::new();
+    if f.stats.depth_limit.is_some() {
+        // A home of / is already the walk from /.
+        roots.extend(home.as_deref().and_then(|h| fs::canonicalize(h).ok()).filter(|h| h.parent().is_some()));
+        for base in ["/mnt", "/media", "/run/media"] {
+            // The base itself can be a network mount, directly or through a link (Fedora
+            // Atomic links /mnt to var/mnt). Check both before anything opens it.
+            let raw = Path::new(base);
+            let network = f.skip_mounts.contains(raw)
+                || fs::read_link(raw).is_ok_and(|t| f.skip_mounts.contains(&Path::new("/").join(t)));
+            if network {
+                if !f.stats.skipped_mounts.iter().any(|p| p == raw) {
+                    f.stats.skipped_mounts.push(raw.to_path_buf());
+                }
+                continue;
+            }
+            // Canonical, so the paths match the mount table.
+            let Ok(base) = fs::canonicalize(raw) else {
+                continue;
+            };
+            for dir in f.local_subdirs(&base) {
+                // /media/<user> and /run/media/<user> hold the drives one level down.
+                let user_dir = !base.ends_with("mnt") && same_device(&base, &dir);
+                if user_dir {
+                    roots.extend(f.local_subdirs(&dir));
+                } else {
+                    roots.push(dir);
+                }
+            }
+        }
+        roots.sort();
+        roots.dedup();
+        f.separate_roots = roots.iter().cloned().collect();
+    }
     // The whole system: home, /mnt, /media and /run/media included.
     f.root(Path::new("/"));
+    for root in roots {
+        f.root(&root);
+    }
     let Some(home) = home else {
         return;
     };
@@ -976,6 +1064,55 @@ mod tests {
             network_mounts(mountinfo, fstab),
             ["/mnt/nas", "/home/u/my share", "/mnt/auto", "/mnt/gdrive"].map(PathBuf::from).to_vec()
         );
+    }
+
+    #[test]
+    fn quick_walk_stops_at_its_depth() {
+        let root = std::env::temp_dir().join(format!("nikke-check-test-{}-depth", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let shallow = root.join("Games/NIKKE");
+        let deep = root.join("a/b/c/d/e/NIKKE");
+        // A prefix at the last level is found by its drive_c, which is then walked in full.
+        let in_prefix = root.join("a/b/pfx/drive_c/x/y/z/NIKKE");
+        for dir in [&shallow, &deep, &in_prefix] {
+            fs::create_dir_all(dir.join("Launcher")).unwrap();
+            fs::write(dir.join("Launcher/nikke_launcher.exe"), b"MZ").unwrap();
+        }
+        let installs = |limit| {
+            let progress = Progress::default();
+            let mut f = Finder::new(ENTRY_CAP, &progress);
+            f.stats.depth_limit = limit;
+            f.root(&root);
+            let mut found: Vec<PathBuf> =
+                f.finish().targets.into_iter().filter(|t| t.kind == TargetKind::InstallDir).map(|t| t.path).collect();
+            found.sort();
+            found
+        };
+        let sorted = |mut v: Vec<PathBuf>| {
+            v.sort();
+            v
+        };
+        // Games/NIKKE/Launcher is level 3, a/b/c/d/e/NIKKE/Launcher level 7.
+        assert_eq!(installs(Some(3)), sorted(vec![shallow.clone(), in_prefix.clone()]));
+        assert_eq!(installs(None), sorted(vec![shallow, deep, in_prefix]));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn quick_roots_skip_links_and_network_mounts() {
+        let base = std::env::temp_dir().join(format!("nikke-check-test-{}-roots", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(base.join("drive")).unwrap();
+        fs::create_dir_all(base.join("nas")).unwrap();
+        std::os::unix::fs::symlink(base.join("drive"), base.join("link")).unwrap();
+        let progress = Progress::default();
+        let mut f = Finder::new(ENTRY_CAP, &progress);
+        f.skip_mounts.insert(base.join("nas"));
+        assert_eq!(f.local_subdirs(&base), [base.join("drive")]);
+        assert_eq!(f.stats.skipped_mounts, [base.join("nas")]);
+        assert!(same_device(&base, &base.join("drive")));
+        let _ = fs::remove_dir_all(&base);
     }
 
     #[test]

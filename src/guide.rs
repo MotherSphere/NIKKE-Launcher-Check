@@ -111,10 +111,15 @@ fn did_it_run(r: &ScanResult) -> Answer {
     if gaps {
         lines.push("Part of this scan could not be done. See \"What this scan could not check\" in Details.".into());
     }
+    // A quick scan can miss an old install deeper down, so its "No" is not a clean result.
+    if let Some(depth) = r.stats.depth_limit {
+        lines.push(format!("This was a quick scan, which opens folders only {depth} levels deep. The full scan also checks deeper folders."));
+    }
     if !loader {
         lines.push("Finding nothing is not proof that the computer is clean.".into());
     }
-    answer(Q, "No", if loader || gaps { Tone::Unsure } else { Tone::Good }, lines)
+    let unsure = loader || gaps || r.stats.depth_limit.is_some();
+    answer(Q, "No", if unsure { Tone::Unsure } else { Tone::Good }, lines)
 }
 
 /// One logged step of an agent run. "Hide my info" replaces the computer name
@@ -264,6 +269,7 @@ pub enum Action {
     SaveReport,
     CopyReport,
     ScanFolder,
+    FullScan,
 }
 
 fn text(s: impl Into<String>) -> Part {
@@ -285,7 +291,7 @@ pub fn steps(r: &ScanResult) -> Vec<Step> {
     let rescan = found && !has_target(r, TargetKind::InstallDir);
     let mut out = Vec::new();
     if !found {
-        out.push(scan_folder_step());
+        out.push(scan_folder_step(r));
     }
     if act_now(r) {
         out.push(close_step(r));
@@ -294,8 +300,12 @@ pub fn steps(r: &ScanResult) -> Vec<Step> {
         // Before the DLL step: its restart closes this window.
         out.push(save_step(r, restart_first(r)));
     }
+    // After a quick scan without proof of the agent, the full scan is the next check.
+    let quick_unsure = matches!(r.verdict, Verdict::NoTraces | Verdict::Exposed) && r.stats.depth_limit.is_some();
     if rescan && r.verdict != Verdict::Infected {
-        out.push(scan_folder_step());
+        out.push(scan_folder_step(r));
+    } else if quick_unsure {
+        out.push(step("Run the full scan", full_scan_parts(r)));
     }
     if any(r, &PERSISTENCE) {
         out.push(dll_step(r));
@@ -306,7 +316,7 @@ pub fn steps(r: &ScanResult) -> Vec<Step> {
     }
     out.push(block_step(r));
     if rescan && r.verdict == Verdict::Infected {
-        out.push(scan_folder_step());
+        out.push(scan_folder_step(r));
     }
     out.push(wait_step(r.verdict == Verdict::Infected && any(r, &RAN)));
     out
@@ -326,9 +336,9 @@ fn ps_command(exe: &str, args: &str) -> String {
     format!("& '.\\{}' --cli{args} | Out-Host", exe.replace('\'', "''"))
 }
 
-fn scan_folder_step() -> Step {
+fn scan_folder_step(r: &ScanResult) -> Step {
     const INTRO: &str = "If NIKKE is installed somewhere this scan did not look, such as another drive, scan that folder";
-    let parts = if cfg!(windows) {
+    let mut parts = if cfg!(windows) {
         let cmd = powershell_cli(r" 'D:\Games\NIKKE'");
         vec![
             text(format!("{INTRO} with \"Scan a folder...\". In PowerShell, from the folder that holds this program, this command scans it too. Put your NIKKE folder in place of D:\\Games\\NIKKE.")),
@@ -341,7 +351,26 @@ fn scan_folder_step() -> Step {
             Part::Actions(vec![Action::ScanFolder]),
         ]
     };
+    parts.extend(full_scan_parts(r));
     step("Scan the folder where NIKKE is installed", parts)
+}
+
+/// After a quick scan: what the full scan adds, its button and its command.
+fn full_scan_parts(r: &ScanResult) -> Vec<Part> {
+    let Some(depth) = r.stats.depth_limit else {
+        return Vec::new();
+    };
+    let mut parts = vec![text(format!("This was a quick scan, which opens folders only {depth} levels deep. If you do not know where NIKKE is, or an older copy may be deeper, the full scan opens every folder on every local drive. It can take a long time on large drives."))];
+    if cfg!(windows) {
+        let cmd = powershell_cli(" --full");
+        parts.push(text("In PowerShell, from the folder that holds this program:"));
+        parts.push(Part::Code(cmd.clone()));
+        parts.push(Part::Actions(vec![Action::FullScan, Action::Copy("Copy command", cmd)]));
+    } else {
+        parts.push(text("In a terminal: nikke-check --cli --full"));
+        parts.push(Part::Actions(vec![Action::FullScan]));
+    }
+    parts
 }
 
 fn close_step(r: &ScanResult) -> Step {
@@ -919,6 +948,13 @@ mod tests {
         assert_eq!((ran.reply, active.reply, clean.reply, protect.reply), ("Yes", "Yes", "Yes", "Partly"));
         assert!(clean.lines.iter().any(|l| l.contains("tbs_cache")), "{:?}", clean.lines);
 
+        // A quick scan's "No" is unsure, and its steps offer the full scan.
+        let mut quick_clean = result(Verdict::NoTraces, vec![], vec![(TargetKind::InstallDir, "/n"), (TargetKind::LauncherData, "/d/nikke_launcher")]);
+        quick_clean.stats.depth_limit = Some(5);
+        let [ran, ..] = answers(&quick_clean);
+        assert_eq!((ran.reply, ran.tone), ("No", Tone::Unsure));
+        assert_eq!(titles(&quick_clean)[0], "Run the full scan");
+
         let clean_scan = result(Verdict::NoTraces, vec![], vec![(TargetKind::InstallDir, "/n"), (TargetKind::LauncherData, "/d/nikke_launcher")]);
         assert_eq!(
             titles(&clean_scan),
@@ -945,6 +981,13 @@ mod tests {
         let none = result(Verdict::NotFound, vec![], vec![]);
         assert_eq!(titles(&none)[0], "Scan the folder where NIKKE is installed");
         assert_eq!(answers(&none)[0].reply, "Cannot tell");
+        // Only a quick scan offers the full scan.
+        let offers_full = |r: &ScanResult| {
+            steps(r)[0].parts.iter().any(|p| matches!(p, Part::Actions(a) if a.iter().any(|a| matches!(a, Action::FullScan))))
+        };
+        let mut quick = result(Verdict::NotFound, vec![], vec![]);
+        quick.stats.depth_limit = Some(5);
+        assert!(offers_full(&quick) && !offers_full(&none));
 
         // A part of the scan that failed makes "No" unsure.
         let gap = result(

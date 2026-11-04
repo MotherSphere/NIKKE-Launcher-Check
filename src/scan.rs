@@ -195,12 +195,13 @@ pub struct ScanResult {
     pub exposure: Option<Exposure>,
 }
 
-/// The `scope` of a full scan; a folder scan has its paths.
+/// The `scope` of a computer scan, quick or full; a folder scan has its paths.
 pub const COMPUTER_SCOPE: &str = "this computer";
 
-pub fn scan_computer(progress: &Progress) -> ScanResult {
+/// `full` opens every folder; otherwise the walk stops [`locate::QUICK_DEPTH`] levels down.
+pub fn scan_computer(full: bool, progress: &Progress) -> ScanResult {
     let start = Instant::now();
-    let discovery = locate::discover_computer(progress);
+    let discovery = locate::discover_computer(full, progress);
     run(COMPUTER_SCOPE.into(), discovery, true, start, progress)
 }
 
@@ -326,6 +327,21 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
     }
     let shown = |paths: &[PathBuf]| capped(paths.iter().map(|p| p.display().to_string()).collect());
     let stats = &discovery.stats;
+    if let Some(depth) = stats.depth_limit {
+        let read = if cfg!(windows) {
+            format!("the install paths the launcher records in the registry, the launcher data and every folder up to {depth} levels below the root of each local drive")
+        } else if cfg!(target_os = "macos") {
+            format!("the usual Wine prefix folders, the install paths those prefixes record, and every folder up to {depth} levels below /")
+        } else {
+            format!("the usual Wine prefix folders, the install paths those prefixes record, and every folder up to {depth} levels below /, your home folder and each drive under /mnt, /media and /run/media")
+        };
+        out.push(Finding::new(
+            FindingKind::Info,
+            Severity::Info,
+            "This was a quick scan",
+            format!("It read {read}. A NIKKE folder more than {depth} levels deep that the launcher no longer records is found only by the full scan (\"Full scan\" in the window, or nikke-check --cli --full) or by \"Scan a folder...\"."),
+        ));
+    }
     if !stats.unreadable.is_empty() {
         out.push(
             Finding::new(
@@ -343,7 +359,7 @@ fn check_coverage(discovery: &Discovery) -> Vec<Finding> {
                 FindingKind::Coverage,
                 Severity::Info,
                 "Network drives were not scanned",
-                "\"Scan this computer\" skips network drives and remote mounts, because reading them is slow and a disconnected one can stop the scan. If NIKKE is installed on one, scan it with \"Scan a folder...\" or nikke-check --cli <folder>.",
+                "A computer scan skips network drives and remote mounts, because reading them is slow and a disconnected one can stop the scan. If NIKKE is installed on one, scan it with \"Scan a folder...\" or nikke-check --cli <folder>.",
             )
             .evidence(shown(&stats.skipped_mounts)),
         );

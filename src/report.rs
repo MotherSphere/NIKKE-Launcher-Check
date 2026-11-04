@@ -5,10 +5,19 @@ use std::fmt::Write;
 
 use crate::guide::{self, Action, EXPOSURE_NOTE, EXPOSURE_TITLE, Part, Section};
 use crate::locate::TargetKind;
-use crate::scan::{ATTACKER_IPS, Finding, FindingKind, Group, HostsStatus, ScanResult, Verdict};
+use crate::scan::{ATTACKER_IPS, COMPUTER_SCOPE, Finding, FindingKind, Group, HostsStatus, ScanResult, Verdict};
 
 pub const APP_NAME: &str = "NIKKE Launcher Check";
 pub const GIST_URL: &str = "https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5";
+
+/// What was scanned, with "quick scan" or "full scan" for this computer.
+pub fn scope(r: &ScanResult) -> String {
+    match (r.scope == COMPUTER_SCOPE, r.stats.depth_limit) {
+        (true, Some(_)) => format!("{} (quick scan)", r.scope),
+        (true, None) => format!("{} (full scan)", r.scope),
+        _ => r.scope.clone(),
+    }
+}
 
 pub const ABOUT: &str = "On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, that script downloaded a remote-access agent (insight.bundle) that can run commands, read files, take screenshots and collect browser data. Three of the files were replaced on November 3. The fourth was cleaned on October 28, but some CDN servers still delivered the old copy on November 3. This tool looks for the traces the loader and the agent leave on disk.";
 
@@ -152,7 +161,7 @@ pub fn render(r: &ScanResult) -> String {
     let mut out = String::new();
     let o = &mut out;
     let _ = writeln!(o, "{APP_NAME} {}", env!("CARGO_PKG_VERSION"));
-    let _ = writeln!(o, "Scan of: {}", r.scope);
+    let _ = writeln!(o, "Scan of: {}", scope(r));
     let _ = writeln!(o, "Started: {}", r.started);
     let _ = writeln!(o);
     let _ = writeln!(o, "VERDICT: {}", headline(r.verdict).to_uppercase());

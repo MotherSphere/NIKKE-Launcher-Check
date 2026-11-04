@@ -23,8 +23,9 @@ Read-only. No network access.
 Usage:
   nikke-check                  Open the window
   nikke-check PATH             Open the window and scan this folder
-  nikke-check --cli            Scan this computer and print a report
-  nikke-check --cli PATH...    Scan only these folders and print a report
+  nikke-check --cli            Quick scan of this computer, printed as a report
+  nikke-check --cli --full     Full scan: open every folder on every local drive
+  nikke-check --cli PATH...    Scan only these folders, in full, and print a report
   nikke-check --cli --redact   Replace the computer name, user names, agent IDs
                                and home folder in the report (any --cli form)
   nikke-check --help           Show this help
@@ -144,8 +145,9 @@ fn folder(path: &OsString) -> Result<PathBuf, ExitCode> {
 
 fn cli(args: &[OsString]) -> ExitCode {
     let redact = args.iter().any(|a| a == "--redact");
+    let full = args.iter().any(|a| a == "--full");
     let mut folders = Vec::new();
-    for path in args.iter().filter(|a| *a != "--redact") {
+    for path in args.iter().filter(|a| *a != "--redact" && *a != "--full") {
         match folder(path) {
             Ok(full) => folders.push(full),
             Err(code) => return code,
@@ -153,7 +155,7 @@ fn cli(args: &[OsString]) -> ExitCode {
     }
     let progress = locate::Progress::default();
     let result = if folders.is_empty() {
-        scan::scan_computer(&progress)
+        scan::scan_computer(full, &progress)
     } else {
         scan::scan_folders(&folders, &progress)
     };

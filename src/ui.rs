@@ -45,7 +45,8 @@ pub fn run(folder: Option<PathBuf>) -> iced::Result {
 
 #[derive(Debug, Clone)]
 enum Request {
-    Computer,
+    /// True for the full scan.
+    Computer(bool),
     Folder(PathBuf),
 }
 
@@ -131,7 +132,8 @@ enum Clip {
 
 #[derive(Debug, Clone)]
 enum Message {
-    ScanComputer,
+    /// True for the full scan.
+    ScanComputer(bool),
     PickFolder,
     FolderPicked(Option<PathBuf>),
     Dropped(PathBuf),
@@ -224,7 +226,8 @@ impl App {
 
     fn start(&mut self, request: Request) -> Task<Message> {
         let label = match &request {
-            Request::Computer => "this computer".to_string(),
+            Request::Computer(false) => "this computer".to_string(),
+            Request::Computer(true) => "this computer (full scan)".to_string(),
             Request::Folder(p) => p.display().to_string(),
         };
         let progress = Arc::new(Progress::default());
@@ -237,7 +240,7 @@ impl App {
         let id = self.scan_id;
         background(
             move || match request {
-                Request::Computer => scan::scan_computer(&progress),
+                Request::Computer(full) => scan::scan_computer(full, &progress),
                 Request::Folder(p) => scan::scan_folders(&[p], &progress),
             },
             move |r| Message::Finished(id, r.map(Arc::new)),
@@ -255,10 +258,10 @@ impl App {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::ScanComputer | Message::PickFolder | Message::ScanAgain | Message::Dropped(_) if self.busy() => {
+            Message::ScanComputer(_) | Message::PickFolder | Message::ScanAgain | Message::Dropped(_) if self.busy() => {
                 Task::none()
             }
-            Message::ScanComputer => self.start(Request::Computer),
+            Message::ScanComputer(full) => self.start(Request::Computer(full)),
             Message::PickFolder => {
                 self.picking = true;
                 Task::perform(
@@ -479,10 +482,11 @@ impl App {
         let options = grid![
             card(
                 column![
-                    text("Full scan").size(20).font(bold()),
-                    text(FULL_SCAN),
-                    text("A full scan can take a few minutes.").size(13).color(MUTED),
-                    action("Scan this computer", idle.then_some(Message::ScanComputer), true),
+                    text("Computer scan").size(20).font(bold()),
+                    text(QUICK_SCAN),
+                    action("Scan this computer", idle.then_some(Message::ScanComputer(false)), true),
+                    text(FULL_SCAN).size(13).color(MUTED),
+                    action("Full scan", idle.then_some(Message::ScanComputer(true)), false),
                 ]
                 .spacing(10)
             ),
@@ -621,6 +625,7 @@ impl App {
             Action::SaveReport => action("Save report...", (!self.saving).then_some(Message::SaveReport), true),
             Action::CopyReport => self.copy_button(Clip::Report, "Copy report", false),
             Action::ScanFolder => action("Scan a folder...", (!self.busy()).then_some(Message::PickFolder), true),
+            Action::FullScan => action("Full scan", (!self.busy()).then_some(Message::ScanComputer(true)), false),
         }
     }
 
@@ -642,7 +647,7 @@ impl App {
         .height(Shrink);
 
         let mut col = Column::new().spacing(14).push(tiles).push(
-            text(format!("Checked: {}. Scan of {}.", report::checked_summary(r), r.scope))
+            text(format!("Checked: {}. Scan of {}.", report::checked_summary(r), report::scope(r)))
                 .color(MUTED)
                 .wrapping(text::Wrapping::WordOrGlyph),
         );
@@ -885,14 +890,17 @@ fn tab_button<'a>(tab: Tab, active: bool) -> Element<'a, Message> {
         .into()
 }
 
-/// One sentence on where "Scan this computer" looks (see `locate::plan_computer`).
-const FULL_SCAN: &str = if cfg!(windows) {
-    "Searches every local drive in full, except the Windows folder, plus your user profile and the install paths the launcher records in the registry."
+/// Where "Scan this computer" looks (see `locate::plan_computer`).
+const QUICK_SCAN: &str = if cfg!(windows) {
+    "Reads the install paths the launcher records in the registry, your user profile and the launcher data, and every folder up to 5 levels deep on each local drive. Usually done in seconds."
 } else if cfg!(target_os = "macos") {
-    "Searches the whole disk and the local volumes, except /System, plus the Wine, CrossOver, Whisky, Wineskin and Heroic prefixes. Network volumes are skipped."
+    "Reads the Wine, CrossOver, Whisky, Wineskin and Heroic prefixes and the install paths they record, and every folder up to 5 levels below /, local volumes included. Network volumes are skipped."
 } else {
-    "Searches the whole system from /, your home folder, /mnt and /media included, and every Wine prefix of Steam, Lutris, Heroic, Bottles and Faugus. Network mounts are skipped."
+    "Reads every Wine prefix of Steam, Lutris, Heroic, Bottles and Faugus and the install paths they record, and every folder up to 5 levels below /, your home folder and each drive under /mnt, /media and /run/media. Network mounts are skipped."
 };
+
+/// What "Full scan" adds.
+const FULL_SCAN: &str = "The full scan opens every folder on every local drive, for a NIKKE folder more than 5 levels deep that the launcher no longer records. It can take a long time on large drives.";
 
 fn top_bar<'a>() -> Element<'a, Message> {
     let pill = container(text(report::READ_ONLY).size(12).color(MUTED))
@@ -1024,7 +1032,7 @@ fn mono_box<'a>(content: String) -> Element<'a, Message> {
         .into()
 }
 
-const HOME_HINT: &str = "Hi, I'm MotherSphere. Start with the full scan. It only reads files: it deletes nothing and sends nothing over the network.";
+const HOME_HINT: &str = "Hi, I'm MotherSphere. Start with \"Scan this computer\". It only reads files: it deletes nothing and sends nothing over the network.";
 const TODO_HINT: &str = "Do the steps one at a time, in order. The buttons open the right folder or tool for you, but you delete the files yourself. This program never deletes anything.";
 
 /// Decoded once, so iced keeps one texture for every frame.
