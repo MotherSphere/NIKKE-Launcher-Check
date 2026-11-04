@@ -862,7 +862,8 @@ fn check_temp(temp: &Path, out: &mut Vec<Finding>) {
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
         let lower = name.to_ascii_lowercase();
-        if lower.starts_with("k2f") {
+        // .NET names its temp folders and files at random (k2fkuxjm.qu0); the agent's names go on with - or _.
+        if (lower.starts_with("k2f-") || lower.starts_with("k2f_")) && entry.file_type().is_ok_and(|t| t.is_file()) {
             k2f.push(entry.path());
         } else if lower.ends_with(".tmp")
             && entry.metadata().is_ok_and(|m| m.is_file() && m.len() == 22)
@@ -1604,6 +1605,23 @@ mod tests {
         let r = fx.scan();
         assert!(has(&r, Severity::Critical, "Files left by the malware in Temp"));
         assert_eq!(r.verdict, Verdict::Infected);
+    }
+
+    #[test]
+    fn dotnet_temp_names_are_not_k2f_files() {
+        let fx = Fixture::new("dotnet");
+        let temp = "pfx/drive_c/users/steamuser/AppData/Local/Temp";
+        fx.dir(&format!("{temp}/k2fkuxjm.qu0"));
+        fx.file(&format!("{temp}/k2fb4mxe.n2t"), b"x");
+        fx.dir(&format!("{temp}/k2f-folder"));
+        let r = fx.scan();
+        assert!(!findings(&r).iter().any(|f| f.kind == FindingKind::TempFile), "{:?}", findings(&r));
+        assert_eq!(r.verdict, Verdict::NotFound);
+        fx.file(&format!("{temp}/k2f-bcreds-1793800000-123456.db"), b"x");
+        let r = fx.scan();
+        let f = findings(&r).into_iter().find(|f| f.kind == FindingKind::TempFile).expect("C2");
+        assert_eq!(f.severity, Severity::Critical);
+        assert_eq!(f.evidence_lines(Lang::En), ["k2f-bcreds-1793800000-123456.db"]);
     }
 
     #[test]
