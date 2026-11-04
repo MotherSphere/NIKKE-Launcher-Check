@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.2.1...v0.3.0) (2026-11-04)
+
+
+### Features
+
+* **scan:** find more traces of the agent and of its Chrome DLL ([9e9efe2](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/9e9efe242dc7d3a422d9eec4df052674a1803d54))
+* **ui:** guide players through what was found and what to do ([a2d5af0](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/a2d5af093c1b60049f548b384ca4aeb815b6526d))
+* **ui:** show MotherSphere with a short hint on the start and steps screens ([de42825](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/de428252691fca13b6fd45b8b1fdee10d0c71f54))
+
+
+### Fixes
+
+* **scan:** rate a log that names only insightjs as a warning ([082d130](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/082d13069b3d2aae045d61c64fea27d7f1013915))
+* **ui:** skip OpenGL on Windows so AMD's driver cannot crash the window ([b2eda50](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/b2eda50727702895122334756f76ebc2badcd64d))
+
+
+### Documentation
+
+* describe the three tabs, the new checks and the report redaction ([257a1c7](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/257a1c7c9578752fafb5cfc5f9b360a1fd56fb8e))
+* the Chrome DLL does not need Chrome; add the second IP and the fourth build ([8eda540](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/8eda540c218eee8503973271783540b476c74cda))
+
 ## [0.2.1](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.2.0...v0.2.1) (2026-11-03)
 
 
