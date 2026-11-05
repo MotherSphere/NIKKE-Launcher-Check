@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.2...v0.5.3) (2026-11-05)
+
+
+### Documentation
+
+* explain the antivirus false positives at the top of the README ([b7b7c08](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/b7b7c08ee3cafc7aa2dbf36361aa075484f02d4b))
+
 ## [0.5.2](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.1...v0.5.2) (2026-11-04)
 
 
