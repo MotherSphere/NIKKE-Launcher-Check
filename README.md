@@ -31,6 +31,15 @@ How the release files are made:
 
 If your antivirus quarantines the file, check its SHA-256 first, then restore it or allow that one file. Do not turn the antivirus off or exclude a whole folder. The [write-up](https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5#check-if-you-are-infected) also explains how to do the main checks by hand, without any program.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- Committers and reviewers: [MotherSphere](https://github.com/MotherSphere)
+- Approvers: [MotherSphere](https://github.com/MotherSphere)
+
+Privacy policy: This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. nikke-check makes no network connection at all.
+
 ## Download
 
 Download the file for your system from the [latest release](https://github.com/MotherSphere/NIKKE-Launcher-Check/releases/latest).
@@ -41,7 +50,7 @@ Download the file for your system from the [latest release](https://github.com/M
 | Linux and Steam Deck, 64-bit (glibc 2.35 or later) | `nikke-check-linux-x86_64` |
 | macOS on Apple silicon | `nikke-check-macos-arm64` |
 
-Each release also has `SHA256SUMS.txt`, the SHA-256 of each file. [Check the download](docs/usage.md#check-the-download) shows how to compare it on each system.
+Each release also has `SHA256SUMS.txt`, the SHA-256 of each file. [Check the download](docs/usage.md#check-the-download) shows how to compare it on each system. Signing follows the [code signing policy](#code-signing-policy).
 
 ## Quick start
 
