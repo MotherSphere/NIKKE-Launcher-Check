@@ -1,13 +1,35 @@
 # NIKKE Launcher Check
 
+[![Latest release](https://img.shields.io/github/v/release/MotherSphere/NIKKE-Launcher-Check)](https://github.com/MotherSphere/NIKKE-Launcher-Check/releases/latest)
+[![Build](https://github.com/MotherSphere/NIKKE-Launcher-Check/actions/workflows/build.yml/badge.svg)](https://github.com/MotherSphere/NIKKE-Launcher-Check/actions/workflows/build.yml)
+
 NIKKE Launcher Check (`nikke-check`) looks for the traces left by the November 2026 compromise of the NIKKE PC launcher: the script loaded from insightjs.com, the remote-access agent that script downloaded, and the DLL and registry key the agent adds on Windows so that Google Chrome loads it. It only reads files: it does not change, move or delete anything, and it makes no network connections. The only file it writes is a report you save yourself with "Save report...". It also checks whether your hosts file blocks the malicious domains, but it never edits that file.
 
-It runs on Windows, on Linux (Proton, Steam Deck, Lutris, Heroic, Bottles, Faugus) and on macOS, where NIKKE runs through Wine-based tools such as CrossOver, Whisky and Wineskin.
+It runs on Windows, on Linux (Proton, Steam Deck, Lutris, Heroic, Bottles, Faugus) and on macOS, where NIKKE runs through Wine-based tools such as CrossOver, Whisky and Wineskin. The window and the report come in 16 languages.
+
+> [!IMPORTANT]
+> **Antivirus warnings about nikke-check are false positives.** The program is the open-source code in this repository, and GitHub Actions builds every release file from it. The likely reason for the warnings is below, in [Antivirus warnings](#antivirus-warnings).
 
 <p>
   <img src="docs/images/home.png" width="49%" alt="The start screen, with the Scan this computer and Scan a folder... buttons">
   <img src="docs/images/result.png" width="49%" alt="The What happened tab of an Infected result, with the verdict and the four answers">
 </p>
+
+## Antivirus warnings
+
+A few antivirus programs flag nikke-check. These are false positives.
+
+The likely reason: to tell you what the agent could reach on your PC, nikke-check carries in plain text the same lists as the malware, 33 browser profile folders, 28 crypto wallet extension IDs and 43 credential files such as SSH keys ([`src/exposure.rs`](src/exposure.rs)), plus the attack's domains and file names. Password and wallet stealers carry the same kind of lists, and heuristic engines flag programs that contain them. nikke-check only checks whether those paths exist and opens none of them. The program is also unsigned, and each release is a new file with no reputation yet.
+
+On VirusTotal, 1 to 3 of about 70 engines flag a release, all with heuristic or machine-learning verdicts: Kaspersky `Trojan-PSW.Win64.Coins`, Rising `Stealer.Coins` and SentinelOne "Static AI". Microsoft Defender's `Trojan:Win32/Bearfoos.A!ml` comes from its machine-learning cloud (the `!ml` suffix), and the Microsoft engine on VirusTotal does not flag the file. We are in contact with Microsoft to remove the detection: a false-positive report for version 0.5.1 is open with Microsoft Security Intelligence, and its result will be posted in [issue #22](https://github.com/MotherSphere/NIKKE-Launcher-Check/issues/22).
+
+How the release files are made:
+
+- The source code is in this repository. When a release is published, [`release.yml`](.github/workflows/release.yml) and [`build.yml`](.github/workflows/build.yml) build each file from the release tag on GitHub's own runners with `cargo build --release --locked`, run the tests, and only then attach the files. No release file is built or uploaded by hand.
+- The same run writes `SHA256SUMS.txt` next to the files. [Check the download](docs/usage.md#check-the-download) shows how to compare your file with it. On Windows, in PowerShell: `Get-FileHash .\nikke-check-windows-x86_64.exe -Algorithm SHA256`.
+- You can also [build it yourself](docs/building.md).
+
+If your antivirus quarantines the file, check its SHA-256 first, then restore it or allow that one file. Do not turn the antivirus off or exclude a whole folder. The [write-up](https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5#check-if-you-are-infected) also explains how to do the main checks by hand, without any program.
 
 ## Download
 
@@ -25,7 +47,7 @@ Each release also has `SHA256SUMS.txt`, the SHA-256 of each file. [Check the dow
 
 ### Windows
 
-Double-click `nikke-check-windows-x86_64.exe`. The program is not signed, so SmartScreen can warn about an unknown publisher. Click "More info", then "Run anyway".
+Double-click `nikke-check-windows-x86_64.exe`. The program is not signed, so SmartScreen can warn about an unknown publisher. Click "More info", then "Run anyway". If your antivirus blocks the file, see [Antivirus warnings](#antivirus-warnings).
 
 ### Linux and Steam Deck
 
@@ -96,7 +118,7 @@ Whatever the result, delete `tbs_cache` before you open the NIKKE launcher again
 
 ## The incident
 
-On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, on some launches, that script downloaded a remote-access agent that can run commands, read files, take screenshots and collect browser data. [What happened](docs/incident.md) has the details. The full analysis is in this write-up: https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5
+On 2026-09-27, four files on Level Infinite's CDN were changed to load a script from insightjs.com inside the NIKKE PC launcher. From October 23, 2026 at the latest, on some launches, that script downloaded a remote-access agent that can run commands, read files, take screenshots and collect browser data. [What happened](docs/incident.md) has the details. The full analysis is in [this write-up](https://gist.github.com/MotherSphere/d6c049a09ba8ac3085c51ee9df24a4e5), with a link to each of its 15 translations. On November 4, Level Infinite confirmed a fix and published [manual security check instructions](https://nikke-en.com/newsdetail.html?content_id=ecdccd40a55a5a46aaa9abda64d436082db7).
 
 ## License
 
