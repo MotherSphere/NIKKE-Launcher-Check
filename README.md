@@ -7,8 +7,8 @@ NIKKE Launcher Check (`nikke-check`) looks for the traces left by the November 2
 
 It runs on Windows, on Linux (Proton, Steam Deck, Lutris, Heroic, Bottles, Faugus) and on macOS, where NIKKE runs through Wine-based tools such as CrossOver, Whisky and Wineskin. The window and the report come in 16 languages.
 
-> [!IMPORTANT]
-> **Antivirus warnings about nikke-check are false positives.** The program is the open-source code in this repository, and GitHub Actions builds every release file from it. The likely reason for the warnings is below, in [Antivirus warnings](#antivirus-warnings).
+> [!CAUTION]
+> **Microsoft Defender can quarantine nikke-check as a trojan. This is a false positive.** Defender's cloud machine learning started flagging the program on its own with version 0.5.1, most likely because about 72,000 copies of new, unsigned files were downloaded within three days. nikke-check is the open-source code in this repository, and GitHub Actions builds every release file from it. We have asked the SignPath Foundation to sign the Windows release. Until then, [Antivirus warnings](#antivirus-warnings) explains how to check your file before you restore it or allow it.
 
 <p>
   <img src="docs/images/home.png" width="49%" alt="The start screen, with the Scan this computer and Scan a folder... buttons">
