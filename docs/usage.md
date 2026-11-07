@@ -176,7 +176,7 @@ The verdict and its summary come first. Right under them, a wide button in the c
 - "Is there something to clean up?" The DLL folders, the registry key or its empty leftover, the older DLL files, the `k2f` files in Temp, and the launcher cache when it holds traces. With nothing found, it still says to delete `tbs_cache` before the launcher is opened again.
 - "Are you protected for next time?" Each domain in the hosts file, and the two IP addresses, which only a firewall or router can block.
 
-When the download logs keep the headers of the agent download, a "Payload build" card gives the ETag, the upload time it encodes, the size and whether it is one of the 7 known builds.
+When the download logs keep the headers of the agent download, a "Payload build" card gives the ETag, the upload time it encodes, the size and whether it is one of the 8 known builds.
 
 #### What to do
 

@@ -235,7 +235,7 @@ fn protected(r: &ScanResult, lang: Lang) -> Answer {
     answer(q, t(reply), tone, lines)
 }
 
-/// "6ae90538-3214f, uploaded ..., 205,135 bytes, one of the 5 known builds."
+/// "6ae90538-3214f, uploaded ..., 205,135 bytes, one of the 8 known builds."
 pub fn build_line(b: &PayloadBuild, lang: Lang) -> String {
     let mut s = b.etag.clone().unwrap_or_else(|| tr(lang, "build.no_etag").into());
     match (&b.uploaded, &b.last_modified) {

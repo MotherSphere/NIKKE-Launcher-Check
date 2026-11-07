@@ -9,9 +9,11 @@ use crate::i18n::Text;
 use crate::scan::{cef_time, log_time, utc};
 
 /// The ETags of the builds of insight.bundle seen so far (nginx: hex mtime and
-/// hex size, 0x3214f = 205,135 bytes), uploaded Oct 31 15:38:43, Nov 1 01:06:14,
-/// Nov 1 18:08:55, Nov 2 17:48:47, Nov 2 21:48:40, Nov 3 12:31:04 and Nov 3 14:56:40 GMT.
-pub const KNOWN_BUILDS: [&str; 7] = [
+/// hex size, 0x3214f = 205,135 bytes), uploaded Oct 30 19:34:30, Oct 31 15:38:43,
+/// Nov 1 01:06:14, Nov 1 18:08:55, Nov 2 17:48:47, Nov 2 21:48:40, Nov 3 12:31:04 and
+/// Nov 3 14:56:40 GMT. 6ae90538 and 6ae9f628 hold the same bytes (issue #33).
+pub const KNOWN_BUILDS: [&str; 8] = [
+    "6ae4f146-3214f",
     "6ae60b83-3214f",
     "6ae69086-3214f",
     "6ae78037-3214f",
@@ -281,6 +283,7 @@ mod tests {
         assert_eq!(
             uploaded,
             [
+                "2026-10-30 19:34:30 UTC",
                 "2026-10-31 15:38:43 UTC",
                 "2026-11-01 01:06:14 UTC",
                 "2026-11-01 18:08:55 UTC",
