@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.2...v0.6.0) (2026-11-07)
+
+
+### Features
+
+* recognize payload build 6ae4f146 (Oct 30 19:34:30 GMT) ([67ae59b](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/67ae59bc719fd9ba37361fce0c4a58a7a568c697))
+
+
+### Documentation
+
+* add the code signing policy that SignPath Foundation requires ([ee19c13](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/ee19c1381c23b2c4c0f69c51e95f88952a63dd84))
+* explain the antivirus false positives at the top of the README ([b7b7c08](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/b7b7c08ee3cafc7aa2dbf36361aa075484f02d4b))
+* say that a code signing request with the SignPath Foundation is under way ([a18cb0f](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/a18cb0f30ecfb13d081d18e5fdd2e2b5b25ddb1c))
+* warn in red that Defender can quarantine nikke-check ([77208d5](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/77208d5511400ade92461ca13e9f9f25bc372fd8))
+
 ## [0.5.2](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.1...v0.5.2) (2026-11-04)
 
 
