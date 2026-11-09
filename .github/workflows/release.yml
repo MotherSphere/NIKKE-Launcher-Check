@@ -44,9 +44,13 @@ jobs:
     if: ${{ needs.release-please.outputs.release_created }}
     permissions:
       contents: read
+      actions: read
     uses: ./.github/workflows/build.yml
     with:
       ref: ${{ needs.release-please.outputs.tag_name }}
+      signing-policy: release-signing
+    secrets:
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
 
   publish:
     needs: [release-please, build]
@@ -66,7 +70,7 @@ jobs:
           mkdir out
           cp dist/nikke-check-linux-x86_64/nikke-check out/nikke-check-linux-x86_64
           cp dist/nikke-check-macos-arm64/nikke-check out/nikke-check-macos-arm64
-          cp dist/nikke-check-windows-x86_64/nikke-check.exe out/nikke-check-windows-x86_64.exe
+          cp dist/nikke-check-windows-x86_64-signed/nikke-check.exe out/nikke-check-windows-x86_64.exe
           chmod +x out/nikke-check-linux-x86_64 out/nikke-check-macos-arm64
           cd out && sha256sum nikke-check-* > SHA256SUMS.txt
 
