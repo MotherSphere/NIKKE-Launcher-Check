@@ -44,15 +44,22 @@ jobs:
     if: ${{ needs.release-please.outputs.release_created }}
     permissions:
       contents: read
+      actions: read
     uses: ./.github/workflows/build.yml
     with:
       ref: ${{ needs.release-please.outputs.tag_name }}
+      signing-policy: release-signing
+    secrets:
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
 
   publish:
     needs: [release-please, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # For the build provenance attestations.
+      id-token: write
+      attestations: write
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.tag_name }}
@@ -66,9 +73,14 @@ jobs:
           mkdir out
           cp dist/nikke-check-linux-x86_64/nikke-check out/nikke-check-linux-x86_64
           cp dist/nikke-check-macos-arm64/nikke-check out/nikke-check-macos-arm64
-          cp dist/nikke-check-windows-x86_64/nikke-check.exe out/nikke-check-windows-x86_64.exe
+          cp dist/nikke-check-windows-x86_64-signed/nikke-check.exe out/nikke-check-windows-x86_64.exe
           chmod +x out/nikke-check-linux-x86_64 out/nikke-check-macos-arm64
           cd out && sha256sum nikke-check-* > SHA256SUMS.txt
+
+      # Lets anyone check with `gh attestation verify` that a file came from this workflow and commit.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: out/nikke-check-*
 
       # `-R` because this job has no checkout for gh to read the repository from.
       - name: Attach the binaries and publish

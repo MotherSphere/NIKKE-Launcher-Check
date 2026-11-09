@@ -41,6 +41,14 @@ Get-FileHash .\nikke-check-windows-x86_64.exe -Algorithm SHA256
 
 Open `SHA256SUMS.txt` in Notepad and compare the `Hash` value with the line for `nikke-check-windows-x86_64.exe`. PowerShell prints the hash in capital letters and the file uses lowercase. Ignore the case. Every letter and digit must match.
 
+`SHA256SUMS.txt` comes from the same release as the program, so it only shows that the download was not damaged or swapped on the way. To check that the file was built by this repository's release workflow, use the attestation. It needs the [GitHub CLI](https://cli.github.com/):
+
+```
+gh attestation verify nikke-check-linux-x86_64 --repo MotherSphere/NIKKE-Launcher-Check
+```
+
+Use the name of your file. The command must print `Verification succeeded!`. Releases before the first signed one have no attestation.
+
 ## First start
 
 ### Windows
