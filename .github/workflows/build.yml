@@ -89,14 +89,22 @@ jobs:
           test "$code" -eq 3
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        id: upload
         with:
           name: ${{ matrix.artifact }}
           path: target/release/${{ matrix.bin }}
           if-no-files-found: error
 
-      # The SignPath artifact configuration expects a zip holding nikke-check.exe,
-      # which is what upload-artifact stores.
+      # The SignPath artifact configuration expects a bare PE file, so the exe is also
+      # uploaded unzipped. With archive: false the artifact is named after the file.
+      - name: Upload the unzipped exe for SignPath
+        id: upload-exe
+        if: runner.os == 'Windows' && inputs.signing-policy != '' && inputs.signing-policy != 'none'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: target/release/nikke-check.exe
+          archive: false
+          if-no-files-found: error
+
       - name: Sign the Windows binary through SignPath
         if: runner.os == 'Windows' && inputs.signing-policy != '' && inputs.signing-policy != 'none'
         uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
@@ -105,9 +113,10 @@ jobs:
           organization-id: d2490d1f-b2fe-4d0b-9146-5b197a735917
           project-slug: NIKKE-Launcher-Check
           signing-policy-slug: ${{ inputs.signing-policy }}
-          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          github-artifact-id: ${{ steps.upload-exe.outputs.artifact-id }}
           wait-for-completion: true
           output-artifact-directory: signed
+          skip-decompress: true
 
       # The test certificate is self-signed, so only check that a signature is there, not that Windows trusts it.
       - name: Check the signature
