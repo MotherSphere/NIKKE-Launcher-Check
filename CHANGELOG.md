@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.6.0...v0.6.1) (2026-11-09)
+
+
+### Documentation
+
+* describe the SignPath signing and how to verify the attestation ([93457e7](https://github.com/MotherSphere/NIKKE-Launcher-Check/commit/93457e7b0fd5e8f0a3f324ca8100d95e7eb6dd22))
+
 ## [0.6.0](https://github.com/MotherSphere/NIKKE-Launcher-Check/compare/v0.5.2...v0.6.0) (2026-11-07)
 
 
