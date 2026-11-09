@@ -49,7 +49,9 @@ Release Please opens the pull request with `GITHUB_TOKEN`, so the repository set
 Merging the release pull request creates the tag, such as `v0.1.0`, and the GitHub release. `.github/workflows/release.yml` runs on every push to `main` and then does the rest in the same run:
 
 1. The `release-please` job creates the tag and the release, and sets the release back to draft so that it never shows without downloads.
-2. The `build` job calls `build.yml` with the tag.
-3. The `publish` job names the binaries `nikke-check-linux-x86_64`, `nikke-check-macos-arm64` and `nikke-check-windows-x86_64.exe`, marks the Linux and macOS files as executable, and writes `SHA256SUMS.txt` with `sha256sum`. It uploads the four files to the release, then publishes the release and marks it as the latest.
+2. The `build` job calls `build.yml` with the tag and the `release-signing` policy. The Windows job uploads `nikke-check.exe` unzipped (`archive: false`), sends it to SignPath with `signpath/github-action-submit-signing-request`, checks that the returned file has an Authenticode signature and uploads it as `nikke-check-windows-x86_64-signed`. The API token is the `SIGNPATH_API_TOKEN` repository secret. If signing fails, the release stays a draft.
+3. The `publish` job names the binaries `nikke-check-linux-x86_64`, `nikke-check-macos-arm64` and `nikke-check-windows-x86_64.exe` (the signed one), marks the Linux and macOS files as executable, and writes `SHA256SUMS.txt` with `sha256sum`. It creates a build provenance attestation for the three binaries with `actions/attest-build-provenance`. It uploads the four files to the release, then publishes the release and marks it as the latest.
+
+Pushes are not signed. To test signing, run the build workflow by hand (Actions > build > Run workflow, or `gh workflow run build.yml --ref <branch> -f signing-policy=test-signing`). The `test-signing` policy uses SignPath's self-signed test certificate, so Windows does not trust the result.
 
 The build runs inside `release.yml` because a release created with `GITHUB_TOKEN` fires no event another workflow could start from.
